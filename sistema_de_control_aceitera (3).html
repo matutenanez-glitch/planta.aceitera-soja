@@ -1,0 +1,2161 @@
+<!DOCTYPE html>
+<html lang="es" class="h-full bg-[#020617] text-slate-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SoyaCore OS - Sistema Industrial de Aceitera</title>
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            300: '#fcd34d',
+                            400: '#fbbf24',
+                            500: '#f59e0b',
+                            600: '#d97706',
+                        },
+                        surface: {
+                            50: 'rgba(15, 23, 42, 0.5)',   // slate-900 with opacity
+                            100: 'rgba(15, 23, 42, 0.7)',
+                            200: 'rgba(30, 41, 59, 0.7)',  // slate-800 with opacity
+                        }
+                    },
+                    boxShadow: {
+                        'glow': '0 0 20px -5px rgba(245, 158, 11, 0.4)',
+                        'glow-emerald': '0 0 20px -5px rgba(16, 185, 129, 0.4)',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #020617; /* Very deep blue/black */
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(245, 158, 11, 0.05) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(16, 185, 129, 0.05) 0px, transparent 50%);
+            background-attachment: fixed;
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1e293b;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #334155;
+        }
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .tank-wave {
+            background: linear-gradient(180deg, rgba(245, 158, 11, 0.9) 0%, rgba(180, 83, 9, 0.95) 100%);
+            transition: height 0.8s ease-in-out;
+        }
+        .tank-wave-ext {
+            background: linear-gradient(180deg, rgba(16, 185, 129, 0.8) 0%, rgba(4, 120, 87, 0.95) 100%);
+            transition: height 0.8s ease-in-out;
+        }
+        .nav-btn {
+            position: relative;
+            overflow: hidden;
+        }
+        .nav-btn.active::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 10%;
+            height: 80%;
+            width: 3px;
+            background-color: #fbbf24;
+            border-radius: 0 4px 4px 0;
+            box-shadow: 0 0 10px #fbbf24;
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col antialiased selection:bg-brand-500 selection:text-white overflow-hidden">
+
+    <!-- TOP HEADER -->
+    <header class="h-16 glass-panel border-b border-slate-800/80 px-6 flex items-center justify-between shrink-0 z-30 shadow-md">
+        <div class="flex items-center gap-4">
+            <div class="p-2 bg-gradient-to-br from-brand-400 to-brand-600 rounded-xl text-slate-950 shadow-glow">
+                <i data-lucide="droplet" class="w-6 h-6 fill-current"></i>
+            </div>
+            <div>
+                <h1 class="font-extrabold text-xl tracking-tight text-white flex items-center gap-2">
+                    SoyaCore <span class="font-light text-brand-400">OS</span>
+                </h1>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-4 text-sm">
+            <div class="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-800/50 border border-slate-700/50 backdrop-blur-md">
+                <i data-lucide="calendar" class="w-4 h-4 text-brand-400"></i>
+                <span id="current-date-display" class="text-xs font-medium text-slate-300">Cargando fecha...</span>
+            </div>
+            <div class="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 px-4 py-1.5 rounded-lg text-emerald-400 text-xs font-bold shadow-glow-emerald">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span class="hidden sm:inline tracking-wide uppercase">Operación Activa</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN WRAPPER -->
+    <div class="flex-1 flex overflow-hidden relative z-10">
+
+        <!-- SIDEBAR -->
+        <aside class="w-72 glass-panel border-r border-slate-800/80 flex flex-col justify-between shrink-0 hidden md:flex overflow-y-auto z-20">
+            <nav class="p-4 space-y-1">
+                
+                <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-3 mb-2 mt-2">Logística y Secado</p>
+                <button onclick="switchTab('camiones')" id="nav-camiones" class="nav-btn active w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 text-brand-400 bg-brand-500/10 border border-brand-500/20 hover:bg-brand-500/20">
+                    <i data-lucide="truck" class="w-4 h-4"></i>
+                    <span>Recepción Camiones</span>
+                </button>
+                <button onclick="switchTab('secadora')" id="nav-secadora" class="nav-btn w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 text-slate-400 hover:bg-slate-800/60 hover:text-slate-200 border border-transparent">
+                    <i data-lucide="flame" class="w-4 h-4"></i>
+                    <span>Secadora de Soja</span>
+                </button>
+
+                <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-3 mb-2 mt-6">Producción y Extracción</p>
+                <button onclick="switchTab('extrusoras')" id="nav-extrusoras" class="nav-btn w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 text-slate-400 hover:bg-slate-800/60 hover:text-slate-200 border border-transparent">
+                    <i data-lucide="sliders" class="w-4 h-4"></i>
+                    <span>Líneas de Extrusión</span>
+                </button>
+                <button onclick="switchTab('prensas')" id="nav-prensas" class="nav-btn w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 text-slate-400 hover:bg-slate-800/60 hover:text-slate-200 border border-transparent">
+                    <i data-lucide="cog" class="w-4 h-4"></i>
+                    <span>Sala de Prensas</span>
+                </button>
+                <button onclick="switchTab('bombas')" id="nav-bombas" class="nav-btn w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 text-slate-400 hover:bg-slate-800/60 hover:text-slate-200 border border-transparent">
+                    <i data-lucide="activity" class="w-4 h-4"></i>
+                    <span>Bombas & Reductores</span>
+                </button>
+                <button onclick="switchTab('tanques')" id="nav-tanques" class="nav-btn w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 text-slate-400 hover:bg-slate-800/60 hover:text-slate-200 border border-transparent">
+                    <i data-lucide="droplets" class="w-4 h-4"></i>
+                    <span>Circuito de Aceite</span>
+                </button>
+                <button onclick="switchTab('produccion')" id="nav-produccion" class="nav-btn w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 text-slate-400 hover:bg-slate-800/60 hover:text-slate-200 border border-transparent">
+                    <i data-lucide="clock" class="w-4 h-4"></i>
+                    <span>Producción Turnos</span>
+                </button>
+
+                <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-3 mb-2 mt-6">Análisis e Inteligencia</p>
+                <button onclick="switchTab('stock')" id="nav-stock" class="nav-btn w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 text-slate-400 hover:bg-slate-800/60 hover:text-slate-200 border border-transparent">
+                    <i data-lucide="boxes" class="w-4 h-4"></i>
+                    <span>Inventario & Stock</span>
+                </button>
+                <button onclick="switchTab('resumen')" id="nav-resumen" class="nav-btn w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 text-slate-400 hover:bg-slate-800/60 hover:text-slate-200 border border-transparent">
+                    <i data-lucide="bar-chart-3" class="w-4 h-4"></i>
+                    <span>Métricas y Resumen</span>
+                </button>
+                <button onclick="switchTab('prompts')" id="nav-prompts" class="nav-btn w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 text-slate-400 hover:bg-slate-800/60 hover:text-slate-200 border border-transparent">
+                    <i data-lucide="sparkles" class="w-4 h-4 text-purple-400"></i>
+                    <span>Asistente Inteligente IA</span>
+                </button>
+            </nav>
+
+            <!-- Sistema & Configuracion Cards -->
+            <div class="p-4 space-y-3 bg-slate-900/40 border-t border-slate-800/80">
+                <!-- Data Base Card -->
+                <div class="p-3.5 rounded-xl bg-slate-800/40 border border-slate-700/50 hover:bg-slate-800/60 transition duration-300">
+                    <div class="flex items-center gap-2 text-brand-400 mb-1.5">
+                        <i data-lucide="database" class="w-4 h-4"></i>
+                        <span class="text-xs font-bold tracking-wide">Base de Datos Local</span>
+                    </div>
+                    <p class="text-[10px] text-slate-400 leading-relaxed mb-2.5">
+                        Almacenamiento 100% offline. Seguro y encriptado.
+                    </p>
+                    <button onclick="descargarBackup()" class="w-full py-1.5 bg-slate-900 hover:bg-slate-950 text-slate-300 rounded-lg text-[11px] font-medium border border-slate-700/50 flex items-center justify-center gap-1.5 transition">
+                        <i data-lucide="shield-check" class="w-3.5 h-3.5 text-emerald-400"></i> Respaldar Datos
+                    </button>
+                </div>
+                
+                <!-- PC App & Updater Card -->
+                <div class="p-3.5 rounded-xl bg-gradient-to-br from-slate-800/60 to-slate-900/60 border border-brand-500/20 hover:border-brand-500/40 transition duration-300 shadow-lg">
+                    <div class="flex justify-between items-center mb-1.5">
+                        <div class="flex items-center gap-2 text-brand-400">
+                            <i data-lucide="monitor-down" class="w-4 h-4"></i>
+                            <span class="text-xs font-bold tracking-wide">SoyaCore App</span>
+                        </div>
+                        <span class="bg-brand-500/20 text-brand-400 text-[9px] px-1.5 py-0.5 rounded font-bold">v2.5</span>
+                    </div>
+                    <p class="text-[10px] text-slate-400 leading-relaxed mb-2.5">
+                        Instalador Windows e importador de actualizaciones.
+                    </p>
+                    <button onclick="descargarAppPC()" class="w-full py-1.5 bg-brand-500 hover:bg-brand-400 text-slate-950 rounded-lg text-[11px] font-bold shadow-glow transition flex items-center justify-center gap-1.5">
+                        <i data-lucide="settings" class="w-3.5 h-3.5"></i> Gestionar Sistema
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- CONTENT AREA -->
+        <main class="flex-1 overflow-y-auto p-4 md:p-8 relative z-10 scroll-smooth">
+
+            <!-- MOBILE NAV SELECTOR -->
+            <div class="md:hidden mb-4 glass-panel p-3 rounded-2xl">
+                <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Módulo Activo</label>
+                <select id="mobile-nav-select" onchange="switchTab(this.value)" class="w-full bg-slate-900/80 border border-slate-700 text-white rounded-xl p-3 text-sm font-medium focus:ring-2 focus:ring-brand-500 outline-none">
+                    <option value="camiones">🚚 Recepción Camiones</option>
+                    <option value="secadora">🔥 Secadora de Soja</option>
+                    <option value="extrusoras">🎛️ Líneas de Extrusión</option>
+                    <option value="prensas">⚙️ Sala de Prensas</option>
+                    <option value="bombas">⚡ Bombas & Reductores</option>
+                    <option value="tanques">🛢️ Circuito de Aceite</option>
+                    <option value="produccion">⏱️ Producción Turnos</option>
+                    <option value="stock">📦 Inventario & Stock</option>
+                    <option value="resumen">📊 Métricas y Resumen</option>
+                    <option value="prompts">✨ Asistente IA (RCTFRI)</option>
+                </select>
+                <div class="grid grid-cols-2 gap-2 mt-3">
+                    <button onclick="descargarBackup()" class="py-2 bg-slate-800 border border-slate-700 text-slate-300 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5">
+                        <i data-lucide="shield" class="w-3.5 h-3.5"></i> Respaldar
+                    </button>
+                    <button onclick="descargarAppPC()" class="py-2 bg-brand-500/10 border border-brand-500/30 text-brand-400 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5">
+                        <i data-lucide="monitor" class="w-3.5 h-3.5"></i> App PC
+                    </button>
+                </div>
+            </div>
+
+            <!-- TAB 1: RECEPCIÓN DE CAMIONES -->
+            <section id="tab-camiones" class="tab-content space-y-6 animate-fade-in">
+                
+                <!-- Header Card -->
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 glass-panel p-6 rounded-3xl border border-slate-800/60 shadow-xl">
+                    <div>
+                        <h2 class="text-2xl font-bold text-white flex items-center gap-3">
+                            <span class="p-2 bg-brand-500/20 rounded-xl text-brand-400"><i data-lucide="truck" class="w-6 h-6"></i></span>
+                            Recepción de Camiones
+                        </h2>
+                        <p class="text-sm text-slate-400 mt-2 font-light">Gestión de balanza, determinación de humedad y cálculo automático de peso neto.</p>
+                    </div>
+                    <div class="flex items-center gap-4 bg-slate-900/60 px-5 py-3 rounded-2xl border border-slate-700/50">
+                        <div class="text-right">
+                            <span class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Soja Ingresada Hoy</span>
+                            <span id="camiones-total-kg-hoy" class="text-2xl font-black text-brand-400">0 kg</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Formulario de Carga -->
+                    <div class="lg:col-span-2 glass-panel border border-slate-800/60 rounded-3xl p-6 shadow-xl">
+                        <h3 class="text-base font-bold text-white mb-5 flex items-center gap-2 border-b border-slate-800/80 pb-3">
+                            <i data-lucide="plus-circle" class="w-5 h-5 text-brand-400"></i> Nuevo Registro de Descarga
+                        </h3>
+
+                        <form id="form-camion" onsubmit="guardarCamion(event)" class="space-y-5">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Fecha de Ingreso</label>
+                                    <input type="date" id="camion-fecha" required class="w-full bg-slate-900/50 border border-slate-700/50 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500/50 transition">
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Patente Camión/Acoplado</label>
+                                    <input type="text" id="camion-patente" placeholder="Ej. AA 123 CD" required class="w-full bg-slate-900/50 border border-slate-700/50 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500/50 transition uppercase">
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Transporte / Acopiador</label>
+                                    <input type="text" id="camion-empresa" placeholder="Ej. Transportes El Molino S.A." required class="w-full bg-slate-900/50 border border-slate-700/50 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500/50 transition">
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Producto Transportado</label>
+                                    <input type="text" id="camion-producto" value="Soja Grano" required class="w-full bg-slate-900/50 border border-slate-700/50 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500/50 transition">
+                                </div>
+                            </div>
+
+                            <div class="bg-slate-900/30 p-4 rounded-2xl border border-slate-800/50 mt-4">
+                                <h4 class="text-[11px] font-bold text-brand-400 uppercase tracking-widest mb-4">Datos de Balanza y Laboratorio</h4>
+                                <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                                    <div>
+                                        <label class="block text-xs font-semibold text-slate-300 mb-1.5">Humedad (%)</label>
+                                        <input type="number" step="0.1" id="camion-humedad" placeholder="13.5" required class="w-full bg-slate-950/50 border border-slate-700/50 rounded-xl px-3 py-2 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-brand-500 transition">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-semibold text-slate-300 mb-1.5">Peso Bruto (kg)</label>
+                                        <input type="number" id="camion-bruto" oninput="calcularPesoNeto()" placeholder="45000" required class="w-full bg-slate-950/50 border border-slate-700/50 rounded-xl px-3 py-2 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-brand-500 transition">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-semibold text-slate-300 mb-1.5">Tara (kg)</label>
+                                        <input type="number" id="camion-tara" oninput="calcularPesoNeto()" placeholder="15000" required class="w-full bg-slate-950/50 border border-slate-700/50 rounded-xl px-3 py-2 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-brand-500 transition">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-bold text-emerald-400 mb-1.5">Peso Neto (kg)</label>
+                                        <input type="number" id="camion-neto" readonly placeholder="0" class="w-full bg-emerald-950/20 border border-emerald-500/30 font-bold text-emerald-400 rounded-xl px-3 py-2 text-sm cursor-not-allowed">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="flex justify-end gap-3 pt-2">
+                                <button type="reset" class="px-5 py-2.5 rounded-xl border border-slate-700 text-slate-300 text-sm font-medium hover:bg-slate-800 transition">Limpiar</button>
+                                <button type="submit" class="px-6 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-400 text-slate-950 font-bold text-sm shadow-glow transition flex items-center gap-2">
+                                    <i data-lucide="save" class="w-4 h-4"></i> Guardar Registro
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Métricas del día -->
+                    <div class="space-y-6">
+                        <div class="glass-panel border border-slate-800/60 rounded-3xl p-6 shadow-xl">
+                            <h4 class="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                                <i data-lucide="bar-chart-2" class="w-4 h-4 text-brand-400"></i> Resumen de Hoy
+                            </h4>
+                            <div class="space-y-3">
+                                <div class="flex justify-between items-center p-3.5 rounded-xl bg-slate-900/50 border border-slate-800/50">
+                                    <span class="text-xs font-medium text-slate-400">Total Camiones:</span>
+                                    <span id="stat-camiones-count" class="text-lg font-bold text-white">0</span>
+                                </div>
+                                <div class="flex justify-between items-center p-3.5 rounded-xl bg-slate-900/50 border border-slate-800/50">
+                                    <span class="text-xs font-medium text-slate-400">Humedad Promedio:</span>
+                                    <span id="stat-camiones-humedad-prom" class="text-lg font-bold text-brand-400">0%</span>
+                                </div>
+                                <div class="flex justify-between items-center p-3.5 rounded-xl bg-slate-900/50 border border-emerald-500/20">
+                                    <span class="text-xs font-medium text-slate-400">Soja Acumulada:</span>
+                                    <span id="stat-camiones-neto-total" class="text-lg font-bold text-emerald-400">0 kg</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="p-5 rounded-3xl bg-brand-500/5 border border-brand-500/20 shadow-lg">
+                            <p class="font-bold text-brand-400 text-xs flex items-center gap-2 mb-2">
+                                <i data-lucide="link" class="w-4 h-4"></i> Vinculación Inteligente
+                            </p>
+                            <p class="text-xs text-slate-400 leading-relaxed font-light">
+                                El peso neto diario ingresado aquí es tomado automáticamente por el módulo **Secadora** para determinar el volumen exacto de kilogramos a procesar en planta.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tabla de Camiones -->
+                <div class="glass-panel border border-slate-800/60 rounded-3xl p-6 shadow-xl">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                        <h3 class="text-base font-bold text-white">Historial de Descarga en Balanza</h3>
+                        <div class="flex items-center gap-3">
+                            <div class="relative">
+                                <i data-lucide="search" class="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2"></i>
+                                <input type="text" id="search-camion" onkeyup="filtrarTablaCamiones()" placeholder="Buscar patente o empresa..." class="pl-9 pr-4 py-2 bg-slate-900/50 border border-slate-700/50 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-brand-500 transition w-64 md:w-80">
+                            </div>
+                            <button onclick="exportarCamionesCSV()" class="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl border border-slate-700 text-sm flex items-center gap-2 transition" title="Exportar CSV">
+                                <i data-lucide="download" class="w-4 h-4"></i> <span class="hidden sm:inline">Exportar</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto rounded-xl border border-slate-800/50">
+                        <table class="w-full text-left text-sm text-slate-300 whitespace-nowrap">
+                            <thead class="bg-slate-900 text-slate-400 text-[10px] uppercase tracking-wider font-bold border-b border-slate-800/80">
+                                <tr>
+                                    <th class="px-4 py-3">Fecha</th>
+                                    <th class="px-4 py-3">Patente</th>
+                                    <th class="px-4 py-3">Empresa / Transporte</th>
+                                    <th class="px-4 py-3">Producto</th>
+                                    <th class="px-4 py-3">Humedad</th>
+                                    <th class="px-4 py-3 text-right">Bruto (kg)</th>
+                                    <th class="px-4 py-3 text-right">Tara (kg)</th>
+                                    <th class="px-4 py-3 text-right">Neto (kg)</th>
+                                    <th class="px-4 py-3 text-center">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabla-camiones-body" class="divide-y divide-slate-800/50 bg-slate-900/20 font-medium">
+                                <!-- Dynamic rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 2: SECADORA DE SOJA -->
+            <section id="tab-secadora" class="tab-content space-y-6 hidden animate-fade-in">
+                <!-- Header Card -->
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 glass-panel p-6 rounded-3xl border border-slate-800/60 shadow-xl">
+                    <div>
+                        <h2 class="text-2xl font-bold text-white flex items-center gap-3">
+                            <span class="p-2 bg-brand-500/20 rounded-xl text-brand-400"><i data-lucide="flame" class="w-6 h-6"></i></span>
+                            Control de Secadora
+                        </h2>
+                        <p class="text-sm text-slate-400 mt-2 font-light">Monitoreo de humedad de salida y volumen automático de proceso.</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="md:col-span-2 relative overflow-hidden glass-panel border border-brand-500/30 rounded-3xl p-8 shadow-glow">
+                        <div class="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
+                            <i data-lucide="sun" class="w-32 h-32 text-brand-500"></i>
+                        </div>
+                        <div class="relative z-10 flex items-center gap-5">
+                            <div class="p-4 bg-brand-500/20 border border-brand-500/40 rounded-2xl text-brand-400 shadow-inner">
+                                <i data-lucide="scale" class="w-10 h-10"></i>
+                            </div>
+                            <div>
+                                <span class="text-[11px] font-bold text-brand-400 uppercase tracking-widest block mb-1">Volumen Diario a Secar (Vinculado a Balanza)</span>
+                                <h3 id="secadora-kg-dia-calculado" class="text-4xl font-black text-white tracking-tight">0 kg</h3>
+                                <p class="text-xs text-slate-400 mt-2 font-light">Calculado automáticamente sumando los camiones ingresados en la fecha seleccionada.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="glass-panel border border-slate-800/60 rounded-3xl p-8 flex flex-col justify-center items-center text-center shadow-xl">
+                        <span class="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2">Última Humedad Registrada</span>
+                        <div class="my-2">
+                            <span id="secadora-humedad-actual" class="text-5xl font-black text-brand-400 drop-shadow-lg">0.0%</span>
+                        </div>
+                        <span class="text-xs text-slate-500 font-medium mt-2 bg-slate-900/50 px-3 py-1 rounded-lg border border-slate-800">Óptimo: 9.5% - 10.5%</span>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="lg:col-span-1 glass-panel border border-slate-800/60 rounded-3xl p-6 shadow-xl">
+                        <h3 class="text-base font-bold text-white mb-5 flex items-center gap-2 border-b border-slate-800/80 pb-3">
+                            <i data-lucide="plus-circle" class="w-5 h-5 text-brand-400"></i> Nueva Medición
+                        </h3>
+
+                        <form id="form-secadora" onsubmit="guardarSecadora(event)" class="space-y-5">
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Fecha</label>
+                                <input type="date" id="secadora-fecha" required class="w-full bg-slate-900/50 border border-slate-700/50 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 transition">
+                            </div>
+
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Hora</label>
+                                <input type="time" id="secadora-hora" required class="w-full bg-slate-900/50 border border-slate-700/50 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 transition">
+                            </div>
+
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Humedad Medida (%)</label>
+                                <input type="number" step="0.1" id="secadora-humedad-input" placeholder="Ej. 10.1" required class="w-full bg-slate-900/50 border border-slate-700/50 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-brand-500 transition">
+                            </div>
+
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Observaciones</label>
+                                <textarea id="secadora-obs" rows="3" placeholder="Ej. Temperatura salida 78°C..." class="w-full bg-slate-900/50 border border-slate-700/50 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-brand-500 transition resize-none"></textarea>
+                            </div>
+
+                            <button type="submit" class="w-full py-3 rounded-xl bg-brand-500 hover:bg-brand-400 text-slate-950 font-bold text-sm shadow-glow transition flex items-center justify-center gap-2">
+                                <i data-lucide="save" class="w-4 h-4"></i> Guardar Lectura
+                            </button>
+                        </form>
+                    </div>
+
+                    <div class="lg:col-span-2 glass-panel border border-slate-800/60 rounded-3xl p-6 shadow-xl">
+                        <h3 class="text-base font-bold text-white mb-5 border-b border-slate-800/80 pb-3">Planilla Histórica de Secado</h3>
+                        <div class="overflow-x-auto rounded-xl border border-slate-800/50">
+                            <table class="w-full text-left text-sm text-slate-300 whitespace-nowrap">
+                                <thead class="bg-slate-900 text-slate-400 text-[10px] uppercase tracking-wider font-bold border-b border-slate-800/80">
+                                    <tr>
+                                        <th class="px-4 py-3">Fecha y Hora</th>
+                                        <th class="px-4 py-3">Humedad (%)</th>
+                                        <th class="px-4 py-3 text-right">Kg Secados Día</th>
+                                        <th class="px-4 py-3">Notas</th>
+                                        <th class="px-4 py-3 text-center">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tabla-secadora-body" class="divide-y divide-slate-800/50 bg-slate-900/20 font-medium">
+                                    <!-- Dynamic rows -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 3: LÍNEAS DE EXTRUSIÓN -->
+            <section id="tab-extrusoras" class="tab-content space-y-6 hidden animate-fade-in">
+                <!-- Header Card -->
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 glass-panel p-6 rounded-3xl border border-slate-800/60 shadow-xl">
+                    <div>
+                        <h2 class="text-2xl font-bold text-white flex items-center gap-3">
+                            <span class="p-2 bg-brand-500/20 rounded-xl text-brand-400"><i data-lucide="sliders" class="w-6 h-6"></i></span>
+                            Líneas de Extrusión
+                        </h2>
+                        <p class="text-sm text-slate-400 mt-2 font-light">Control paramétrico de dosificadores y extrusores (Línea 1 y 2).</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Linea 1 -->
+                    <div class="glass-panel border border-brand-500/30 rounded-3xl p-6 relative overflow-hidden shadow-lg group hover:border-brand-500/60 transition duration-300">
+                        <div class="flex justify-between items-start border-b border-slate-800/80 pb-4 mb-5">
+                            <div class="flex items-center gap-3">
+                                <div class="w-12 h-12 rounded-2xl bg-brand-500/10 border border-brand-500/30 flex items-center justify-center text-brand-400 font-black text-xl">L1</div>
+                                <div>
+                                    <h3 class="font-bold text-white text-lg tracking-tight">Extrusor Principal</h3>
+                                    <p class="text-xs text-slate-400 font-medium mt-0.5">Alimenta Prensas 1, 2, 3 y 4</p>
+                                </div>
+                            </div>
+                            <span id="badge-extrusor-1" class="px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Operativo</span>
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-4 text-center mb-5">
+                            <div class="bg-slate-900/60 p-4 rounded-2xl border border-slate-800/50">
+                                <span class="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Dosificación</span>
+                                <span id="l1-dosif-val" class="text-xl font-black text-white">45 Hz</span>
+                            </div>
+                            <div class="bg-slate-900/60 p-4 rounded-2xl border border-slate-800/50">
+                                <span class="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Temperatura</span>
+                                <span id="l1-temp-val" class="text-xl font-black text-brand-400">128 °C</span>
+                            </div>
+                            <div class="bg-slate-900/60 p-4 rounded-2xl border border-slate-800/50">
+                                <span class="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Amperaje</span>
+                                <span id="l1-amp-val" class="text-xl font-black text-emerald-400">110 A</span>
+                            </div>
+                        </div>
+
+                        <div class="bg-slate-900/40 p-3.5 rounded-xl border border-slate-800/50 flex items-start gap-2">
+                            <i data-lucide="info" class="w-4 h-4 text-slate-500 mt-0.5 shrink-0"></i>
+                            <p id="l1-obs-txt" class="text-xs text-slate-400 leading-relaxed font-light">Operación normal reportada.</p>
+                        </div>
+                    </div>
+
+                    <!-- Linea 2 -->
+                    <div class="glass-panel border border-brand-500/30 rounded-3xl p-6 relative overflow-hidden shadow-lg group hover:border-brand-500/60 transition duration-300">
+                        <div class="flex justify-between items-start border-b border-slate-800/80 pb-4 mb-5">
+                            <div class="flex items-center gap-3">
+                                <div class="w-12 h-12 rounded-2xl bg-brand-500/10 border border-brand-500/30 flex items-center justify-center text-brand-400 font-black text-xl">L2</div>
+                                <div>
+                                    <h3 class="font-bold text-white text-lg tracking-tight">Extrusor Secundario</h3>
+                                    <p class="text-xs text-slate-400 font-medium mt-0.5">Alimenta Prensas 5, 6, 7 y 8</p>
+                                </div>
+                            </div>
+                            <span id="badge-extrusor-2" class="px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Operativo</span>
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-4 text-center mb-5">
+                            <div class="bg-slate-900/60 p-4 rounded-2xl border border-slate-800/50">
+                                <span class="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Dosificación</span>
+                                <span id="l2-dosif-val" class="text-xl font-black text-white">42 Hz</span>
+                            </div>
+                            <div class="bg-slate-900/60 p-4 rounded-2xl border border-slate-800/50">
+                                <span class="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Temperatura</span>
+                                <span id="l2-temp-val" class="text-xl font-black text-brand-400">125 °C</span>
+                            </div>
+                            <div class="bg-slate-900/60 p-4 rounded-2xl border border-slate-800/50">
+                                <span class="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Amperaje</span>
+                                <span id="l2-amp-val" class="text-xl font-black text-emerald-400">105 A</span>
+                            </div>
+                        </div>
+
+                        <div class="bg-slate-900/40 p-3.5 rounded-xl border border-slate-800/50 flex items-start gap-2">
+                            <i data-lucide="info" class="w-4 h-4 text-slate-500 mt-0.5 shrink-0"></i>
+                            <p id="l2-obs-txt" class="text-xs text-slate-400 leading-relaxed font-light">Dosificador ajustado. Temperatura estable.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass-panel border border-slate-800/60 rounded-3xl p-6 shadow-xl mt-6">
+                    <h3 class="text-base font-bold text-white mb-5 flex items-center gap-2 border-b border-slate-800/80 pb-3">
+                        <i data-lucide="settings-2" class="w-5 h-5 text-brand-400"></i> Actualizar Parámetros
+                    </h3>
+
+                    <form id="form-extrusoras" onsubmit="guardarExtrusora(event)" class="space-y-5">
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-5">
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Línea</label>
+                                <select id="extrusor-linea" class="w-full bg-slate-900/50 border border-slate-700/50 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 transition">
+                                    <option value="1">Línea 1 (Prensas 1-4)</option>
+                                    <option value="2">Línea 2 (Prensas 5-8)</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Estado</label>
+                                <select id="extrusor-estado" class="w-full bg-slate-900/50 border border-slate-700/50 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 transition">
+                                    <option value="Operativo">Operativo</option>
+                                    <option value="En Mantenimiento">En Mantenimiento</option>
+                                    <option value="Detenido">Detenido</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Dosificador (Hz)</label>
+                                <input type="number" id="extrusor-dosif" placeholder="45" required class="w-full bg-slate-900/50 border border-slate-700/50 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-brand-500 transition">
+                            </div>
+
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Temperatura (°C)</label>
+                                <input type="number" id="extrusor-temp" placeholder="130" required class="w-full bg-slate-900/50 border border-slate-700/50 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-brand-500 transition">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Amperaje (A)</label>
+                                <input type="number" id="extrusor-amp" placeholder="108" required class="w-full bg-slate-900/50 border border-slate-700/50 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-brand-500 transition">
+                            </div>
+                            <div class="md:col-span-2">
+                                <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Observaciones</label>
+                                <input type="text" id="extrusor-obs" placeholder="Ej. Ajuste de fajas de transmisión..." required class="w-full bg-slate-900/50 border border-slate-700/50 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-brand-500 transition">
+                            </div>
+                        </div>
+
+                        <div class="flex justify-end pt-2">
+                            <button type="submit" class="px-6 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-400 text-slate-950 font-bold text-sm shadow-glow transition flex items-center justify-center gap-2">
+                                <i data-lucide="check-circle" class="w-4 h-4"></i> Aplicar Parámetros
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </section>
+
+            <!-- TAB 4: SALA DE PRENSAS -->
+            <section id="tab-prensas" class="tab-content space-y-6 hidden animate-fade-in">
+                <!-- Header Card -->
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 glass-panel p-6 rounded-3xl border border-slate-800/60 shadow-xl">
+                    <div>
+                        <h2 class="text-2xl font-bold text-white flex items-center gap-3">
+                            <span class="p-2 bg-brand-500/20 rounded-xl text-brand-400"><i data-lucide="settings" class="w-6 h-6"></i></span>
+                            Sala de Prensas
+                        </h2>
+                        <p class="text-sm text-slate-400 mt-2 font-light">Supervisión operativa de las 8 unidades de prensado continuo.</p>
+                    </div>
+                </div>
+
+                <!-- Grid 8 Prensas Cards -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5" id="grid-prensas-cards">
+                    <!-- Dynamic 8 press cards generated by JS -->
+                </div>
+
+                <div class="glass-panel border border-slate-800/60 rounded-3xl p-6 shadow-xl">
+                    <h3 class="text-base font-bold text-white mb-5 flex items-center gap-2 border-b border-slate-800/80 pb-3">
+                        <i data-lucide="wrench" class="w-5 h-5 text-brand-400"></i> Registrar Intervención
+                    </h3>
+
+                    <form id="form-prensas" onsubmit="guardarMantenimientoPrensa(event)" class="space-y-5">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Unidad a Intervenir</label>
+                                <select id="prensa-numero" class="w-full bg-slate-900/50 border border-slate-700/50 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 transition">
+                                    <option value="1">Prensa #1 (Línea 1)</option>
+                                    <option value="2">Prensa #2 (Línea 1)</option>
+                                    <option value="3">Prensa #3 (Línea 1)</option>
+                                    <option value="4">Prensa #4 (Línea 1)</option>
+                                    <option value="5">Prensa #5 (Línea 2)</option>
+                                    <option value="6">Prensa #6 (Línea 2)</option>
+                                    <option value="7">Prensa #7 (Línea 2)</option>
+                                    <option value="8">Prensa #8 (Línea 2)</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Tipo de Tarea</label>
+                                <select id="prensa-mantenimiento" class="w-full bg-slate-900/50 border border-slate-700/50 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 transition">
+                                    <option value="Sin Mantenimiento">Operación Normal / Sin Intervención</option>
+                                    <option value="Mantenimiento Preventivo">Preventivo de Rutina</option>
+                                    <option value="Mantenimiento Correctivo">Correctivo por Falla</option>
+                                    <option value="Ajuste de Luz de Anillos">Ajuste de Luz de Anillos</option>
+                                    <option value="Cambio de Sinfín / Gusanos">Reemplazo de Sinfín/Gusanos</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Estado Final</label>
+                                <select id="prensa-estado" class="w-full bg-slate-900/50 border border-slate-700/50 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 transition">
+                                    <option value="En Producción">En Producción</option>
+                                    <option value="En Mantenimiento">En Mantenimiento</option>
+                                    <option value="Detenida">Detenida</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Repuestos Instalados</label>
+                                <input type="text" id="prensa-repuestos" placeholder="Ej. Gusano 3, Anillos 25mm" class="w-full bg-slate-900/50 border border-slate-700/50 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-brand-500 transition">
+                            </div>
+
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Observaciones Técnicas</label>
+                                <input type="text" id="prensa-observaciones" placeholder="Ej. Amperaje estabilizado en 95A" class="w-full bg-slate-900/50 border border-slate-700/50 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-brand-500 transition">
+                            </div>
+                        </div>
+
+                        <div class="flex justify-end pt-2">
+                            <button type="submit" class="px-6 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-400 text-slate-950 font-bold text-sm shadow-glow transition flex items-center justify-center gap-2">
+                                <i data-lucide="save" class="w-4 h-4"></i> Guardar Estado
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="glass-panel border border-slate-800/60 rounded-3xl p-6 shadow-xl">
+                    <h3 class="text-base font-bold text-white mb-5 border-b border-slate-800/80 pb-3">Bitácora de Intervenciones</h3>
+                    <div class="overflow-x-auto rounded-xl border border-slate-800/50">
+                        <table class="w-full text-left text-sm text-slate-300 whitespace-nowrap">
+                            <thead class="bg-slate-900 text-slate-400 text-[10px] uppercase tracking-wider font-bold border-b border-slate-800/80">
+                                <tr>
+                                    <th class="px-4 py-3">Fecha / Hora</th>
+                                    <th class="px-4 py-3">Unidad</th>
+                                    <th class="px-4 py-3">Tarea Realizada</th>
+                                    <th class="px-4 py-3">Estado</th>
+                                    <th class="px-4 py-3">Repuestos</th>
+                                    <th class="px-4 py-3">Notas</th>
+                                    <th class="px-4 py-3 text-center">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabla-prensas-body" class="divide-y divide-slate-800/50 bg-slate-900/20 font-medium">
+                                <!-- Dynamic rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 5: BOMBAS Y REDUCTORES -->
+            <section id="tab-bombas" class="tab-content space-y-6 hidden animate-fade-in">
+                <!-- Header Card -->
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 glass-panel p-6 rounded-3xl border border-slate-800/60 shadow-xl">
+                    <div>
+                        <h2 class="text-2xl font-bold text-white flex items-center gap-3">
+                            <span class="p-2 bg-brand-500/20 rounded-xl text-brand-400"><i data-lucide="activity" class="w-6 h-6"></i></span>
+                            Bombas y Reductores
+                        </h2>
+                        <p class="text-sm text-slate-400 mt-2 font-light">Supervisión térmica y de lubricación de equipos rotativos críticos.</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                    <!-- Cards de Equipos -->
+                    <div class="glass-panel border border-slate-800/60 rounded-3xl p-5 space-y-3 relative overflow-hidden group hover:border-brand-500/30 transition">
+                        <div class="flex justify-between items-center border-b border-slate-800/80 pb-2">
+                            <span class="text-sm font-bold text-white flex items-center gap-2"><i data-lucide="zap" class="w-4 h-4 text-brand-400"></i> Bomba Batea L1</span>
+                            <span class="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.8)]"></span>
+                        </div>
+                        <p class="text-[11px] text-slate-400 font-light">Impulsa crudo hacia tanques internos.</p>
+                        <div class="text-[10px] font-medium text-slate-500 bg-slate-900/50 px-2 py-1.5 rounded-lg border border-slate-800/50">Último Service: Hace 12 días</div>
+                    </div>
+
+                    <div class="glass-panel border border-slate-800/60 rounded-3xl p-5 space-y-3 relative overflow-hidden group hover:border-brand-500/30 transition">
+                        <div class="flex justify-between items-center border-b border-slate-800/80 pb-2">
+                            <span class="text-sm font-bold text-white flex items-center gap-2"><i data-lucide="zap" class="w-4 h-4 text-brand-400"></i> Bomba Batea L2</span>
+                            <span class="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.8)]"></span>
+                        </div>
+                        <p class="text-[11px] text-slate-400 font-light">Impulsa crudo hacia tanques internos.</p>
+                        <div class="text-[10px] font-medium text-slate-500 bg-slate-900/50 px-2 py-1.5 rounded-lg border border-slate-800/50">Último Service: Hace 18 días</div>
+                    </div>
+
+                    <div class="glass-panel border border-slate-800/60 rounded-3xl p-5 space-y-3 relative overflow-hidden group hover:border-brand-500/30 transition">
+                        <div class="flex justify-between items-center border-b border-slate-800/80 pb-2">
+                            <span class="text-sm font-bold text-white flex items-center gap-2"><i data-lucide="settings-2" class="w-4 h-4 text-brand-400"></i> Reductor Ext. L1</span>
+                            <span class="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">Aceite OK</span>
+                        </div>
+                        <p class="text-[11px] text-slate-400 font-light">Aceite ISO VG 220.</p>
+                        <div class="text-[10px] font-medium text-brand-400 bg-brand-500/10 px-2 py-1.5 rounded-lg border border-brand-500/20">Temp: 62°C</div>
+                    </div>
+
+                    <div class="glass-panel border border-slate-800/60 rounded-3xl p-5 space-y-3 relative overflow-hidden group hover:border-brand-500/30 transition">
+                        <div class="flex justify-between items-center border-b border-slate-800/80 pb-2">
+                            <span class="text-sm font-bold text-white flex items-center gap-2"><i data-lucide="settings-2" class="w-4 h-4 text-brand-400"></i> Reductor Ext. L2</span>
+                            <span class="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">Aceite OK</span>
+                        </div>
+                        <p class="text-[11px] text-slate-400 font-light">Aceite ISO VG 220.</p>
+                        <div class="text-[10px] font-medium text-brand-400 bg-brand-500/10 px-2 py-1.5 rounded-lg border border-brand-500/20">Temp: 59°C</div>
+                    </div>
+                </div>
+
+                <div class="glass-panel border border-slate-800/60 rounded-3xl p-6 shadow-xl">
+                    <h3 class="text-base font-bold text-white mb-5 flex items-center gap-2 border-b border-slate-800/80 pb-3">
+                        <i data-lucide="plus-circle" class="w-5 h-5 text-brand-400"></i> Nueva Inspección
+                    </h3>
+
+                    <form id="form-bombas" onsubmit="guardarBombaControl(event)" class="space-y-5">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Equipo / Componente</label>
+                                <select id="bomba-nombre" class="w-full bg-slate-900/50 border border-slate-700/50 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 transition">
+                                    <option value="Bomba Batea Línea 1">Bomba Batea Línea 1</option>
+                                    <option value="Bomba Batea Línea 2">Bomba Batea Línea 2</option>
+                                    <option value="Bomba Trasvase">Bomba de Trasvase General</option>
+                                    <option value="Reductor Extrusor L1">Reductor Extrusor Línea 1</option>
+                                    <option value="Reductor Extrusor L2">Reductor Extrusor Línea 2</option>
+                                    <option value="Reductores Prensas">Reductores Prensas Generales</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Condición de Lubricación</label>
+                                <select id="bomba-estado" class="w-full bg-slate-900/50 border border-slate-700/50 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 transition">
+                                    <option value="Normal / Nivel Óptimo">Normal / Nivel Óptimo</option>
+                                    <option value="Requiere Relleno Aceite">Requiere Relleno de Aceite</option>
+                                    <option value="Fuga Detectada / Reparación">Fuga Detectada / Reparación</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Temperatura (°C)</label>
+                                <input type="number" id="bomba-temp" placeholder="Ej. 60" required class="w-full bg-slate-900/50 border border-slate-700/50 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-brand-500 transition">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Trabajo Efectuado / Notas</label>
+                            <input type="text" id="bomba-observacion" placeholder="Ej. Relleno de 2 litros de VG 220..." required class="w-full bg-slate-900/50 border border-slate-700/50 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-brand-500 transition">
+                        </div>
+
+                        <div class="flex justify-end pt-2">
+                            <button type="submit" class="px-6 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-400 text-slate-950 font-bold text-sm shadow-glow transition flex items-center justify-center gap-2">
+                                <i data-lucide="check" class="w-4 h-4"></i> Registrar Control
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </section>
+
+            <!-- TAB 6: CIRCUITO DE ACEITE -->
+            <section id="tab-tanques" class="tab-content space-y-6 hidden animate-fade-in">
+                <!-- Header Card -->
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 glass-panel p-6 rounded-3xl border border-slate-800/60 shadow-xl">
+                    <div>
+                        <h2 class="text-2xl font-bold text-white flex items-center gap-3">
+                            <span class="p-2 bg-brand-500/20 rounded-xl text-brand-400"><i data-lucide="droplets" class="w-6 h-6"></i></span>
+                            Circuito de Aceite y Tanques
+                        </h2>
+                        <p class="text-sm text-slate-400 mt-2 font-light max-w-2xl">Bateas ➔ Bomba (Canilla Activa) ➔ Tanque Interno (Reposo 1h) ➔ Tanques Exteriores.</p>
+                    </div>
+                    <button onclick="simularLlenadoAceite()" class="shrink-0 px-5 py-2.5 bg-brand-500 hover:bg-brand-400 text-slate-950 rounded-xl text-sm font-bold shadow-glow transition flex items-center justify-center gap-2">
+                        <i data-lucide="plus" class="w-4 h-4"></i> Inyectar 500L (Prueba)
+                    </button>
+                </div>
+
+                <div class="glass-panel border border-slate-800/60 rounded-3xl p-6 shadow-xl space-y-8">
+                    
+                    <!-- Top logic: Bateas and Valve -->
+                    <div class="flex flex-col lg:flex-row gap-6 border-b border-slate-800/80 pb-6">
+                        <div class="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div class="bg-slate-900/60 border border-slate-800/50 p-4 rounded-2xl flex items-center justify-between">
+                                <div>
+                                    <span class="block text-sm font-bold text-white mb-0.5">Batea Línea 1</span>
+                                    <span class="text-[10px] text-slate-400 uppercase tracking-widest">Recepción de crudo</span>
+                                </div>
+                                <span class="flex h-3 w-3 relative">
+                                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                  <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                                </span>
+                            </div>
+                            <div class="bg-slate-900/60 border border-slate-800/50 p-4 rounded-2xl flex items-center justify-between">
+                                <div>
+                                    <span class="block text-sm font-bold text-white mb-0.5">Batea Línea 2</span>
+                                    <span class="text-[10px] text-slate-400 uppercase tracking-widest">Recepción de crudo</span>
+                                </div>
+                                <span class="flex h-3 w-3 relative">
+                                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                  <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="lg:w-1/3 bg-slate-900/80 border border-brand-500/20 p-4 rounded-2xl">
+                            <span class="block text-[10px] font-bold text-brand-400 uppercase tracking-widest mb-3">Válvula de Llenado Interno</span>
+                            <div class="flex bg-slate-950 p-1 rounded-xl">
+                                <button onclick="cambiarCanillaActiva(1)" id="btn-canilla-1" class="flex-1 py-2 text-xs font-bold rounded-lg bg-brand-500 text-slate-950 shadow-md transition">Tanque 1</button>
+                                <button onclick="cambiarCanillaActiva(2)" id="btn-canilla-2" class="flex-1 py-2 text-xs font-bold rounded-lg text-slate-400 hover:text-white transition">Tanque 2</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tanques Internos -->
+                    <div>
+                        <h4 class="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                            <i data-lucide="container" class="w-4 h-4 text-brand-400"></i> Reposo Interno (Máx 1.525 L)
+                        </h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            
+                            <!-- Tanque Int 1 -->
+                            <div class="bg-slate-900/40 border border-slate-800/50 rounded-3xl p-6 flex flex-col items-center">
+                                <div class="w-full flex justify-between items-center mb-4">
+                                    <span class="font-bold text-white">Tanque #1</span>
+                                    <span id="badge-tanque-1-status" class="px-2.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-brand-500/20 text-brand-400 border border-brand-500/30">Llenando</span>
+                                </div>
+                                
+                                <!-- Render Visual del Tanque -->
+                                <div class="w-40 h-48 bg-slate-950 rounded-2xl border-4 border-slate-800 relative overflow-hidden flex flex-col justify-end shadow-inner mb-4">
+                                    <div id="tanque-int-1-fill" class="w-full tank-wave" style="height: 0%;"></div>
+                                    <div class="absolute inset-0 flex flex-col items-center justify-center drop-shadow-md">
+                                        <span id="tanque-int-1-litros" class="font-black text-xl text-white">0 L</span>
+                                        <span id="tanque-int-1-pct" class="text-[10px] font-bold text-brand-300">0%</span>
+                                    </div>
+                                </div>
+
+                                <div class="w-full text-center bg-slate-950 p-3 rounded-xl border border-slate-800">
+                                    <div class="text-[10px] text-slate-400 uppercase tracking-widest mb-1">Reposo:</div>
+                                    <div id="timer-tanque-1" class="font-mono text-lg font-bold text-brand-400 tracking-wider">00:00:00</div>
+                                </div>
+
+                                <button onclick="trasvasarTanqueInterno(1)" id="btn-trasvasar-1" class="w-full mt-4 py-3 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-xl text-sm font-bold transition flex items-center justify-center gap-2">
+                                    <i data-lucide="download" class="w-4 h-4"></i> Trasvasar
+                                </button>
+                            </div>
+
+                            <!-- Tanque Int 2 -->
+                            <div class="bg-slate-900/40 border border-slate-800/50 rounded-3xl p-6 flex flex-col items-center">
+                                <div class="w-full flex justify-between items-center mb-4">
+                                    <span class="font-bold text-white">Tanque #2</span>
+                                    <span id="badge-tanque-2-status" class="px-2.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-slate-800 text-slate-400 border border-slate-700">En Espera</span>
+                                </div>
+                                
+                                <div class="w-40 h-48 bg-slate-950 rounded-2xl border-4 border-slate-800 relative overflow-hidden flex flex-col justify-end shadow-inner mb-4">
+                                    <div id="tanque-int-2-fill" class="w-full tank-wave" style="height: 0%;"></div>
+                                    <div class="absolute inset-0 flex flex-col items-center justify-center drop-shadow-md">
+                                        <span id="tanque-int-2-litros" class="font-black text-xl text-white">0 L</span>
+                                        <span id="tanque-int-2-pct" class="text-[10px] font-bold text-brand-300">0%</span>
+                                    </div>
+                                </div>
+
+                                <div class="w-full text-center bg-slate-950 p-3 rounded-xl border border-slate-800">
+                                    <div class="text-[10px] text-slate-400 uppercase tracking-widest mb-1">Reposo:</div>
+                                    <div id="timer-tanque-2" class="font-mono text-lg font-bold text-brand-400 tracking-wider">00:00:00</div>
+                                </div>
+
+                                <button onclick="trasvasarTanqueInterno(2)" id="btn-trasvasar-2" class="w-full mt-4 py-3 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-xl text-sm font-bold transition flex items-center justify-center gap-2">
+                                    <i data-lucide="download" class="w-4 h-4"></i> Trasvasar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tanques Exteriores -->
+                    <div class="pt-6 border-t border-slate-800/80">
+                        <div class="flex flex-col sm:flex-row justify-between sm:items-end mb-6 gap-4">
+                            <div>
+                                <h4 class="text-xs font-bold text-emerald-400 uppercase tracking-widest flex items-center gap-2">
+                                    <i data-lucide="database" class="w-4 h-4"></i> Almacenamiento Exterior
+                                </h4>
+                                <p class="text-[10px] text-slate-400 mt-1 font-light">4 unidades de 6.862,5 L c/u (Despacho).</p>
+                            </div>
+                            <div class="bg-emerald-500/10 border border-emerald-500/30 px-4 py-2 rounded-xl shadow-glow-emerald">
+                                <span class="block text-[10px] font-bold text-emerald-500 uppercase tracking-widest mb-0.5">Volumen Total</span>
+                                <span id="total-aceite-exterior" class="text-xl font-black text-emerald-400">0 L</span>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                            <!-- Generation loop for 4 ext tanks -->
+                            <div class="bg-slate-900/50 border border-emerald-500/20 rounded-2xl p-4 flex flex-col items-center">
+                                <span class="text-[11px] font-bold text-emerald-400 mb-3 uppercase">EXT #1</span>
+                                <div class="w-20 h-28 sm:w-24 sm:h-36 bg-slate-950 rounded-xl border-2 border-emerald-500/40 relative overflow-hidden flex flex-col justify-end">
+                                    <div id="tanque-ext-1-fill" class="w-full tank-wave-ext" style="height: 0%;"></div>
+                                    <div class="absolute inset-0 flex items-center justify-center">
+                                        <span id="tanque-ext-1-pct" class="font-bold text-xs text-white drop-shadow-md">0%</span>
+                                    </div>
+                                </div>
+                                <span id="tanque-ext-1-litros" class="text-[10px] font-medium text-slate-400 mt-2">0 L</span>
+                            </div>
+                            <div class="bg-slate-900/50 border border-emerald-500/20 rounded-2xl p-4 flex flex-col items-center">
+                                <span class="text-[11px] font-bold text-emerald-400 mb-3 uppercase">EXT #2</span>
+                                <div class="w-20 h-28 sm:w-24 sm:h-36 bg-slate-950 rounded-xl border-2 border-emerald-500/40 relative overflow-hidden flex flex-col justify-end">
+                                    <div id="tanque-ext-2-fill" class="w-full tank-wave-ext" style="height: 0%;"></div>
+                                    <div class="absolute inset-0 flex items-center justify-center">
+                                        <span id="tanque-ext-2-pct" class="font-bold text-xs text-white drop-shadow-md">0%</span>
+                                    </div>
+                                </div>
+                                <span id="tanque-ext-2-litros" class="text-[10px] font-medium text-slate-400 mt-2">0 L</span>
+                            </div>
+                            <div class="bg-slate-900/50 border border-emerald-500/20 rounded-2xl p-4 flex flex-col items-center">
+                                <span class="text-[11px] font-bold text-emerald-400 mb-3 uppercase">EXT #3</span>
+                                <div class="w-20 h-28 sm:w-24 sm:h-36 bg-slate-950 rounded-xl border-2 border-emerald-500/40 relative overflow-hidden flex flex-col justify-end">
+                                    <div id="tanque-ext-3-fill" class="w-full tank-wave-ext" style="height: 0%;"></div>
+                                    <div class="absolute inset-0 flex items-center justify-center">
+                                        <span id="tanque-ext-3-pct" class="font-bold text-xs text-white drop-shadow-md">0%</span>
+                                    </div>
+                                </div>
+                                <span id="tanque-ext-3-litros" class="text-[10px] font-medium text-slate-400 mt-2">0 L</span>
+                            </div>
+                            <div class="bg-slate-900/50 border border-emerald-500/20 rounded-2xl p-4 flex flex-col items-center">
+                                <span class="text-[11px] font-bold text-emerald-400 mb-3 uppercase">EXT #4</span>
+                                <div class="w-20 h-28 sm:w-24 sm:h-36 bg-slate-950 rounded-xl border-2 border-emerald-500/40 relative overflow-hidden flex flex-col justify-end">
+                                    <div id="tanque-ext-4-fill" class="w-full tank-wave-ext" style="height: 0%;"></div>
+                                    <div class="absolute inset-0 flex items-center justify-center">
+                                        <span id="tanque-ext-4-pct" class="font-bold text-xs text-white drop-shadow-md">0%</span>
+                                    </div>
+                                </div>
+                                <span id="tanque-ext-4-litros" class="text-[10px] font-medium text-slate-400 mt-2">0 L</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 7: PRODUCCIÓN POR TURNOS -->
+            <section id="tab-produccion" class="tab-content space-y-6 hidden animate-fade-in">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 glass-panel p-6 rounded-3xl border border-slate-800/60 shadow-xl">
+                    <div>
+                        <h2 class="text-2xl font-bold text-white flex items-center gap-3">
+                            <span class="p-2 bg-brand-500/20 rounded-xl text-brand-400"><i data-lucide="clock" class="w-6 h-6"></i></span>
+                            Producción por Turnos
+                        </h2>
+                        <p class="text-sm text-slate-400 mt-2 font-light">Declaración de Expeller y Aceite en franjas operativas de 8 horas.</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                    <div class="xl:col-span-1 glass-panel border border-slate-800/60 rounded-3xl p-6 shadow-xl h-fit">
+                        <h3 class="text-base font-bold text-white mb-5 flex items-center gap-2 border-b border-slate-800/80 pb-3">
+                            <i data-lucide="clipboard-edit" class="w-5 h-5 text-brand-400"></i> Declarar Cierre de Turno
+                        </h3>
+
+                        <form id="form-produccion" onsubmit="guardarProduccionTurno(event)" class="space-y-5">
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Fecha Operativa</label>
+                                <input type="date" id="prod-fecha" required class="w-full bg-slate-900/50 border border-slate-700/50 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 transition">
+                            </div>
+
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Turno Asignado</label>
+                                <select id="prod-turno" class="w-full bg-slate-900/50 border border-slate-700/50 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 transition">
+                                    <option value="Turno 1 (08:00 a 16:00 hs)">Turno 1 (08:00 a 16:00 hs)</option>
+                                    <option value="Turno 2 (16:00 a 00:00 hs)">Turno 2 (16:00 a 00:00 hs)</option>
+                                    <option value="Turno 3 (00:00 a 08:00 hs)">Turno 3 (00:00 a 08:00 hs)</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Expeller Generado (kg)</label>
+                                <input type="number" id="prod-expeller" placeholder="Ej. 22500" required class="w-full bg-slate-900/50 border border-slate-700/50 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-brand-500 transition">
+                            </div>
+
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Aceite Extraído (Litros)</label>
+                                <input type="number" id="prod-aceite" placeholder="Ej. 3050" required class="w-full bg-slate-900/50 border border-slate-700/50 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-brand-500 transition">
+                            </div>
+
+                            <button type="submit" class="w-full py-3 rounded-xl bg-brand-500 hover:bg-brand-400 text-slate-950 font-bold text-sm shadow-glow transition flex items-center justify-center gap-2 mt-4">
+                                <i data-lucide="check" class="w-4 h-4"></i> Guardar Cierre
+                            </button>
+                        </form>
+                    </div>
+
+                    <div class="xl:col-span-2 glass-panel border border-slate-800/60 rounded-3xl p-6 shadow-xl">
+                        <h3 class="text-base font-bold text-white mb-5 border-b border-slate-800/80 pb-3">Registro de Producción General</h3>
+                        <div class="overflow-x-auto rounded-xl border border-slate-800/50">
+                            <table class="w-full text-left text-sm text-slate-300 whitespace-nowrap">
+                                <thead class="bg-slate-900 text-slate-400 text-[10px] uppercase tracking-wider font-bold border-b border-slate-800/80">
+                                    <tr>
+                                        <th class="px-4 py-3">Fecha</th>
+                                        <th class="px-4 py-3">Franja</th>
+                                        <th class="px-4 py-3 text-right">Expeller (kg)</th>
+                                        <th class="px-4 py-3 text-right">Aceite (L)</th>
+                                        <th class="px-4 py-3 text-center">Tq. Internos</th>
+                                        <th class="px-4 py-3 text-center">Borrar</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tabla-produccion-body" class="divide-y divide-slate-800/50 bg-slate-900/20 font-medium">
+                                    <!-- Dynamic rows -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 8: INVENTARIO & STOCK -->
+            <section id="tab-stock" class="tab-content space-y-6 hidden animate-fade-in">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 glass-panel p-6 rounded-3xl border border-slate-800/60 shadow-xl">
+                    <div>
+                        <h2 class="text-2xl font-bold text-white flex items-center gap-3">
+                            <span class="p-2 bg-brand-500/20 rounded-xl text-brand-400"><i data-lucide="boxes" class="w-6 h-6"></i></span>
+                            Inventario Técnico y Pañol
+                        </h2>
+                        <p class="text-sm text-slate-400 mt-2 font-light">Gestión de stock crítico: anillos, gusanos, rodamientos, lubricantes y herramientas.</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                    <div class="xl:col-span-1 glass-panel border border-slate-800/60 rounded-3xl p-6 shadow-xl h-fit">
+                        <h3 class="text-base font-bold text-white mb-5 flex items-center gap-2 border-b border-slate-800/80 pb-3">
+                            <i data-lucide="package-plus" class="w-5 h-5 text-brand-400"></i> Ingresar Ítem
+                        </h3>
+
+                        <form id="form-stock" onsubmit="guardarItemStock(event)" class="space-y-4">
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Descripción</label>
+                                <input type="text" id="stock-nombre" placeholder="Ej. Gusano 250mm" required class="w-full bg-slate-900/50 border border-slate-700/50 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-brand-500 transition">
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Categoría</label>
+                                    <select id="stock-categoria" class="w-full bg-slate-900/50 border border-slate-700/50 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 transition">
+                                        <option value="Repuestos Prensas">Prensas</option>
+                                        <option value="Repuestos Extrusor">Extrusión</option>
+                                        <option value="Lubricantes / Aceites">Lubricantes</option>
+                                        <option value="Herramientas">Herramientas</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Ubicación</label>
+                                    <input type="text" id="stock-ubicacion" placeholder="Ej. Estante A2" class="w-full bg-slate-900/50 border border-slate-700/50 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-brand-500 transition">
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Stock Actual</label>
+                                    <input type="number" id="stock-cantidad" placeholder="10" required class="w-full bg-slate-900/50 border border-slate-700/50 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 transition">
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Mínimo (Alerta)</label>
+                                    <input type="number" id="stock-minimo" placeholder="3" required class="w-full bg-slate-900/50 border border-slate-700/50 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 transition">
+                                </div>
+                            </div>
+
+                            <button type="submit" class="w-full mt-2 py-3 rounded-xl bg-brand-500 hover:bg-brand-400 text-slate-950 font-bold text-sm shadow-glow transition flex items-center justify-center gap-2">
+                                <i data-lucide="plus" class="w-4 h-4"></i> Guardar en Pañol
+                            </button>
+                        </form>
+                    </div>
+
+                    <div class="xl:col-span-2 glass-panel border border-slate-800/60 rounded-3xl p-6 shadow-xl">
+                        <h3 class="text-base font-bold text-white mb-5 border-b border-slate-800/80 pb-3">Catálogo de Artículos</h3>
+                        <div class="overflow-x-auto rounded-xl border border-slate-800/50">
+                            <table class="w-full text-left text-sm text-slate-300 whitespace-nowrap">
+                                <thead class="bg-slate-900 text-slate-400 text-[10px] uppercase tracking-wider font-bold border-b border-slate-800/80">
+                                    <tr>
+                                        <th class="px-4 py-3">Descripción</th>
+                                        <th class="px-4 py-3">Categoría</th>
+                                        <th class="px-4 py-3">Ubicación</th>
+                                        <th class="px-4 py-3 text-center">Stock</th>
+                                        <th class="px-4 py-3 text-center">Estado</th>
+                                        <th class="px-4 py-3 text-center">Borrar</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tabla-stock-body" class="divide-y divide-slate-800/50 bg-slate-900/20 font-medium">
+                                    <!-- Dynamic rows -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 9: MÉTRICAS Y RESUMEN -->
+            <section id="tab-resumen" class="tab-content space-y-6 hidden animate-fade-in">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 glass-panel p-6 rounded-3xl border border-slate-800/60 shadow-xl">
+                    <div>
+                        <h2 class="text-2xl font-bold text-white flex items-center gap-3">
+                            <span class="p-2 bg-brand-500/20 rounded-xl text-brand-400"><i data-lucide="bar-chart-3" class="w-6 h-6"></i></span>
+                            Dashboard de Métricas
+                        </h2>
+                        <p class="text-sm text-slate-400 mt-2 font-light">Visión integral mensual y diaria del rendimiento de la planta.</p>
+                    </div>
+
+                    <div class="flex items-center gap-3 bg-slate-900/60 p-2.5 rounded-xl border border-slate-700/50">
+                        <i data-lucide="calendar-days" class="w-5 h-5 text-brand-400 ml-1"></i>
+                        <span class="text-xs text-slate-300 font-bold uppercase tracking-wider">Período:</span>
+                        <select id="resumen-mes-select" onchange="renderResumenConsolidado()" class="bg-slate-950 border border-slate-700 text-white text-sm font-bold rounded-lg px-3 py-1.5 focus:outline-none focus:border-brand-500">
+                            <!-- Dynamically populated -->
+                        </select>
+                    </div>
+                </div>
+
+                <!-- KPIs -->
+                <div class="grid grid-cols-2 lg:grid-cols-5 gap-4">
+                    <div class="glass-panel border border-slate-800/60 rounded-3xl p-5 hover:-translate-y-1 transition duration-300">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Soja Procesada</span>
+                        <span id="kpi-soja-recibida" class="text-2xl font-black text-white">0 kg</span>
+                        <span class="text-[10px] text-brand-400 block mt-2 font-medium bg-brand-500/10 inline-block px-2 py-0.5 rounded border border-brand-500/20">Materia Prima</span>
+                    </div>
+                    <div class="glass-panel border border-slate-800/60 rounded-3xl p-5 hover:-translate-y-1 transition duration-300">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Descargas</span>
+                        <span id="kpi-total-camiones" class="text-2xl font-black text-white">0</span>
+                        <span class="text-[10px] text-slate-500 block mt-2 font-medium">Camiones pesados</span>
+                    </div>
+                    <div class="glass-panel border border-slate-800/60 rounded-3xl p-5 hover:-translate-y-1 transition duration-300">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Vol. Expeller</span>
+                        <span id="kpi-expeller-total" class="text-2xl font-black text-emerald-400">0 kg</span>
+                        <span class="text-[10px] text-emerald-500/70 block mt-2 font-medium">Subproducto sólido</span>
+                    </div>
+                    <div class="glass-panel border border-slate-800/60 rounded-3xl p-5 hover:-translate-y-1 transition duration-300 relative overflow-hidden">
+                        <div class="absolute right-0 bottom-0 opacity-10 pointer-events-none -mr-4 -mb-4"><i data-lucide="droplet" class="w-24 h-24 text-brand-500"></i></div>
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2 relative z-10">Vol. Aceite</span>
+                        <span id="kpi-aceite-total" class="text-2xl font-black text-brand-400 relative z-10">0 L</span>
+                        <span class="text-[10px] text-brand-500/70 block mt-2 font-medium relative z-10">Producto principal</span>
+                    </div>
+                    <div class="glass-panel border border-slate-800/60 rounded-3xl p-5 hover:-translate-y-1 transition duration-300">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Rendimiento</span>
+                        <span id="kpi-rendimiento-promedio" class="text-2xl font-black text-sky-400">0%</span>
+                        <span class="text-[10px] text-sky-500/70 block mt-2 font-medium">Aceite / Soja Seca</span>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="glass-panel border border-slate-800/60 rounded-3xl p-6 shadow-xl">
+                        <h3 class="text-base font-bold text-white mb-5 border-b border-slate-800/80 pb-3 flex justify-between items-center">
+                            <span>Desglose Diario (Mes Activo)</span>
+                            <button onclick="exportarResumenCSV()" class="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg border border-slate-700 text-xs flex items-center gap-1">
+                                <i data-lucide="download" class="w-3.5 h-3.5"></i> CSV
+                            </button>
+                        </h3>
+                        <div class="overflow-x-auto rounded-xl border border-slate-800/50">
+                            <table class="w-full text-left text-xs text-slate-300 whitespace-nowrap">
+                                <thead class="bg-slate-900 text-slate-400 text-[10px] uppercase tracking-wider font-bold border-b border-slate-800/80">
+                                    <tr>
+                                        <th class="px-3 py-3">Fecha</th>
+                                        <th class="px-3 py-3 text-right">Soja (kg)</th>
+                                        <th class="px-3 py-3 text-right">Expeller (kg)</th>
+                                        <th class="px-3 py-3 text-right">Aceite (L)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tabla-resumen-diario-body" class="divide-y divide-slate-800/50 bg-slate-900/20 font-medium">
+                                    <!-- Dynamic rows -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="glass-panel border border-slate-800/60 rounded-3xl p-6 shadow-xl">
+                        <h3 class="text-base font-bold text-white mb-5 border-b border-slate-800/80 pb-3">Comparativo Histórico Anual</h3>
+                        <div class="overflow-x-auto rounded-xl border border-slate-800/50">
+                            <table class="w-full text-left text-xs text-slate-300 whitespace-nowrap">
+                                <thead class="bg-slate-900 text-slate-400 text-[10px] uppercase tracking-wider font-bold border-b border-slate-800/80">
+                                    <tr>
+                                        <th class="px-3 py-3">Mes</th>
+                                        <th class="px-3 py-3 text-right">Soja Total (kg)</th>
+                                        <th class="px-3 py-3 text-right">Expeller Total (kg)</th>
+                                        <th class="px-3 py-3 text-right">Aceite Total (L)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tabla-resumen-mensual-body" class="divide-y divide-slate-800/50 bg-slate-900/20 font-medium">
+                                    <!-- Dynamic rows -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 10: ASISTENTE IA (RCTFRI) -->
+            <section id="tab-prompts" class="tab-content space-y-6 hidden animate-fade-in">
+                <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 glass-panel p-6 rounded-3xl border border-slate-800/60 shadow-xl border-t-4 border-t-purple-500">
+                    <div>
+                        <h2 class="text-2xl font-bold text-white flex items-center gap-3">
+                            <span class="p-2 bg-purple-500/20 rounded-xl text-purple-400"><i data-lucide="sparkles" class="w-6 h-6"></i></span>
+                            Asistente Inteligente RCTFRI
+                        </h2>
+                        <p class="text-sm text-slate-400 mt-2 font-light">Generador de directrices optimizadas para resolver problemas con IA (Gemini).</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="cargarPlantillaPlanta('mantenimiento')" class="px-4 py-2 bg-slate-900 border border-purple-500/30 text-purple-400 text-xs font-bold rounded-xl hover:bg-purple-500/10 transition">
+                            Plantilla Mantenimiento
+                        </button>
+                        <button onclick="cargarPlantillaPlanta('rendimiento')" class="px-4 py-2 bg-slate-900 border border-emerald-500/30 text-emerald-400 text-xs font-bold rounded-xl hover:bg-emerald-500/10 transition">
+                            Plantilla Rendimiento
+                        </button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="glass-panel border border-slate-800/60 rounded-3xl p-6 shadow-xl space-y-5">
+                        <div class="flex justify-between items-center border-b border-slate-800/80 pb-3">
+                            <h3 class="text-sm font-bold text-white">Constructor Estructurado</h3>
+                            <button onclick="limpiarCamposPromptAceitera()" class="text-[10px] font-bold text-rose-400 hover:text-rose-300 uppercase tracking-widest">Limpiar</button>
+                        </div>
+                        
+                        <form id="form-rctfri-aceitera" oninput="ensamblarPromptAceitera()" class="space-y-4">
+                            <div><label class="block text-[10px] font-bold text-purple-400 uppercase tracking-widest mb-1">R - Rol</label><textarea id="prompt-rol" rows="2" class="w-full bg-slate-900/50 border border-slate-700/50 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-purple-500 resize-none"></textarea></div>
+                            <div><label class="block text-[10px] font-bold text-blue-400 uppercase tracking-widest mb-1">C - Contexto</label><textarea id="prompt-contexto" rows="2" class="w-full bg-slate-900/50 border border-slate-700/50 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-blue-500 resize-none"></textarea></div>
+                            <div><label class="block text-[10px] font-bold text-cyan-400 uppercase tracking-widest mb-1">T - Tarea</label><textarea id="prompt-tarea" rows="2" class="w-full bg-slate-900/50 border border-slate-700/50 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-cyan-500 resize-none"></textarea></div>
+                            <div><label class="block text-[10px] font-bold text-emerald-400 uppercase tracking-widest mb-1">F - Formato</label><textarea id="prompt-formato" rows="2" class="w-full bg-slate-900/50 border border-slate-700/50 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-emerald-500 resize-none"></textarea></div>
+                            <div><label class="block text-[10px] font-bold text-brand-400 uppercase tracking-widest mb-1">R - Restricciones</label><textarea id="prompt-restricciones" rows="2" class="w-full bg-slate-900/50 border border-slate-700/50 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-brand-500 resize-none"></textarea></div>
+                            <div><label class="block text-[10px] font-bold text-pink-400 uppercase tracking-widest mb-1">I - Instrucciones</label><textarea id="prompt-instrucciones" rows="2" class="w-full bg-slate-900/50 border border-slate-700/50 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-pink-500 resize-none"></textarea></div>
+                        </form>
+                    </div>
+
+                    <div class="glass-panel border border-slate-800/60 rounded-3xl p-6 shadow-xl flex flex-col">
+                        <div class="flex justify-between items-center border-b border-slate-800/80 pb-3 mb-4">
+                            <h3 class="text-sm font-bold text-white">Prompt Generado</h3>
+                            <span id="prompt-char-count" class="text-[10px] font-mono text-slate-500">0 caracteres</span>
+                        </div>
+                        <textarea id="prompt-output-consolidado" readonly class="flex-1 w-full p-4 bg-slate-950/80 border border-slate-800 rounded-xl font-mono text-[11px] leading-relaxed text-slate-300 focus:outline-none resize-none mb-4 shadow-inner" placeholder="Escribe a la izquierda para ensamblar el prompt aquí..."></textarea>
+                        
+                        <button onclick="copiarPromptAceitera()" class="w-full py-3 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white font-bold text-sm rounded-xl shadow-lg transition flex items-center justify-center gap-2">
+                            <i data-lucide="copy" class="w-4 h-4"></i> <span id="btn-copiar-prompt-text">Copiar para Gemini</span>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- MODALS (APP PC) -->
+    <div id="modal-app-pc" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 opacity-0 transition-opacity duration-300">
+        <div class="bg-slate-900 border border-slate-800/80 rounded-3xl p-6 max-w-2xl w-full space-y-4 shadow-2xl transform scale-95 transition-transform duration-300" id="modal-app-pc-content">
+            <div class="flex justify-between items-start border-b border-slate-800/80 pb-4">
+                <div class="flex items-center gap-3">
+                    <div class="p-3 bg-brand-500/10 text-brand-400 rounded-2xl border border-brand-500/20"><i data-lucide="cpu" class="w-6 h-6"></i></div>
+                    <div>
+                        <h3 class="text-lg font-bold text-white tracking-tight">SoyaCore System Manager</h3>
+                        <p class="text-[11px] text-slate-400 mt-0.5">Versión Local: <span class="text-brand-400 font-bold">v2.5.0 Pro</span></p>
+                    </div>
+                </div>
+                <button onclick="cerrarModalApp()" class="text-slate-400 hover:text-white bg-slate-800/50 hover:bg-slate-700 p-2 rounded-xl transition"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+
+            <!-- Tabs -->
+            <div class="flex bg-slate-950 p-1.5 rounded-xl border border-slate-800">
+                <button onclick="switchModalTab('instalador')" id="tab-btn-instalador" class="flex-1 py-2 rounded-lg text-xs font-bold bg-brand-500 text-slate-950 transition shadow-sm">1. Crear Instalador (.exe)</button>
+                <button onclick="switchModalTab('updater')" id="tab-btn-updater" class="flex-1 py-2 rounded-lg text-xs font-bold text-slate-400 hover:text-white transition">2. Centro Actualizaciones</button>
+            </div>
+
+            <!-- Tab: Instalador -->
+            <div id="modal-tab-instalador" class="space-y-4 pt-2">
+                <p class="text-xs text-slate-400 font-light leading-relaxed px-2">Descarga el script oficial para compilar un ejecutable profesional de Windows (vía Inno Setup) o descarga la app autónoma.</p>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <button onclick="descargarInnoSetupScript()" class="py-4 bg-slate-900/80 border border-slate-700/50 hover:border-brand-500/50 rounded-2xl flex flex-col items-center justify-center gap-2 group transition">
+                        <i data-lucide="file-code" class="w-6 h-6 text-brand-400 group-hover:scale-110 transition"></i>
+                        <span class="text-xs font-bold text-white">Generar Script .ISS</span>
+                    </button>
+                    <button onclick="descargarSistemaHTML()" class="py-4 bg-slate-900/80 border border-slate-700/50 hover:border-emerald-500/50 rounded-2xl flex flex-col items-center justify-center gap-2 group transition">
+                        <i data-lucide="download" class="w-6 h-6 text-emerald-400 group-hover:scale-110 transition"></i>
+                        <span class="text-xs font-bold text-white">Descargar App Local</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tab: Updater -->
+            <div id="modal-tab-updater" class="space-y-4 pt-2 hidden">
+                <p class="text-xs text-slate-400 font-light leading-relaxed px-2">Importa parches de seguridad y mejoras estructurales asegurando la migración histórica de tu base de datos local.</p>
+                <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4">
+                    <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Cargar Parche (.json)</label>
+                    <input type="file" id="input-update-package" accept=".json,.sojapack" onchange="aplicarParcheActualizacion(event)" class="w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-brand-500 file:text-slate-950 hover:file:bg-brand-400 cursor-pointer border border-slate-800 rounded-xl bg-slate-950">
+                    <p id="update-status-msg" class="text-[10px] text-slate-500 mt-3 font-medium">Esperando archivo de actualización...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST NOTIFICATION -->
+    <div id="toast-notification" class="fixed bottom-6 right-6 bg-slate-900 border border-brand-500/40 text-white px-5 py-4 rounded-2xl shadow-[0_10px_40px_-10px_rgba(245,158,11,0.3)] transform translate-y-32 opacity-0 transition-all duration-400 z-50 flex items-center gap-4">
+        <div class="p-2.5 bg-brand-500/20 text-brand-400 rounded-xl">
+            <i data-lucide="bell-ring" class="w-5 h-5"></i>
+        </div>
+        <div>
+            <h4 id="toast-title" class="text-sm font-bold text-white tracking-tight">Notificación</h4>
+            <p id="toast-message" class="text-[11px] text-slate-300 mt-0.5">Mensaje...</p>
+        </div>
+    </div>
+
+    <!-- MAIN JAVASCRIPT -->
+    <script>
+        const SYSTEM_VERSION = '2.5.0';
+
+        // LocalStorage Keys
+        const ST_CAMIONES = 'soyacore_camiones';
+        const ST_SECADORA = 'soyacore_secadora';
+        const ST_EXTRUSORAS = 'soyacore_extrusoras';
+        const ST_PRENSAS = 'soyacore_prensas';
+        const ST_BOMBAS = 'soyacore_bombas';
+        const ST_PRODUCCION = 'soyacore_produccion';
+        const ST_TANQUES = 'soyacore_tanques';
+        const ST_STOCK = 'soyacore_stock';
+        const ST_PROMPTS = 'soyacore_prompts';
+
+        // State objects
+        let camionesData = [];
+        let secadoraData = [];
+        let extrusorasState = {
+            1: { estado: 'Operativo', dosif: 45, temp: 128, amp: 110, obs: 'Normal' },
+            2: { estado: 'Operativo', dosif: 42, temp: 125, amp: 105, obs: 'Normal' }
+        };
+        let prensasState = {};
+        let prensasHistorial = [];
+        let bombasHistorial = [];
+        let produccionData = [];
+        let tanquesState = {
+            canilla: 1, 
+            int1: 0, int2: 0, 
+            timer1: 0, timer2: 0, 
+            ext1: 0, ext2: 0, ext3: 0, ext4: 0
+        };
+        let stockData = [];
+        let decantTimerInterval = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Setup Date
+            const dtEl = document.getElementById('current-date-display');
+            if (dtEl) {
+                const opt = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+                dtEl.innerText = new Date().toLocaleDateString('es-AR', opt);
+            }
+
+            // Defaults dates
+            const today = new Date().toISOString().split('T')[0];
+            ['camion-fecha', 'secadora-fecha', 'prod-fecha'].forEach(id => {
+                if (document.getElementById(id)) document.getElementById(id).value = today;
+            });
+
+            // Initialize Icons
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+
+            // Load Data & Render
+            cargarDatosGuardados();
+            initPrensasDefault();
+            
+            renderCamiones();
+            renderSecadora();
+            renderExtrusorasUI();
+            renderPrensas();
+            renderTanques();
+            renderProduccion();
+            renderStock();
+            
+            initResumenMes();
+            renderResumenConsolidado();
+            
+            cargarBorradorPromptAceitera();
+            ensamblarPromptAceitera();
+            iniciarTimersDecantacion();
+        });
+
+        // =======================
+        // DATA & STORAGE
+        // =======================
+        function cargarDatosGuardados() {
+            const c = localStorage.getItem(ST_CAMIONES);
+            const s = localStorage.getItem(ST_SECADORA);
+            const ex = localStorage.getItem(ST_EXTRUSORAS);
+            const p = localStorage.getItem(ST_PRENSAS);
+            const b = localStorage.getItem(ST_BOMBAS);
+            const pr = localStorage.getItem(ST_PRODUCCION);
+            const t = localStorage.getItem(ST_TANQUES);
+            const st = localStorage.getItem(ST_STOCK);
+
+            if (c) camionesData = JSON.parse(c);
+            if (s) secadoraData = JSON.parse(s);
+            if (ex) extrusorasState = JSON.parse(ex);
+            if (p) {
+                const parsed = JSON.parse(p);
+                prensasState = parsed.estado || {};
+                prensasHistorial = parsed.historial || [];
+            }
+            if (b) bombasHistorial = JSON.parse(b);
+            if (pr) produccionData = JSON.parse(pr);
+            if (t) tanquesState = JSON.parse(t);
+            if (st) stockData = JSON.parse(st);
+        }
+
+        function guardarStorage(key, data) {
+            localStorage.setItem(key, JSON.stringify(data));
+        }
+
+        function initPrensasDefault() {
+            if (Object.keys(prensasState).length === 0) {
+                for (let i = 1; i <= 8; i++) {
+                    prensasState[i] = {
+                        estado: 'En Producción',
+                        mantenimiento: 'Sin Mantenimiento',
+                        repuestos: 'Ninguno',
+                        obs: 'Normal'
+                    };
+                }
+                guardarStorage(ST_PRENSAS, { estado: prensasState, historial: prensasHistorial });
+            }
+        }
+
+        // =======================
+        // UI / NAVIGATION
+        // =======================
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            const active = document.getElementById(`tab-${tabId}`);
+            if (active) active.classList.remove('hidden');
+
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('active', 'text-brand-400', 'bg-brand-500/10', 'border-brand-500/20');
+                btn.classList.add('text-slate-400', 'border-transparent');
+            });
+
+            const activeBtn = document.getElementById(`nav-${tabId}`);
+            if (activeBtn) {
+                activeBtn.classList.remove('text-slate-400', 'border-transparent');
+                activeBtn.classList.add('active', 'text-brand-400', 'bg-brand-500/10', 'border-brand-500/20');
+            }
+
+            const mobileSel = document.getElementById('mobile-nav-select');
+            if (mobileSel) mobileSel.value = tabId;
+
+            if (tabId === 'secadora') renderSecadora();
+            if (tabId === 'tanques') renderTanques();
+            if (tabId === 'resumen') renderResumenConsolidado();
+        }
+
+        function showToast(title, msg) {
+            const toast = document.getElementById('toast-notification');
+            document.getElementById('toast-title').innerText = title;
+            document.getElementById('toast-message').innerText = msg;
+            
+            toast.classList.remove('translate-y-32', 'opacity-0');
+            toast.classList.add('translate-y-0', 'opacity-100');
+            
+            setTimeout(() => {
+                toast.classList.remove('translate-y-0', 'opacity-100');
+                toast.classList.add('translate-y-32', 'opacity-0');
+            }, 3500);
+        }
+
+        // =======================
+        // CAMIONES
+        // =======================
+        function calcularPesoNeto() {
+            const b = parseFloat(document.getElementById('camion-bruto').value) || 0;
+            const t = parseFloat(document.getElementById('camion-tara').value) || 0;
+            document.getElementById('camion-neto').value = Math.max(0, b - t);
+        }
+
+        function guardarCamion(e) {
+            e.preventDefault();
+            const f = document.getElementById('camion-fecha').value;
+            const p = document.getElementById('camion-patente').value.toUpperCase();
+            const emp = document.getElementById('camion-empresa').value;
+            const prod = document.getElementById('camion-producto').value;
+            const h = parseFloat(document.getElementById('camion-humedad').value) || 0;
+            const b = parseFloat(document.getElementById('camion-bruto').value) || 0;
+            const t = parseFloat(document.getElementById('camion-tara').value) || 0;
+            const n = b - t;
+
+            if (n <= 0) return showToast('Error', 'El Peso Bruto debe superar la Tara.');
+
+            camionesData.unshift({ id: Date.now(), fecha: f, patente: p, empresa: emp, producto: prod, humedad: h, bruto: b, tara: t, neto: n });
+            guardarStorage(ST_CAMIONES, camionesData);
+            
+            document.getElementById('form-camion').reset();
+            document.getElementById('camion-fecha').value = new Date().toISOString().split('T')[0];
+            document.getElementById('camion-producto').value = 'Soja Grano';
+            
+            renderCamiones();
+            showToast('Guardado', `Registro añadido: ${n} kg`);
+        }
+
+        function renderCamiones() {
+            const tbody = document.getElementById('tabla-camiones-body');
+            tbody.innerHTML = '';
+            
+            const hoy = new Date().toISOString().split('T')[0];
+            let nHoy = 0, cHoy = 0, hSum = 0;
+
+            camionesData.forEach(c => {
+                if (c.fecha === hoy) { nHoy += c.neto; cHoy++; hSum += c.humedad; }
+                tbody.insertAdjacentHTML('beforeend', `
+                    <tr class="hover:bg-slate-800/40 transition">
+                        <td class="px-4 py-3">${c.fecha}</td>
+                        <td class="px-4 py-3 font-bold text-white">${c.patente}</td>
+                        <td class="px-4 py-3 text-slate-300">${c.empresa}</td>
+                        <td class="px-4 py-3 text-slate-400">${c.producto}</td>
+                        <td class="px-4 py-3 font-bold text-brand-400">${c.humedad}%</td>
+                        <td class="px-4 py-3 text-right">${c.bruto.toLocaleString()}</td>
+                        <td class="px-4 py-3 text-right">${c.tara.toLocaleString()}</td>
+                        <td class="px-4 py-3 text-right font-bold text-emerald-400">${c.neto.toLocaleString()}</td>
+                        <td class="px-4 py-3 text-center">
+                            <button onclick="eliminarCamion(${c.id})" class="p-1.5 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 rounded-lg transition"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                        </td>
+                    </tr>
+                `);
+            });
+
+            document.getElementById('camiones-total-kg-hoy').innerText = `${nHoy.toLocaleString()} kg`;
+            document.getElementById('stat-camiones-count').innerText = cHoy;
+            document.getElementById('stat-camiones-neto-total').innerText = `${nHoy.toLocaleString()} kg`;
+            document.getElementById('stat-camiones-humedad-prom').innerText = cHoy > 0 ? `${(hSum/cHoy).toFixed(1)}%` : '0%';
+            if(window.lucide) lucide.createIcons();
+        }
+
+        function eliminarCamion(id) {
+            camionesData = camionesData.filter(x => x.id !== id);
+            guardarStorage(ST_CAMIONES, camionesData);
+            renderCamiones();
+        }
+
+        function filtrarTablaCamiones() {
+            const q = document.getElementById('search-camion').value.toLowerCase();
+            document.querySelectorAll('#tabla-camiones-body tr').forEach(row => {
+                row.style.display = row.innerText.toLowerCase().includes(q) ? '' : 'none';
+            });
+        }
+
+        // =======================
+        // SECADORA
+        // =======================
+        function guardarSecadora(e) {
+            e.preventDefault();
+            const f = document.getElementById('secadora-fecha').value;
+            const hStr = document.getElementById('secadora-hora').value;
+            const hum = parseFloat(document.getElementById('secadora-humedad-input').value) || 0;
+            const obs = document.getElementById('secadora-obs').value;
+            
+            const kg = camionesData.filter(c => c.fecha === f).reduce((acc, c) => acc + c.neto, 0);
+
+            secadoraData.unshift({ id: Date.now(), fechaHora: `${f} ${hStr}`, hum, kg, obs });
+            guardarStorage(ST_SECADORA, secadoraData);
+            
+            document.getElementById('secadora-humedad-input').value = '';
+            document.getElementById('secadora-obs').value = '';
+            renderSecadora();
+            showToast('Lectura Secadora', 'Medición guardada correctamente.');
+        }
+
+        function renderSecadora() {
+            const hoy = new Date().toISOString().split('T')[0];
+            const kgHoy = camionesData.filter(c => c.fecha === hoy).reduce((acc, c) => acc + c.neto, 0);
+            document.getElementById('secadora-kg-dia-calculado').innerText = `${kgHoy.toLocaleString()} kg`;
+            document.getElementById('secadora-humedad-actual').innerText = secadoraData.length > 0 ? `${secadoraData[0].hum} %` : '0.0 %';
+
+            const tbody = document.getElementById('tabla-secadora-body');
+            tbody.innerHTML = '';
+            secadoraData.forEach(s => {
+                tbody.insertAdjacentHTML('beforeend', `
+                    <tr class="hover:bg-slate-800/40 transition">
+                        <td class="px-4 py-3">${s.fechaHora}</td>
+                        <td class="px-4 py-3 font-bold text-brand-400">${s.hum} %</td>
+                        <td class="px-4 py-3 text-right font-bold text-white">${s.kg.toLocaleString()}</td>
+                        <td class="px-4 py-3 text-slate-400">${s.obs}</td>
+                        <td class="px-4 py-3 text-center">
+                            <button onclick="eliminarSecadora(${s.id})" class="p-1.5 bg-rose-500/10 text-rose-400 rounded-lg"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                        </td>
+                    </tr>
+                `);
+            });
+            if(window.lucide) lucide.createIcons();
+        }
+
+        function eliminarSecadora(id) {
+            secadoraData = secadoraData.filter(x => x.id !== id);
+            guardarStorage(ST_SECADORA, secadoraData);
+            renderSecadora();
+        }
+
+        // =======================
+        // EXTRUSORAS
+        // =======================
+        function guardarExtrusora(e) {
+            e.preventDefault();
+            const line = parseInt(document.getElementById('extrusor-linea').value);
+            extrusorasState[line] = {
+                estado: document.getElementById('extrusor-estado').value,
+                dosif: parseFloat(document.getElementById('extrusor-dosif').value) || 0,
+                temp: parseFloat(document.getElementById('extrusor-temp').value) || 0,
+                amp: parseFloat(document.getElementById('extrusor-amp').value) || 0,
+                obs: document.getElementById('extrusor-obs').value
+            };
+            guardarStorage(ST_EXTRUSORAS, extrusorasState);
+            renderExtrusorasUI();
+            showToast('Líneas Extrusión', `Parámetros L${line} actualizados.`);
+        }
+
+        function renderExtrusorasUI() {
+            [1, 2].forEach(l => {
+                const d = extrusorasState[l];
+                if (!d) return;
+                document.getElementById(`l${l}-dosif-val`).innerText = `${d.dosif} Hz`;
+                document.getElementById(`l${l}-temp-val`).innerText = `${d.temp} °C`;
+                document.getElementById(`l${l}-amp-val`).innerText = `${d.amp} A`;
+                document.getElementById(`l${l}-obs-txt`).innerText = d.obs || 'Sin observaciones';
+                
+                const b = document.getElementById(`badge-extrusor-${l}`);
+                b.innerText = d.estado;
+                b.className = d.estado === 'Operativo' ? 'px-3 py-1 rounded-lg text-[10px] font-bold uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 
+                              d.estado === 'En Mantenimiento' ? 'px-3 py-1 rounded-lg text-[10px] font-bold uppercase bg-brand-500/10 text-brand-400 border border-brand-500/20' : 
+                              'px-3 py-1 rounded-lg text-[10px] font-bold uppercase bg-rose-500/10 text-rose-400 border border-rose-500/20';
+            });
+        }
+
+        // =======================
+        // PRENSAS
+        // =======================
+        function renderPrensas() {
+            const cont = document.getElementById('grid-prensas-cards');
+            cont.innerHTML = '';
+            for (let i = 1; i <= 8; i++) {
+                const info = prensasState[i];
+                const badge = info.estado === 'En Producción' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : 
+                              info.estado === 'Detenida' ? 'bg-rose-500/10 text-rose-400 border-rose-500/30' : 'bg-brand-500/10 text-brand-400 border-brand-500/30';
+                
+                cont.insertAdjacentHTML('beforeend', `
+                    <div class="glass-panel border border-slate-800/60 rounded-3xl p-5 hover:border-brand-500/30 transition">
+                        <div class="flex items-center justify-between mb-3 border-b border-slate-800/50 pb-2">
+                            <span class="font-bold text-white">Unidad #${i}</span>
+                            <span class="text-[9px] font-bold px-2 py-0.5 rounded uppercase border ${badge}">${info.estado}</span>
+                        </div>
+                        <div class="space-y-1 text-xs mb-3">
+                            <div class="flex justify-between"><span class="text-slate-500">Tarea:</span><span class="text-slate-200 font-medium">${info.mantenimiento}</span></div>
+                            <div class="flex justify-between"><span class="text-slate-500">Repuestos:</span><span class="text-brand-300 font-medium truncate w-24 text-right">${info.repuestos}</span></div>
+                        </div>
+                        <div class="text-[10px] text-slate-400 bg-slate-900/50 p-2 rounded-lg italic">"${info.obs}"</div>
+                    </div>
+                `);
+            }
+
+            const tbody = document.getElementById('tabla-prensas-body');
+            tbody.innerHTML = '';
+            prensasHistorial.forEach(h => {
+                tbody.insertAdjacentHTML('beforeend', `
+                    <tr class="hover:bg-slate-800/40 transition">
+                        <td class="px-4 py-3">${h.fecha}</td>
+                        <td class="px-4 py-3 font-bold text-white">#${h.num}</td>
+                        <td class="px-4 py-3 text-slate-300">${h.maint}</td>
+                        <td class="px-4 py-3 font-bold text-brand-400">${h.est}</td>
+                        <td class="px-4 py-3 text-slate-400">${h.rep}</td>
+                        <td class="px-4 py-3 text-slate-400">${h.obs}</td>
+                        <td class="px-4 py-3 text-center"><button onclick="eliminarHistPrensa(${h.id})" class="p-1.5 bg-rose-500/10 text-rose-400 rounded-lg"><i data-lucide="trash-2" class="w-4 h-4"></i></button></td>
+                    </tr>
+                `);
+            });
+            if(window.lucide) lucide.createIcons();
+        }
+
+        function guardarMantenimientoPrensa(e) {
+            e.preventDefault();
+            const n = parseInt(document.getElementById('prensa-numero').value);
+            const m = document.getElementById('prensa-mantenimiento').value;
+            const est = document.getElementById('prensa-estado').value;
+            const r = document.getElementById('prensa-repuestos').value;
+            const o = document.getElementById('prensa-observaciones').value;
+
+            prensasState[n] = { estado: est, mantenimiento: m, repuestos: r || '-', obs: o || '-' };
+            prensasHistorial.unshift({ id: Date.now(), fecha: new Date().toLocaleString(), num: n, maint: m, est, rep: r, obs: o });
+            
+            guardarStorage(ST_PRENSAS, { estado: prensasState, historial: prensasHistorial });
+            document.getElementById('prensa-repuestos').value = '';
+            document.getElementById('prensa-observaciones').value = '';
+            renderPrensas();
+            showToast('Sala Prensas', `Estado actualizado Unidad #${n}.`);
+        }
+
+        function eliminarHistPrensa(id) {
+            prensasHistorial = prensasHistorial.filter(x => x.id !== id);
+            guardarStorage(ST_PRENSAS, { estado: prensasState, historial: prensasHistorial });
+            renderPrensas();
+        }
+
+        // =======================
+        // BOMBAS
+        // =======================
+        function guardarBombaControl(e) {
+            e.preventDefault();
+            bombasHistorial.unshift({
+                id: Date.now(), fecha: new Date().toLocaleString(),
+                nombre: document.getElementById('bomba-nombre').value,
+                estado: document.getElementById('bomba-estado').value,
+                temp: parseFloat(document.getElementById('bomba-temp').value) || 0,
+                obs: document.getElementById('bomba-observacion').value
+            });
+            guardarStorage(ST_BOMBAS, bombasHistorial);
+            showToast('Equipos', 'Reporte de bomba/reductor guardado.');
+        }
+
+        // =======================
+        // TANQUES
+        // =======================
+        function cambiarCanillaActiva(n) {
+            tanquesState.canilla = n;
+            document.getElementById('btn-canilla-1').className = n === 1 ? 'flex-1 py-2 text-xs font-bold rounded-lg bg-brand-500 text-slate-950 shadow-md' : 'flex-1 py-2 text-xs font-bold rounded-lg text-slate-400 hover:text-white transition';
+            document.getElementById('btn-canilla-2').className = n === 2 ? 'flex-1 py-2 text-xs font-bold rounded-lg bg-brand-500 text-slate-950 shadow-md' : 'flex-1 py-2 text-xs font-bold rounded-lg text-slate-400 hover:text-white transition';
+            
+            document.getElementById('badge-tanque-1-status').innerText = n === 1 ? 'Llenando' : 'En Espera';
+            document.getElementById('badge-tanque-1-status').className = n === 1 ? 'px-2.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-brand-500/20 text-brand-400 border border-brand-500/30' : 'px-2.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-slate-800 text-slate-400 border border-slate-700';
+            
+            document.getElementById('badge-tanque-2-status').innerText = n === 2 ? 'Llenando' : 'En Espera';
+            document.getElementById('badge-tanque-2-status').className = n === 2 ? 'px-2.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-brand-500/20 text-brand-400 border border-brand-500/30' : 'px-2.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-slate-800 text-slate-400 border border-slate-700';
+            guardarStorage(ST_TANQUES, tanquesState);
+        }
+
+        function simularLlenadoAceite() {
+            const inc = 500;
+            if (tanquesState.canilla === 1) {
+                tanquesState.int1 = Math.min(1525, tanquesState.int1 + inc);
+                if (tanquesState.int1 >= 1525) { tanquesState.timer1 = 3600; showToast('Tanque 1', 'Lleno. Cambiando válvula...'); cambiarCanillaActiva(2); }
+            } else {
+                tanquesState.int2 = Math.min(1525, tanquesState.int2 + inc);
+                if (tanquesState.int2 >= 1525) { tanquesState.timer2 = 3600; showToast('Tanque 2', 'Lleno. Cambiando válvula...'); cambiarCanillaActiva(1); }
+            }
+            guardarStorage(ST_TANQUES, tanquesState);
+            renderTanques();
+        }
+
+        function trasvasarTanqueInterno(n) {
+            const litros = n === 1 ? tanquesState.int1 : tanquesState.int2;
+            if (litros <= 0) return;
+
+            let rest = litros;
+            for (let i = 1; i <= 4; i++) {
+                const space = 6862.5 - tanquesState[`ext${i}`];
+                if (space > 0) {
+                    const add = Math.min(space, rest);
+                    tanquesState[`ext${i}`] += add;
+                    rest -= add;
+                    if (rest <= 0) break;
+                }
+            }
+            if (n === 1) { tanquesState.int1 = 0; tanquesState.timer1 = 0; }
+            else { tanquesState.int2 = 0; tanquesState.timer2 = 0; }
+            
+            guardarStorage(ST_TANQUES, tanquesState);
+            renderTanques();
+            showToast('Trasvase Externo', `${litros} L transferidos a sector despacho.`);
+        }
+
+        function renderTanques() {
+            const p1 = Math.min(100, (tanquesState.int1 / 1525) * 100);
+            document.getElementById('tanque-int-1-fill').style.height = `${p1}%`;
+            document.getElementById('tanque-int-1-litros').innerText = `${tanquesState.int1.toLocaleString()} L`;
+            document.getElementById('tanque-int-1-pct').innerText = `${Math.round(p1)}%`;
+
+            const p2 = Math.min(100, (tanquesState.int2 / 1525) * 100);
+            document.getElementById('tanque-int-2-fill').style.height = `${p2}%`;
+            document.getElementById('tanque-int-2-litros').innerText = `${tanquesState.int2.toLocaleString()} L`;
+            document.getElementById('tanque-int-2-pct').innerText = `${Math.round(p2)}%`;
+
+            let totExt = 0;
+            for (let i = 1; i <= 4; i++) {
+                const l = tanquesState[`ext${i}`];
+                totExt += l;
+                const p = Math.min(100, (l / 6862.5) * 100);
+                document.getElementById(`tanque-ext-${i}-fill`).style.height = `${p}%`;
+                document.getElementById(`tanque-ext-${i}-litros`).innerText = `${l.toLocaleString()} L`;
+                document.getElementById(`tanque-ext-${i}-pct`).innerText = `${Math.round(p)}%`;
+            }
+            document.getElementById('total-aceite-exterior').innerText = `${totExt.toLocaleString()} L`;
+            cambiarCanillaActiva(tanquesState.canilla || 1);
+        }
+
+        function iniciarTimersDecantacion() {
+            if (decantTimerInterval) clearInterval(decantTimerInterval);
+            decantTimerInterval = setInterval(() => {
+                let up = false;
+                if (tanquesState.timer1 > 0) { tanquesState.timer1--; up = true; }
+                if (tanquesState.timer2 > 0) { tanquesState.timer2--; up = true; }
+                if (up) {
+                    const f = s => `${String(Math.floor(s/3600)).padStart(2,'0')}:${String(Math.floor((s%3600)/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+                    document.getElementById('timer-tanque-1').innerText = f(tanquesState.timer1);
+                    document.getElementById('timer-tanque-2').innerText = f(tanquesState.timer2);
+                }
+            }, 1000);
+        }
+
+        // =======================
+        // PRODUCCION
+        // =======================
+        function guardarProduccionTurno(e) {
+            e.preventDefault();
+            const f = document.getElementById('prod-fecha').value;
+            const t = document.getElementById('prod-turno').value;
+            const ex = parseFloat(document.getElementById('prod-expeller').value) || 0;
+            const ac = parseFloat(document.getElementById('prod-aceite').value) || 0;
+
+            let acRest = ac;
+            if (tanquesState.canilla === 1) {
+                const a1 = Math.min(1525 - tanquesState.int1, acRest);
+                tanquesState.int1 += a1; acRest -= a1;
+                if (acRest > 0) tanquesState.int2 = Math.min(1525, tanquesState.int2 + acRest);
+            } else {
+                const a2 = Math.min(1525 - tanquesState.int2, acRest);
+                tanquesState.int2 += a2; acRest -= a2;
+                if (acRest > 0) tanquesState.int1 = Math.min(1525, tanquesState.int1 + acRest);
+            }
+
+            let llenados = (tanquesState.int1 >= 1525 ? 1 : 0) + (tanquesState.int2 >= 1525 ? 1 : 0);
+            
+            produccionData.unshift({ id: Date.now(), fecha: f, turno: t, expeller: ex, aceite: ac, llenados });
+            guardarStorage(ST_PRODUCCION, produccionData);
+            guardarStorage(ST_TANQUES, tanquesState);
+            
+            document.getElementById('prod-expeller').value = '';
+            document.getElementById('prod-aceite').value = '';
+            renderProduccion();
+            renderTanques();
+            showToast('Cierre de Turno', 'Volúmenes asignados al circuito interno.');
+        }
+
+        function renderProduccion() {
+            const tbody = document.getElementById('tabla-produccion-body');
+            tbody.innerHTML = '';
+            produccionData.forEach(p => {
+                tbody.insertAdjacentHTML('beforeend', `
+                    <tr class="hover:bg-slate-800/40 transition">
+                        <td class="px-4 py-3">${p.fecha}</td>
+                        <td class="px-4 py-3 font-medium text-white">${p.turno}</td>
+                        <td class="px-4 py-3 text-right font-bold text-emerald-400">${p.expeller.toLocaleString()}</td>
+                        <td class="px-4 py-3 text-right font-bold text-brand-400">${p.aceite.toLocaleString()}</td>
+                        <td class="px-4 py-3 text-center"><span class="bg-brand-500/10 text-brand-400 px-2 py-1 rounded-md text-[10px] font-bold">${p.llenados} / 2</span></td>
+                        <td class="px-4 py-3 text-center"><button onclick="eliminarProduccion(${p.id})" class="p-1.5 bg-rose-500/10 text-rose-400 rounded-lg"><i data-lucide="trash-2" class="w-4 h-4"></i></button></td>
+                    </tr>
+                `);
+            });
+            if(window.lucide) lucide.createIcons();
+        }
+        function eliminarProduccion(id) { produccionData = produccionData.filter(x => x.id !== id); guardarStorage(ST_PRODUCCION, produccionData); renderProduccion(); }
+
+        // =======================
+        // STOCK
+        // =======================
+        function guardarItemStock(e) {
+            e.preventDefault();
+            stockData.unshift({
+                id: Date.now(),
+                n: document.getElementById('stock-nombre').value,
+                c: document.getElementById('stock-categoria').value,
+                u: document.getElementById('stock-ubicacion').value || 'Gen',
+                q: parseInt(document.getElementById('stock-cantidad').value) || 0,
+                m: parseInt(document.getElementById('stock-minimo').value) || 0
+            });
+            guardarStorage(ST_STOCK, stockData);
+            document.getElementById('form-stock').reset();
+            renderStock();
+        }
+
+        function renderStock() {
+            const tbody = document.getElementById('tabla-stock-body');
+            tbody.innerHTML = '';
+            stockData.forEach(s => {
+                const alert = s.q <= s.m;
+                const b = alert ? 'bg-rose-500/20 text-rose-400 border-rose-500/30 animate-pulse' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
+                tbody.insertAdjacentHTML('beforeend', `
+                    <tr class="hover:bg-slate-800/40 transition">
+                        <td class="px-4 py-3 font-bold text-white">${s.n}</td>
+                        <td class="px-4 py-3 text-slate-400">${s.c}</td>
+                        <td class="px-4 py-3 text-slate-500">${s.u}</td>
+                        <td class="px-4 py-3 text-center font-black ${alert ? 'text-rose-400' : 'text-brand-400'}">${s.q}</td>
+                        <td class="px-4 py-3 text-center"><span class="px-2 py-0.5 rounded text-[10px] font-bold border ${b}">${alert ? 'Pedir' : 'OK'}</span></td>
+                        <td class="px-4 py-3 text-center"><button onclick="eliminarStock(${s.id})" class="p-1.5 bg-rose-500/10 text-rose-400 rounded-lg"><i data-lucide="trash-2" class="w-4 h-4"></i></button></td>
+                    </tr>
+                `);
+            });
+            if(window.lucide) lucide.createIcons();
+        }
+        function eliminarStock(id) { stockData = stockData.filter(x => x.id !== id); guardarStorage(ST_STOCK, stockData); renderStock(); }
+
+        // =======================
+        // RESUMEN
+        // =======================
+        function initResumenMes() {
+            const sel = document.getElementById('resumen-mes-select');
+            if(!sel) return;
+            const ms = new Set();
+            ms.add(new Date().toISOString().substring(0,7));
+            camionesData.forEach(c => ms.add(c.fecha.substring(0,7)));
+            produccionData.forEach(p => ms.add(p.fecha.substring(0,7)));
+            
+            sel.innerHTML = '';
+            Array.from(ms).sort().reverse().forEach(m => {
+                const d = new Date(m.split('-')[0], m.split('-')[1]-1, 1);
+                sel.insertAdjacentHTML('beforeend', `<option value="${m}">${d.toLocaleDateString('es-AR',{month:'long',year:'numeric'}).toUpperCase()}</option>`);
+            });
+        }
+
+        function renderResumenConsolidado() {
+            const m = document.getElementById('resumen-mes-select').value || new Date().toISOString().substring(0,7);
+            const cm = camionesData.filter(x => x.fecha.startsWith(m));
+            const pm = produccionData.filter(x => x.fecha.startsWith(m));
+
+            const totSoj = cm.reduce((a,b) => a+b.neto, 0);
+            const totExp = pm.reduce((a,b) => a+b.expeller, 0);
+            const totAc = pm.reduce((a,b) => a+b.aceite, 0);
+
+            document.getElementById('kpi-soja-recibida').innerText = `${totSoj.toLocaleString()} kg`;
+            document.getElementById('kpi-total-camiones').innerText = cm.length;
+            document.getElementById('kpi-expeller-total').innerText = `${totExp.toLocaleString()} kg`;
+            document.getElementById('kpi-aceite-total').innerText = `${totAc.toLocaleString()} L`;
+            document.getElementById('kpi-rendimiento-promedio').innerText = totSoj > 0 ? `${((totAc/totSoj)*100).toFixed(1)}%` : '0%';
+
+            // Dia a Dia
+            const dias = {};
+            cm.forEach(c => { if(!dias[c.fecha]) dias[c.fecha]={s:0,e:0,a:0}; dias[c.fecha].s += c.neto; });
+            pm.forEach(p => { if(!dias[p.fecha]) dias[p.fecha]={s:0,e:0,a:0}; dias[p.fecha].e += p.expeller; dias[p.fecha].a += p.aceite; });
+            
+            const tbodyD = document.getElementById('tabla-resumen-diario-body'); tbodyD.innerHTML = '';
+            Object.keys(dias).sort().reverse().forEach(d => {
+                tbodyD.insertAdjacentHTML('beforeend', `
+                    <tr class="hover:bg-slate-800/40 transition">
+                        <td class="px-3 py-3 font-bold text-white">${d}</td>
+                        <td class="px-3 py-3 text-right font-medium text-slate-300">${dias[d].s.toLocaleString()}</td>
+                        <td class="px-3 py-3 text-right font-bold text-emerald-400">${dias[d].e.toLocaleString()}</td>
+                        <td class="px-3 py-3 text-right font-bold text-brand-400">${dias[d].a.toLocaleString()}</td>
+                    </tr>
+                `);
+            });
+
+            // Historico Anual
+            const meses = {};
+            camionesData.forEach(c => { const mk = c.fecha.substring(0,7); if(!meses[mk]) meses[mk]={s:0,e:0,a:0}; meses[mk].s += c.neto; });
+            produccionData.forEach(p => { const mk = p.fecha.substring(0,7); if(!meses[mk]) meses[mk]={s:0,e:0,a:0}; meses[mk].e += p.expeller; meses[mk].a += p.aceite; });
+            
+            const tbodyM = document.getElementById('tabla-resumen-mensual-body'); tbodyM.innerHTML = '';
+            Object.keys(meses).sort().reverse().forEach(mk => {
+                tbodyM.insertAdjacentHTML('beforeend', `
+                    <tr class="hover:bg-slate-800/40 transition">
+                        <td class="px-3 py-3 font-bold text-brand-400">${mk}</td>
+                        <td class="px-3 py-3 text-right font-medium text-white">${meses[mk].s.toLocaleString()}</td>
+                        <td class="px-3 py-3 text-right font-bold text-emerald-500/80">${meses[mk].e.toLocaleString()}</td>
+                        <td class="px-3 py-3 text-right font-bold text-brand-500/80">${meses[mk].a.toLocaleString()}</td>
+                    </tr>
+                `);
+            });
+        }
+
+        // =======================
+        // PROMPTS AI (RCTFRI)
+        // =======================
+        function ensamblarPromptAceitera() {
+            const v = {
+                r: document.getElementById('prompt-rol').value,
+                c: document.getElementById('prompt-contexto').value,
+                t: document.getElementById('prompt-tarea').value,
+                f: document.getElementById('prompt-formato').value,
+                rs: document.getElementById('prompt-restricciones').value,
+                i: document.getElementById('prompt-instrucciones').value
+            };
+            let p = '';
+            if(v.r) p += `[ROL Y PERFIL]\n${v.r}\n\n`;
+            if(v.c) p += `[CONTEXTO Y ANTECEDENTES]\n${v.c}\n\n`;
+            if(v.t) p += `[TAREA PRINCIPAL]\n${v.t}\n\n`;
+            if(v.f) p += `[FORMATO DE RESPUESTA]\n${v.f}\n\n`;
+            if(v.rs) p += `[RESTRICCIONES Y LÍMITES]\n${v.rs}\n\n`;
+            if(v.i) p += `[INSTRUCCIONES PASO A PASO]\n${v.i}\n\n`;
+            
+            document.getElementById('prompt-output-consolidado').value = p.trim();
+            document.getElementById('prompt-char-count').innerText = `${p.trim().length} chars`;
+            guardarStorage(ST_PROMPTS, v);
+        }
+
+        function cargarBorradorPromptAceitera() {
+            const b = localStorage.getItem(ST_PROMPTS);
+            if(b) {
+                const d = JSON.parse(b);
+                document.getElementById('prompt-rol').value = d.r || '';
+                document.getElementById('prompt-contexto').value = d.c || '';
+                document.getElementById('prompt-tarea').value = d.t || '';
+                document.getElementById('prompt-formato').value = d.f || '';
+                document.getElementById('prompt-restricciones').value = d.rs || '';
+                document.getElementById('prompt-instrucciones').value = d.i || '';
+            }
+        }
+
+        function limpiarCamposPromptAceitera() {
+            document.getElementById('form-rctfri-aceitera').reset();
+            ensamblarPromptAceitera();
+        }
+
+        function copiarPromptAceitera() {
+            const t = document.getElementById('prompt-output-consolidado').value;
+            if(!t) return;
+            const a = document.createElement('textarea'); a.value = t; document.body.appendChild(a); a.select();
+            document.execCommand('copy'); document.body.removeChild(a);
+            showToast('Prompt Copiado', 'Listo para pegar en Gemini 3.1 Pro');
+        }
+
+        function cargarPlantillaPlanta(t) {
+            if(t === 'mantenimiento') {
+                document.getElementById('prompt-rol').value = "Jefe de Mantenimiento Mecánico de Aceitera.";
+                document.getElementById('prompt-contexto').value = "Planta con 8 prensas, 2 líneas y reductores sobrecalentándose.";
+                document.getElementById('prompt-tarea').value = "Plan de contingencia rápido para diagnosticar cajas reductoras.";
+                document.getElementById('prompt-formato').value = "Tabla Markdown (Componente, Causa, Solución).";
+                document.getElementById('prompt-restricciones').value = "Usar repuestos estándar de pañol. No detener planta más de 2hs.";
+                document.getElementById('prompt-instrucciones').value = "1. Revisa temp aceite. 2. Evalúa fajas. 3. Revisa amperaje.";
+            } else {
+                document.getElementById('prompt-rol').value = "Ingeniero Químico Especialista en Molienda.";
+                document.getElementById('prompt-contexto').value = "Procesamos soja seca al 10%. Buscamos extraer más aceite crudo.";
+                document.getElementById('prompt-tarea').value = "Análisis para maximizar extracción y bajar MG en expeller a <6.5%.";
+                document.getElementById('prompt-formato').value = "Informe ejecutivo por viñetas.";
+                document.getElementById('prompt-restricciones').value = "Proceso 100% mecánico sin solventes químicos.";
+                document.getElementById('prompt-instrucciones').value = "1. Analiza extrusión (125°C). 2. Evalúa anillos. 3. Analiza reposo en tanques.";
+            }
+            ensamblarPromptAceitera();
+        }
+
+        // =======================
+        // EXPORT & APP PC & BACKUP
+        // =======================
+        function exportarCamionesCSV() {
+            let csv = 'Fecha,Patente,Empresa,Producto,Humedad,Bruto,Tara,Neto\n';
+            camionesData.forEach(c => csv += `"${c.fecha}","${c.patente}","${c.empresa}","${c.producto}",${c.humedad},${c.bruto},${c.tara},${c.neto}\n`);
+            dl(csv, 'recepcion_soja.csv', 'text/csv');
+        }
+        function exportarResumenCSV() {
+            let csv = 'Fecha,Soja(kg),Expeller(kg),Aceite(L)\n';
+            document.querySelectorAll('#tabla-resumen-diario-body tr').forEach(r => {
+                csv += Array.from(r.querySelectorAll('td')).map(td => td.innerText.replace(/,/g,'')).join(',') + '\n';
+            });
+            dl(csv, 'resumen_planta.csv', 'text/csv');
+        }
+        function descargarBackup() {
+            dl(JSON.stringify({
+                camiones: camionesData, secadora: secadoraData, extrusoras: extrusorasState,
+                prensas: prensasState, prensasHistorial: prensasHistorial, bombas: bombasHistorial,
+                produccion: produccionData, tanques: tanquesState, stock: stockData
+            }, null, 2), 'backup_soyacore.sojapack', 'application/json');
+            showToast('Respaldo', 'Copia de seguridad local completada.');
+        }
+        function dl(content, name, type) {
+            const b = new Blob([content], {type}); const u = URL.createObjectURL(b);
+            const a = document.createElement('a'); a.href = u; a.download = name; a.click(); URL.revokeObjectURL(u);
+        }
+
+        // Modals
+        function descargarAppPC() {
+            const m = document.getElementById('modal-app-pc');
+            m.classList.remove('hidden');
+            setTimeout(() => { m.classList.remove('opacity-0'); document.getElementById('modal-app-pc-content').classList.remove('scale-95'); }, 10);
+        }
+        function cerrarModalApp() {
+            const m = document.getElementById('modal-app-pc');
+            m.classList.add('opacity-0'); document.getElementById('modal-app-pc-content').classList.add('scale-95');
+            setTimeout(() => { m.classList.add('hidden'); }, 300);
+        }
+        function switchModalTab(t) {
+            document.getElementById('modal-tab-instalador').classList.add('hidden');
+            document.getElementById('modal-tab-updater').classList.add('hidden');
+            document.getElementById('tab-btn-instalador').className = 'flex-1 py-2 rounded-lg text-xs font-bold text-slate-400 hover:text-white transition';
+            document.getElementById('tab-btn-updater').className = 'flex-1 py-2 rounded-lg text-xs font-bold text-slate-400 hover:text-white transition';
+            document.getElementById(`modal-tab-${t}`).classList.remove('hidden');
+            document.getElementById(`tab-btn-${t}`).className = 'flex-1 py-2 rounded-lg text-xs font-bold bg-brand-500 text-slate-950 shadow-md transition';
+        }
+        function descargarSistemaHTML() { dl(document.documentElement.outerHTML, 'SoyaCore_Local_App.html', 'text/html'); showToast('App Local', 'Archivo guardado.'); }
+        function descargarInnoSetupScript() {
+            dl(`; Script Inno Setup SoyaCore OS\n[Setup]\nAppName=SoyaCore OS\nAppVersion=${SYSTEM_VERSION}\nDefaultDirName={autopf}\\SoyaCoreOS\nOutputDir=.\nOutputBaseFilename=Instalador_SoyaCore\nCompression=lzma\nSolidCompression=yes\n[Files]\nSource: "SoyaCore_Local_App.html"; DestDir: "{app}"\n[Icons]\nName: "{autodesktop}\\SoyaCore OS"; Filename: "{app}\\SoyaCore_Local_App.html"\n`, `Setup_SoyaCore_v${SYSTEM_VERSION}.iss`, 'text/plain');
+            showToast('Script Generado', 'Usa Inno Setup para compilar el .exe');
+        }
+        function aplicarParcheActualizacion(e) {
+            const file = e.target.files[0]; if(!file) return;
+            const r = new FileReader();
+            r.onload = ev => {
+                try {
+                    const d = JSON.parse(ev.target.result);
+                    if(d.camiones || d.produccion) {
+                        descargarBackup();
+                        if(d.camiones) localStorage.setItem(ST_CAMIONES, JSON.stringify(d.camiones));
+                        if(d.secadora) localStorage.setItem(ST_SECADORA, JSON.stringify(d.secadora));
+                        if(d.extrusoras) localStorage.setItem(ST_EXTRUSORAS, JSON.stringify(d.extrusoras));
+                        if(d.prensas) localStorage.setItem(ST_PRENSAS, JSON.stringify(d.prensas));
+                        if(d.produccion) localStorage.setItem(ST_PRODUCCION, JSON.stringify(d.produccion));
+                        if(d.tanques) localStorage.setItem(ST_TANQUES, JSON.stringify(d.tanques));
+                        if(d.stock) localStorage.setItem(ST_STOCK, JSON.stringify(d.stock));
+                        cargarDatosGuardados(); location.reload();
+                    }
+                } catch(err) { document.getElementById('update-status-msg').innerText = 'Archivo inválido.'; }
+            };
+            r.readAsText(file);
+        }
+    </script>
+</body>
+</html>

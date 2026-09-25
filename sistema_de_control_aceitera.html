@@ -1,0 +1,1467 @@
+<!DOCTYPE html>
+<html lang="es" class="h-full bg-slate-950 text-slate-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema Operativo de Control - Aceitera de Soja</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        amber: {
+                            450: '#f49d0c'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom scrollbars and animations */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+        .tank-wave {
+            background: linear-gradient(180deg, rgba(234,179,8,0.8) 0%, rgba(180,83,9,0.9) 100%);
+            transition: height 0.8s ease-in-out;
+        }
+    </style>
+</head>
+<body class="h-full flex flex-col font-sans antialiased bg-slate-950 text-slate-100 selection:bg-amber-500 selection:text-slate-950">
+
+    <!-- TOP BAR -->
+    <header class="h-16 border-b border-slate-800 bg-slate-900/80 backdrop-blur px-4 lg:px-6 flex items-center justify-between shrink-0 z-20">
+        <div class="flex items-center gap-3">
+            <div class="p-2 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-500">
+                <i data-lucide="factory" class="w-6 h-6"></i>
+            </div>
+            <div>
+                <h1 class="font-bold text-lg tracking-tight text-white flex items-center gap-2">
+                    SOJA CONTROL <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">PRO PLANTA</span>
+                </h1>
+                <p class="text-xs text-slate-400">Sistema Operativo Integrado de Procesamiento de Soja</p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-4 text-sm">
+            <div class="hidden sm:flex items-center gap-2 bg-slate-800/80 px-3 py-1.5 rounded-lg border border-slate-700/50">
+                <i data-lucide="calendar" class="w-4 h-4 text-amber-400"></i>
+                <span id="current-date-display" class="text-xs font-medium text-slate-300">Cargando fecha...</span>
+            </div>
+            <div class="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/30 px-3 py-1.5 rounded-lg text-emerald-400 text-xs font-medium">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                <span>Planta Operativa</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN WRAPPER -->
+    <div class="flex-1 flex overflow-hidden">
+
+        <!-- SIDEBAR -->
+        <aside class="w-64 bg-slate-900/60 border-r border-slate-800 flex flex-col justify-between shrink-0 hidden md:flex">
+            <nav class="p-4 space-y-1.5">
+                <div class="text-xs font-bold text-slate-500 uppercase tracking-wider px-3 mb-2">Módulos Planta</div>
+                
+                <button onclick="switchTab('camiones')" id="nav-camiones" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-amber-400 bg-amber-500/10 border border-amber-500/20">
+                    <i data-lucide="truck" class="w-5 h-5"></i>
+                    <span>Recepción Camiones</span>
+                </button>
+
+                <button onclick="switchTab('secadora')" id="nav-secadora" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-slate-400 hover:bg-slate-800/60 hover:text-slate-200">
+                    <i data-lucide="flame" class="w-5 h-5"></i>
+                    <span>Secadora de Soja</span>
+                </button>
+
+                <button onclick="switchTab('prensas')" id="nav-prensas" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-slate-400 hover:bg-slate-800/60 hover:text-slate-200">
+                    <i data-lucide="cog" class="w-5 h-5"></i>
+                    <span>Sala de Prensas (1-8)</span>
+                </button>
+
+                <button onclick="switchTab('produccion')" id="nav-produccion" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-slate-400 hover:bg-slate-800/60 hover:text-slate-200">
+                    <i data-lucide="droplet" class="w-5 h-5"></i>
+                    <span>Producción y Tanques</span>
+                </button>
+
+                <div class="text-xs font-bold text-slate-500 uppercase tracking-wider px-3 pt-4 mb-2">Informes y Control</div>
+
+                <button onclick="switchTab('resumen')" id="nav-resumen" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-slate-400 hover:bg-slate-800/60 hover:text-slate-200">
+                    <i data-lucide="bar-chart-3" class="w-5 h-5"></i>
+                    <span>Resumen Diario / Mensual</span>
+                </button>
+            </nav>
+
+            <!-- Quick Info Card -->
+            <div class="p-4 m-3 rounded-2xl bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/60">
+                <div class="flex items-center gap-2 text-amber-400 mb-2">
+                    <i data-lucide="database" class="w-4 h-4"></i>
+                    <span class="text-xs font-semibold">Almacenamiento Local</span>
+                </div>
+                <p class="text-[11px] text-slate-400 leading-relaxed">
+                    Todos los datos ingresados quedan guardados automáticamente en el sistema de su PC.
+                </p>
+            </div>
+        </aside>
+
+        <!-- CONTENT AREA -->
+        <main class="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 space-y-6">
+
+            <!-- MOBILE NAV SELECTOR -->
+            <div class="md:hidden mb-4">
+                <label class="block text-xs font-semibold text-slate-400 mb-1">Módulo Seleccionado:</label>
+                <select id="mobile-nav-select" onchange="switchTab(this.value)" class="w-full bg-slate-900 border border-slate-700 text-white rounded-xl p-3 text-sm font-medium focus:ring-2 focus:ring-amber-500">
+                    <option value="camiones">🚚 Recepción Camiones</option>
+                    <option value="secadora">🔥 Secadora de Soja</option>
+                    <option value="prensas">⚙️ Sala de Prensas (1 a 8)</option>
+                    <option value="produccion">🛢️ Producción por Turnos y Tanques</option>
+                    <option value="resumen">📊 Resumen Diario y Mensual</option>
+                </select>
+            </div>
+
+            <!-- TAB 1: RECEPCIÓN DE CAMIONES -->
+            <section id="tab-camiones" class="tab-content space-y-6">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900/70 p-5 rounded-2xl border border-slate-800">
+                    <div>
+                        <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                            <i data-lucide="truck" class="text-amber-400"></i> Recepción de Camiones
+                        </h2>
+                        <p class="text-sm text-slate-400 mt-1">Carga de balanza, patentes y humedad inicial de materia prima (Soja).</p>
+                    </div>
+                    <div class="flex items-center gap-3 bg-slate-800/80 px-4 py-3 rounded-xl border border-slate-700">
+                        <div class="text-right">
+                            <span class="block text-xs text-slate-400">Acumulado Soja Hoy:</span>
+                            <span id="camiones-total-kg-hoy" class="text-lg font-extrabold text-amber-400">0 kg</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Form & Summary -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Formulario de Carga -->
+                    <div class="lg:col-span-2 bg-slate-900/80 border border-slate-800 rounded-2xl p-5 lg:p-6 shadow-xl">
+                        <h3 class="text-md font-semibold text-slate-200 mb-4 flex items-center gap-2">
+                            <i data-lucide="plus-circle" class="w-4 h-4 text-amber-400"></i> Registrar Nuevo Camión
+                        </h3>
+
+                        <form id="form-camion" onsubmit="guardarCamion(event)" class="space-y-4">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-300 mb-1">Fecha de Ingreso</label>
+                                    <input type="date" id="camion-fecha" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-300 mb-1">Patente del Camión / Acoplado</label>
+                                    <input type="text" id="camion-patente" placeholder="ej. AA 123 CD" required uppercase class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-amber-500 uppercase">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-300 mb-1">Nombre de Empresa / Transporte</label>
+                                    <input type="text" id="camion-empresa" placeholder="ej. Transporte El Molino" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-amber-500">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-300 mb-1">Producto Transportado</label>
+                                    <input type="text" id="camion-producto" value="Soja Grano" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500">
+                                </div>
+                            </div>
+
+                            <div class="border-t border-slate-800 my-4 pt-4">
+                                <span class="text-xs font-bold text-amber-400 uppercase tracking-wider block mb-3">Pesaje y Calidad</span>
+                                <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                                    <div>
+                                        <label class="block text-xs font-semibold text-slate-300 mb-1">Humedad (%)</label>
+                                        <input type="number" step="0.1" id="camion-humedad" placeholder="13.5" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-amber-500">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-semibold text-slate-300 mb-1">Peso Bruto (kg)</label>
+                                        <input type="number" id="camion-bruto" oninput="calcularPesoNeto()" placeholder="45000" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-amber-500">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-semibold text-slate-300 mb-1">Tara (kg)</label>
+                                        <input type="number" id="camion-tara" oninput="calcularPesoNeto()" placeholder="15000" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-amber-500">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-semibold text-emerald-400 mb-1">Peso Neto (Calculado)</label>
+                                        <input type="number" id="camion-neto" readonly placeholder="30000" class="w-full bg-slate-900 border border-emerald-500/40 font-bold text-emerald-400 rounded-xl px-3.5 py-2.5 text-sm cursor-not-allowed">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="flex justify-end gap-3 pt-2">
+                                <button type="reset" class="px-5 py-2.5 rounded-xl border border-slate-700 text-slate-300 text-sm font-medium hover:bg-slate-800 transition">Limpiar</button>
+                                <button type="submit" class="px-6 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-sm shadow-lg shadow-amber-500/20 transition flex items-center gap-2">
+                                    <i data-lucide="save" class="w-4 h-4"></i> Registrar Camión
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Métricas rápidas de Recepción -->
+                    <div class="space-y-4">
+                        <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-5">
+                            <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Estadísticas del Día</h4>
+                            <div class="space-y-4">
+                                <div class="flex justify-between items-center p-3 rounded-xl bg-slate-950 border border-slate-800">
+                                    <span class="text-xs text-slate-400">Total Camiones Hoy:</span>
+                                    <span id="stat-camiones-count" class="text-lg font-bold text-white">0</span>
+                                </div>
+                                <div class="flex justify-between items-center p-3 rounded-xl bg-slate-950 border border-slate-800">
+                                    <span class="text-xs text-slate-400">Humedad Promedio Soja:</span>
+                                    <span id="stat-camiones-humedad-prom" class="text-lg font-bold text-amber-400">0%</span>
+                                </div>
+                                <div class="flex justify-between items-center p-3 rounded-xl bg-slate-950 border border-slate-800">
+                                    <span class="text-xs text-slate-400">Materia Prima Total Neto:</span>
+                                    <span id="stat-camiones-neto-total" class="text-lg font-bold text-emerald-400">0 kg</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-200 text-xs leading-relaxed">
+                            <p class="font-semibold flex items-center gap-1.5 mb-1"><i data-lucide="info" class="w-4 h-4 text-amber-400"></i> Integración Automatizada:</p>
+                            El peso neto total ingresado alimenta directamente la disponibilidad de kilos a procesar en el módulo de <strong>Secadora</strong>.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tabla de Camiones Registrados -->
+                <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 shadow-xl">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+                        <h3 class="text-md font-semibold text-slate-200">Historial de Camiones Ingresados</h3>
+                        <div class="flex items-center gap-2">
+                            <input type="text" id="search-camion" onkeyup="filtrarTablaCamiones()" placeholder="Buscar por patente o empresa..." class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 w-64">
+                            <button onclick="exportarCamionesCSV()" class="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl border border-slate-700 text-xs flex items-center gap-1" title="Exportar a CSV">
+                                <i data-lucide="download" class="w-4 h-4"></i> Exportar
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs text-slate-300">
+                            <thead class="bg-slate-950 text-slate-400 uppercase font-semibold text-[10px] tracking-wider border-b border-slate-800">
+                                <tr>
+                                    <th class="p-3">Fecha</th>
+                                    <th class="p-3">Patente</th>
+                                    <th class="p-3">Empresa</th>
+                                    <th class="p-3">Producto</th>
+                                    <th class="p-3">Humedad</th>
+                                    <th class="p-3">Bruto (kg)</th>
+                                    <th class="p-3">Tara (kg)</th>
+                                    <th class="p-3">Neto (kg)</th>
+                                    <th class="p-3 text-center">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabla-camiones-body" class="divide-y divide-slate-800/60 font-medium">
+                                <!-- Dynamic rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 2: SECADORA -->
+            <section id="tab-secadora" class="tab-content space-y-6 hidden">
+                <div class="bg-slate-900/70 p-5 rounded-2xl border border-slate-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div>
+                        <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                            <i data-lucide="flame" class="text-amber-500"></i> Control de Secadora
+                        </h2>
+                        <p class="text-sm text-slate-400 mt-1">Monitoreo de humedad de grano y volumen de kg de soja procesados por secado.</p>
+                    </div>
+                </div>
+
+                <!-- Secadora Banner Metric -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="md:col-span-2 bg-gradient-to-r from-amber-950/40 via-slate-900 to-slate-900 border border-amber-500/30 rounded-2xl p-6 relative overflow-hidden">
+                        <div class="flex items-center gap-4">
+                            <div class="p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl text-amber-400">
+                                <i data-lucide="scale" class="w-8 h-8"></i>
+                            </div>
+                            <div>
+                                <span class="text-xs font-semibold text-amber-400 uppercase tracking-wider">Volumen de Soja Ingresada (Día Seleccionado)</span>
+                                <h3 id="secadora-kg-dia-calculado" class="text-3xl font-black text-white mt-1">0 kg</h3>
+                                <p class="text-xs text-slate-400 mt-1">Cálculo automatizado en base a la suma total de Peso Neto de camiones descargados.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 flex flex-col justify-between">
+                        <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Última Humedad Registrada</span>
+                        <div class="my-2">
+                            <span id="secadora-humedad-actual" class="text-3xl font-extrabold text-amber-400">0.0%</span>
+                        </div>
+                        <span class="text-[11px] text-slate-500">Humedad recomendada para prensado: 9% a 10.5%</span>
+                    </div>
+                </div>
+
+                <!-- Formulario Registro Secadora -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="lg:col-span-1 bg-slate-900/80 border border-slate-800 rounded-2xl p-5">
+                        <h3 class="text-md font-semibold text-slate-200 mb-4 flex items-center gap-2">
+                            <i data-lucide="plus-circle" class="w-4 h-4 text-amber-400"></i> Registrar Lectura Secadora
+                        </h3>
+
+                        <form id="form-secadora" onsubmit="guardarSecadora(event)" class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-300 mb-1">Fecha</label>
+                                <input type="date" id="secadora-fecha" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500">
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-300 mb-1">Hora de Medición</label>
+                                <input type="time" id="secadora-hora" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500">
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-300 mb-1">Humedad Soja en Secadora (%)</label>
+                                <input type="number" step="0.1" id="secadora-humedad-input" placeholder="ej. 10.2" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-amber-500">
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-300 mb-1">Observaciones / Notas del Operador</label>
+                                <textarea id="secadora-obs" rows="3" placeholder="ej. Temperatura de salida estable a 75°C" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-amber-500"></textarea>
+                            </div>
+
+                            <button type="submit" class="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-sm shadow-lg shadow-amber-500/20 transition flex items-center justify-center gap-2">
+                                <i data-lucide="save" class="w-4 h-4"></i> Guardar Medición
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Historial Lecturas Secadora -->
+                    <div class="lg:col-span-2 bg-slate-900/80 border border-slate-800 rounded-2xl p-5 shadow-xl">
+                        <h3 class="text-md font-semibold text-slate-200 mb-4">Historial de Lecturas en Secadora</h3>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-xs text-slate-300">
+                                <thead class="bg-slate-950 text-slate-400 uppercase font-semibold text-[10px] tracking-wider border-b border-slate-800">
+                                    <tr>
+                                        <th class="p-3">Fecha y Hora</th>
+                                        <th class="p-3">Humedad (%)</th>
+                                        <th class="p-3">Kg Secados Día</th>
+                                        <th class="p-3">Observaciones</th>
+                                        <th class="p-3 text-center">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tabla-secadora-body" class="divide-y divide-slate-800/60 font-medium">
+                                    <!-- Dynamic rows -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 3: SALA DE PRENSAS -->
+            <section id="tab-prensas" class="tab-content space-y-6 hidden">
+                <div class="bg-slate-900/70 p-5 rounded-2xl border border-slate-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div>
+                        <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                            <i data-lucide="cog" class="text-amber-400"></i> Sala de Prensas (8 Unidades)
+                        </h2>
+                        <p class="text-sm text-slate-400 mt-1">Monitoreo individual, estado operativo, repuestos y mantenimientos efectuados.</p>
+                    </div>
+                </div>
+
+                <!-- Grid 8 Prensas Cards -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" id="grid-prensas-cards">
+                    <!-- Dynamic 8 press cards generated by JS -->
+                </div>
+
+                <!-- Modal / Form Registro Mantenimiento Prensa -->
+                <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 shadow-xl">
+                    <h3 class="text-md font-semibold text-slate-200 mb-4 flex items-center gap-2">
+                        <i data-lucide="wrench" class="w-4 h-4 text-amber-400"></i> Registrar Mantenimiento / Intervención en Prensa
+                    </h3>
+
+                    <form id="form-prensas" onsubmit="guardarMantenimientoPrensa(event)" class="space-y-4">
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-300 mb-1">Seleccionar Prensa</label>
+                                <select id="prensa-numero" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500">
+                                    <option value="1">Prensa #1</option>
+                                    <option value="2">Prensa #2</option>
+                                    <option value="3">Prensa #3</option>
+                                    <option value="4">Prensa #4</option>
+                                    <option value="5">Prensa #5</option>
+                                    <option value="6">Prensa #6</option>
+                                    <option value="7">Prensa #7</option>
+                                    <option value="8">Prensa #8</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-300 mb-1">Tipo de Mantenimiento</label>
+                                <select id="prensa-mantenimiento" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500">
+                                    <option value="Sin mantenimiento">Ninguno / Operativa</option>
+                                    <option value="Mantenimiento Preventivo">Mantenimiento Preventivo</option>
+                                    <option value="Mantenimiento Correctivo">Mantenimiento Correctivo</option>
+                                    <option value="Ajuste de Luz de Anillos">Ajuste de Luz de Anillos</option>
+                                    <option value="Limpieza de Cesta">Limpieza de Cesta</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-300 mb-1">Estado de Prensa</label>
+                                <select id="prensa-estado" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500">
+                                    <option value="En Producción">🟢 En Producción</option>
+                                    <option value="En Mantenimiento">🟡 En Mantenimiento</option>
+                                    <option value="Detenida">🔴 Detenida</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-300 mb-1">Cambio de Repuestos / Piezas Reemplazadas</label>
+                                <input type="text" id="prensa-repuestos" placeholder="ej. Cambio de sinfín de entrada, gusano prensa #2" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-amber-500">
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-300 mb-1">Observaciones Adicionales</label>
+                                <input type="text" id="prensa-observaciones" placeholder="ej. Control de amperaje normal tras mantenimiento" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-amber-500">
+                            </div>
+                        </div>
+
+                        <div class="flex justify-end pt-2">
+                            <button type="submit" class="px-6 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-sm shadow-lg shadow-amber-500/20 transition flex items-center gap-2">
+                                <i data-lucide="save" class="w-4 h-4"></i> Actualizar Prensa
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Historial Mantenimientos -->
+                <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 shadow-xl">
+                    <h3 class="text-md font-semibold text-slate-200 mb-4">Registro Histórico de Intervenciones en Prensas</h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs text-slate-300">
+                            <thead class="bg-slate-950 text-slate-400 uppercase font-semibold text-[10px] tracking-wider border-b border-slate-800">
+                                <tr>
+                                    <th class="p-3">Fecha / Hora</th>
+                                    <th class="p-3">N° Prensa</th>
+                                    <th class="p-3">Mantenimiento</th>
+                                    <th class="p-3">Estado</th>
+                                    <th class="p-3">Repuestos Cambiados</th>
+                                    <th class="p-3">Observaciones</th>
+                                    <th class="p-3 text-center">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabla-prensas-body" class="divide-y divide-slate-800/60 font-medium">
+                                <!-- Dynamic rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 4: PRODUCCIÓN Y TANQUES -->
+            <section id="tab-produccion" class="tab-content space-y-6 hidden">
+                <div class="bg-slate-900/70 p-5 rounded-2xl border border-slate-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div>
+                        <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                            <i data-lucide="droplet" class="text-amber-400"></i> Producción por Turnos & Control de Tanques
+                        </h2>
+                        <p class="text-sm text-slate-400 mt-1">Turnos de 8 hs, generación de expeller y aceite con trasvasado automático a tanques externos.</p>
+                    </div>
+                </div>
+
+                <!-- Tanks Visual Display -->
+                <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-6">
+                    <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                        <h3 class="text-md font-semibold text-slate-200 flex items-center gap-2">
+                            <i data-lucide="container" class="text-amber-400"></i> Estado de Tanques de Aceite
+                        </h3>
+                        <button onclick="trasvasarAceiteAExteriores()" class="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-xl text-xs font-bold transition flex items-center gap-2 shadow-md">
+                            <i data-lucide="arrow-right-left" class="w-4 h-4"></i> Trasvasar Aceite a Tanques Exteriores
+                        </button>
+                    </div>
+
+                    <!-- Diagrama de Tanques Internos y Exteriores -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <!-- Tanque Interno 1 -->
+                        <div class="bg-slate-950 border border-slate-800 rounded-2xl p-4 flex flex-col items-center">
+                            <span class="text-xs font-bold text-slate-300 mb-1">Tanque Interno 1</span>
+                            <span class="text-[10px] text-slate-500 mb-3">Capacidad: 1.500 Litros</span>
+                            
+                            <!-- Tank UI Graphic -->
+                            <div class="w-28 h-36 bg-slate-900 rounded-xl border-2 border-slate-700 relative overflow-hidden flex flex-col justify-end">
+                                <div id="tanque-int-1-fill" class="w-full tank-wave" style="height: 0%;"></div>
+                                <div class="absolute inset-0 flex items-center justify-center font-black text-sm text-white drop-shadow">
+                                    <span id="tanque-int-1-litros">0 L</span>
+                                </div>
+                            </div>
+                            <span id="tanque-int-1-pct" class="text-xs font-semibold text-amber-400 mt-2">0% Lleno</span>
+                        </div>
+
+                        <!-- Tanque Interno 2 -->
+                        <div class="bg-slate-950 border border-slate-800 rounded-2xl p-4 flex flex-col items-center">
+                            <span class="text-xs font-bold text-slate-300 mb-1">Tanque Interno 2</span>
+                            <span class="text-[10px] text-slate-500 mb-3">Capacidad: 1.500 Litros</span>
+                            
+                            <!-- Tank UI Graphic -->
+                            <div class="w-28 h-36 bg-slate-900 rounded-xl border-2 border-slate-700 relative overflow-hidden flex flex-col justify-end">
+                                <div id="tanque-int-2-fill" class="w-full tank-wave" style="height: 0%;"></div>
+                                <div class="absolute inset-0 flex items-center justify-center font-black text-sm text-white drop-shadow">
+                                    <span id="tanque-int-2-litros">0 L</span>
+                                </div>
+                            </div>
+                            <span id="tanque-int-2-pct" class="text-xs font-semibold text-amber-400 mt-2">0% Lleno</span>
+                        </div>
+
+                        <!-- Tanque Exterior Principal A -->
+                        <div class="bg-slate-950 border border-slate-800 rounded-2xl p-4 flex flex-col items-center">
+                            <span class="text-xs font-bold text-emerald-400 mb-1">Tanque Exterior A</span>
+                            <span class="text-[10px] text-slate-500 mb-3">Capacidad: 50.000 Litros</span>
+                            
+                            <!-- Tank UI Graphic -->
+                            <div class="w-32 h-36 bg-slate-900 rounded-2xl border-2 border-emerald-500/40 relative overflow-hidden flex flex-col justify-end">
+                                <div id="tanque-ext-a-fill" class="w-full bg-emerald-600/80 transition-all duration-700" style="height: 15%;"></div>
+                                <div class="absolute inset-0 flex items-center justify-center font-black text-xs text-white drop-shadow">
+                                    <span id="tanque-ext-a-litros">7.500 L</span>
+                                </div>
+                            </div>
+                            <span id="tanque-ext-a-pct" class="text-xs font-semibold text-emerald-400 mt-2">15% Capacidad</span>
+                        </div>
+
+                        <!-- Tanque Exterior Principal B -->
+                        <div class="bg-slate-950 border border-slate-800 rounded-2xl p-4 flex flex-col items-center">
+                            <span class="text-xs font-bold text-emerald-400 mb-1">Tanque Exterior B</span>
+                            <span class="text-[10px] text-slate-500 mb-3">Capacidad: 50.000 Litros</span>
+                            
+                            <!-- Tank UI Graphic -->
+                            <div class="w-32 h-36 bg-slate-900 rounded-2xl border-2 border-emerald-500/40 relative overflow-hidden flex flex-col justify-end">
+                                <div id="tanque-ext-b-fill" class="w-full bg-emerald-600/80 transition-all duration-700" style="height: 0%;"></div>
+                                <div class="absolute inset-0 flex items-center justify-center font-black text-xs text-white drop-shadow">
+                                    <span id="tanque-ext-b-litros">0 L</span>
+                                </div>
+                            </div>
+                            <span id="tanque-ext-b-pct" class="text-xs font-semibold text-emerald-400 mt-2">0% Capacidad</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Formulario de Producción por Turno -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="lg:col-span-1 bg-slate-900/80 border border-slate-800 rounded-2xl p-5">
+                        <h3 class="text-md font-semibold text-slate-200 mb-4 flex items-center gap-2">
+                            <i data-lucide="plus-circle" class="w-4 h-4 text-amber-400"></i> Cargar Producción del Turno
+                        </h3>
+
+                        <form id="form-produccion" onsubmit="guardarProduccionTurno(event)" class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-300 mb-1">Fecha</label>
+                                <input type="date" id="prod-fecha" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500">
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-300 mb-1">Seleccionar Turno de Trabajo (8 hs)</label>
+                                <select id="prod-turno" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500">
+                                    <option value="Turno 1 (08:00 a 16:00 hs)">Turno 1: 08:00 a 16:00 hs</option>
+                                    <option value="Turno 2 (16:00 a 00:00 hs)">Turno 2: 16:00 a 00:00 hs</option>
+                                    <option value="Turno 3 (00:00 a 08:00 hs)">Turno 3: 00:00 a 08:00 hs</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-300 mb-1">Cantidad Expeller Generado (kg)</label>
+                                <input type="number" id="prod-expeller" placeholder="ej. 22000" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-amber-500">
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-300 mb-1">Cantidad Aceite Extraído (Litros)</label>
+                                <input type="number" id="prod-aceite" placeholder="ej. 3000" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-amber-500">
+                            </div>
+
+                            <button type="submit" class="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-sm shadow-lg shadow-amber-500/20 transition flex items-center justify-center gap-2">
+                                <i data-lucide="save" class="w-4 h-4"></i> Guardar Registro Turno
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Tabla Historial Producción -->
+                    <div class="lg:col-span-2 bg-slate-900/80 border border-slate-800 rounded-2xl p-5 shadow-xl">
+                        <h3 class="text-md font-semibold text-slate-200 mb-4">Planilla de Producción Registrada por Turnos</h3>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-xs text-slate-300">
+                                <thead class="bg-slate-950 text-slate-400 uppercase font-semibold text-[10px] tracking-wider border-b border-slate-800">
+                                    <tr>
+                                        <th class="p-3">Fecha</th>
+                                        <th class="p-3">Turno</th>
+                                        <th class="p-3">Expeller (kg)</th>
+                                        <th class="p-3">Aceite (L)</th>
+                                        <th class="p-3">Tanques Llenados</th>
+                                        <th class="p-3 text-center">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tabla-produccion-body" class="divide-y divide-slate-800/60 font-medium">
+                                    <!-- Dynamic rows -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 5: RESUMEN DIARIO Y MENSUAL -->
+            <section id="tab-resumen" class="tab-content space-y-6 hidden">
+                <div class="bg-slate-900/70 p-5 rounded-2xl border border-slate-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div>
+                        <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                            <i data-lucide="bar-chart-3" class="text-amber-400"></i> Resumen Consolidado Diario y Mensual
+                        </h2>
+                        <p class="text-sm text-slate-400 mt-1">Visión global de balances de materia prima, producción y mermas por mes y día.</p>
+                    </div>
+
+                    <!-- Filter Month -->
+                    <div class="flex items-center gap-2 bg-slate-800/80 p-2 rounded-xl border border-slate-700">
+                        <i data-lucide="filter" class="w-4 h-4 text-amber-400 ml-2"></i>
+                        <span class="text-xs text-slate-300 font-semibold">Seleccionar Mes:</span>
+                        <select id="resumen-mes-select" onchange="renderResumenConsolidado()" class="bg-slate-950 border border-slate-700 text-white text-xs font-semibold rounded-lg px-3 py-1.5 focus:outline-none focus:border-amber-500">
+                            <!-- Options generated dynamically -->
+                        </select>
+                    </div>
+                </div>
+
+                <!-- KPI Metric Cards for Selected Month -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                    <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4">
+                        <span class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1">Total Soja Recibida</span>
+                        <span id="kpi-soja-recibida" class="text-xl font-extrabold text-amber-400">0 kg</span>
+                        <span class="text-[10px] text-slate-500 block mt-1">En el mes seleccionado</span>
+                    </div>
+
+                    <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4">
+                        <span class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1">Camiones Descargados</span>
+                        <span id="kpi-total-camiones" class="text-xl font-extrabold text-white">0</span>
+                        <span class="text-[10px] text-slate-500 block mt-1">Ingresos de balanza</span>
+                    </div>
+
+                    <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4">
+                        <span class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1">Expeller Producido</span>
+                        <span id="kpi-expeller-total" class="text-xl font-extrabold text-emerald-400">0 kg</span>
+                        <span class="text-[10px] text-slate-500 block mt-1">Subproducto de prensado</span>
+                    </div>
+
+                    <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4">
+                        <span class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1">Aceite Producido</span>
+                        <span id="kpi-aceite-total" class="text-xl font-extrabold text-amber-400">0 L</span>
+                        <span class="text-[10px] text-slate-500 block mt-1">Extracción líquida</span>
+                    </div>
+
+                    <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4">
+                        <span class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1">Humedad Prom. Soja</span>
+                        <span id="kpi-humedad-promedio" class="text-xl font-extrabold text-sky-400">0%</span>
+                        <span class="text-[10px] text-slate-500 block mt-1">Calidad promedio</span>
+                    </div>
+                </div>
+
+                <!-- Desglose por Día del Mes Seleccionado -->
+                <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 shadow-xl">
+                    <h3 class="text-md font-semibold text-slate-200 mb-4 flex items-center justify-between">
+                        <span>Desglose Detallado Día por Día (Mes Seleccionado)</span>
+                        <button onclick="exportarResumenCSV()" class="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl border border-slate-700 text-xs flex items-center gap-1">
+                            <i data-lucide="download" class="w-4 h-4"></i> Exportar Resumen
+                        </button>
+                    </h3>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs text-slate-300">
+                            <thead class="bg-slate-950 text-slate-400 uppercase font-semibold text-[10px] tracking-wider border-b border-slate-800">
+                                <tr>
+                                    <th class="p-3">Día / Fecha</th>
+                                    <th class="p-3">Camiones</th>
+                                    <th class="p-3">Soja Recibida (kg)</th>
+                                    <th class="p-3">Humedad Recepción</th>
+                                    <th class="p-3">Expeller Producido (kg)</th>
+                                    <th class="p-3">Aceite Extraído (L)</th>
+                                    <th class="p-3">Rendimiento Aceite (%)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabla-resumen-diario-body" class="divide-y divide-slate-800/60 font-medium">
+                                <!-- Dynamic rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Comparativo Mes a Mes -->
+                <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 shadow-xl">
+                    <h3 class="text-md font-semibold text-slate-200 mb-4">Resumen Histórico Comparativo Mes a Mes</h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs text-slate-300">
+                            <thead class="bg-slate-950 text-slate-400 uppercase font-semibold text-[10px] tracking-wider border-b border-slate-800">
+                                <tr>
+                                    <th class="p-3">Año - Mes</th>
+                                    <th class="p-3">Camiones Total</th>
+                                    <th class="p-3">Total Soja (kg)</th>
+                                    <th class="p-3">Total Expeller (kg)</th>
+                                    <th class="p-3">Total Aceite (L)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabla-resumen-mensual-body" class="divide-y divide-slate-800/60 font-medium">
+                                <!-- Dynamic rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- NOTIFICATION TOAST -->
+    <div id="toast-notification" class="fixed bottom-6 right-6 bg-slate-900 border border-amber-500/50 text-white px-5 py-3.5 rounded-2xl shadow-2xl flex items-center gap-3 transition-all transform translate-y-20 opacity-0 z-50">
+        <div class="p-1.5 bg-amber-500/20 text-amber-400 rounded-lg">
+            <i data-lucide="check-circle" class="w-5 h-5"></i>
+        </div>
+        <div>
+            <span id="toast-title" class="font-bold text-xs block text-amber-400">Notificación</span>
+            <span id="toast-message" class="text-xs text-slate-300">Operación realizada con éxito.</span>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        // APP STATE & LOCAL STORAGE KEYS
+        const STORAGE_CAMIONES = 'aceitera_camiones_db';
+        const STORAGE_SECADORA = 'aceitera_secadora_db';
+        const STORAGE_PRENSAS = 'aceitera_prensas_db';
+        const STORAGE_PRODUCCION = 'aceitera_produccion_db';
+        const STORAGE_TANQUES = 'aceitera_tanques_db';
+
+        // State objects
+        let camionesData = [];
+        let secadoraData = [];
+        let prensasState = {};
+        let prensasHistorial = [];
+        let produccionData = [];
+        let tanquesState = {
+            interno1: 0,
+            interno2: 0,
+            exteriorA: 7500,
+            exteriorB: 0
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Set default date display
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('current-date-display').innerText = new Date().toLocaleDateString('es-AR', {
+                weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+            });
+
+            // Set inputs default date
+            document.getElementById('camion-fecha').value = today;
+            document.getElementById('secadora-fecha').value = today;
+            document.getElementById('prod-fecha').value = today;
+
+            const nowTime = new Date().toTimeString().substring(0, 5);
+            document.getElementById('secadora-hora').value = nowTime;
+
+            // Load stored data or seed mock data
+            cargarDatosGuardados();
+            
+            // Initialize press status array if empty
+            if (Object.keys(prensasState).length === 0) {
+                for (let i = 1; i <= 8; i++) {
+                    prensasState[i] = {
+                        estado: 'En Producción',
+                        mantenimiento: 'Sin mantenimiento',
+                        repuestos: 'Ninguno',
+                        observaciones: 'Funcionando óptimamente'
+                    };
+                }
+                guardarEnStorage(STORAGE_PRENSAS, { estado: prensasState, historial: prensasHistorial });
+            }
+
+            // Initial render
+            renderCamiones();
+            renderSecadora();
+            renderPrensas();
+            renderProduccion();
+            actualizarGraficoTanques();
+            inicializarResumenSelect();
+            renderResumenConsolidado();
+
+            // Initialize Lucide Icons
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            }
+        });
+
+        function cargarDatosGuardados() {
+            const c = localStorage.getItem(STORAGE_CAMIONES);
+            const s = localStorage.getItem(STORAGE_SECADORA);
+            const p = localStorage.getItem(STORAGE_PRENSAS);
+            const pr = localStorage.getItem(STORAGE_PRODUCCION);
+            const t = localStorage.getItem(STORAGE_TANQUES);
+
+            if (c) camionesData = JSON.parse(c);
+            if (s) secadoraData = JSON.parse(s);
+            if (p) {
+                const parsedP = JSON.parse(p);
+                prensasState = parsedP.estado || {};
+                prensasHistorial = parsedP.historial || [];
+            }
+            if (pr) produccionData = JSON.parse(pr);
+            if (t) tanquesState = JSON.parse(t);
+
+            // Seed mock data if completely empty on first load
+            if (camionesData.length === 0) {
+                const today = new Date().toISOString().split('T')[0];
+                camionesData = [
+                    { id: 1, fecha: today, patente: 'AF 452 KH', empresa: 'Cerealera Del Sur', producto: 'Soja Grano', humedad: 13.2, bruto: 44500, tara: 14200, neto: 30300 },
+                    { id: 2, fecha: today, patente: 'AD 981 OP', empresa: 'Logística Pampeana', producto: 'Soja Grano', humedad: 12.8, bruto: 46100, tara: 15000, neto: 31100 }
+                ];
+                guardarEnStorage(STORAGE_CAMIONES, camionesData);
+            }
+
+            if (produccionData.length === 0) {
+                const today = new Date().toISOString().split('T')[0];
+                produccionData = [
+                    { id: 1, fecha: today, turno: 'Turno 1 (08:00 a 16:00 hs)', expeller: 22500, aceite: 3000, llenados: 2 }
+                ];
+                guardarEnStorage(STORAGE_PRODUCCION, produccionData);
+            }
+        }
+
+        function guardarEnStorage(key, data) {
+            localStorage.setItem(key, JSON.stringify(data));
+        }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('text-amber-400', 'bg-amber-500/10', 'border', 'border-amber-500/20');
+                btn.classList.add('text-slate-400');
+            });
+
+            const activeBtn = document.getElementById(`nav-${tabId}`);
+            if (activeBtn) {
+                activeBtn.classList.remove('text-slate-400');
+                activeBtn.classList.add('text-amber-400', 'bg-amber-500/10', 'border', 'border-amber-500/20');
+            }
+
+            // Sync mobile select
+            document.getElementById('mobile-nav-select').value = tabId;
+
+            // Trigger specific re-renders
+            if (tabId === 'secadora') renderSecadora();
+            if (tabId === 'resumen') renderResumenConsolidado();
+        }
+
+        function calcularPesoNeto() {
+            const bruto = parseFloat(document.getElementById('camion-bruto').value) || 0;
+            const tara = parseFloat(document.getElementById('camion-tara').value) || 0;
+            const neto = Math.max(0, bruto - tara);
+            document.getElementById('camion-neto').value = neto;
+        }
+
+        function guardarCamion(e) {
+            e.preventDefault();
+            const fecha = document.getElementById('camion-fecha').value;
+            const patente = document.getElementById('camion-patente').value.toUpperCase().trim();
+            const empresa = document.getElementById('camion-empresa').value.trim();
+            const producto = document.getElementById('camion-producto').value.trim();
+            const humedad = parseFloat(document.getElementById('camion-humedad').value) || 0;
+            const bruto = parseFloat(document.getElementById('camion-bruto').value) || 0;
+            const tara = parseFloat(document.getElementById('camion-tara').value) || 0;
+            const neto = bruto - tara;
+
+            if (neto <= 0) {
+                showToast('Error en Pesaje', 'El peso bruto debe ser mayor a la tara.');
+                return;
+            }
+
+            const nuevoCamion = {
+                id: Date.now(),
+                fecha,
+                patente,
+                empresa,
+                producto,
+                humedad,
+                bruto,
+                tara,
+                neto
+            };
+
+            camionesData.unshift(nuevoCamion);
+            guardarEnStorage(STORAGE_CAMIONES, camionesData);
+
+            document.getElementById('form-camion').reset();
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('camion-fecha').value = today;
+            document.getElementById('camion-producto').value = 'Soja Grano';
+
+            renderCamiones();
+            showToast('Camión Registrado', `Se guardó correctamente la descarga de ${neto.toLocaleString('es-AR')} kg.`);
+        }
+
+        function eliminarCamion(id) {
+            camionesData = camionesData.filter(c => c.id !== id);
+            guardarEnStorage(STORAGE_CAMIONES, camionesData);
+            renderCamiones();
+            showToast('Registro Eliminado', 'Se quitó el camión del historial.');
+        }
+
+        function renderCamiones() {
+            const tbody = document.getElementById('tabla-camiones-body');
+            tbody.innerHTML = '';
+
+            let totalNetoHoy = 0;
+            let totalCamionesHoy = 0;
+            let sumaHumedadHoy = 0;
+
+            const hoy = new Date().toISOString().split('T')[0];
+
+            camionesData.forEach(c => {
+                if (c.fecha === hoy) {
+                    totalNetoHoy += c.neto;
+                    totalCamionesHoy++;
+                    sumaHumedadHoy += c.humedad;
+                }
+
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-800/40 transition';
+                tr.innerHTML = `
+                    <td class="p-3">${c.fecha}</td>
+                    <td class="p-3 font-bold text-white">${c.patente}</td>
+                    <td class="p-3">${c.empresa}</td>
+                    <td class="p-3">${c.producto}</td>
+                    <td class="p-3 font-semibold text-amber-400">${c.humedad}%</td>
+                    <td class="p-3">${c.bruto.toLocaleString('es-AR')}</td>
+                    <td class="p-3">${c.tara.toLocaleString('es-AR')}</td>
+                    <td class="p-3 font-bold text-emerald-400">${c.neto.toLocaleString('es-AR')}</td>
+                    <td class="p-3 text-center">
+                        <button onclick="eliminarCamion(${c.id})" class="p-1 bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded-lg transition" title="Eliminar">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            document.getElementById('camiones-total-kg-hoy').innerText = `${totalNetoHoy.toLocaleString('es-AR')} kg`;
+            document.getElementById('stat-camiones-count').innerText = totalCamionesHoy;
+            document.getElementById('stat-camiones-neto-total').innerText = `${totalNetoHoy.toLocaleString('es-AR')} kg`;
+            
+            const promHumedad = totalCamionesHoy > 0 ? (sumaHumedadHoy / totalCamionesHoy).toFixed(1) : '0';
+            document.getElementById('stat-camiones-humedad-prom').innerText = `${promHumedad}%`;
+
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        function filtrarTablaCamiones() {
+            const query = document.getElementById('search-camion').value.toLowerCase();
+            const rows = document.querySelectorAll('#tabla-camiones-body tr');
+            rows.forEach(row => {
+                const text = row.innerText.toLowerCase();
+                row.style.display = text.includes(query) ? '' : 'none';
+            });
+        }
+
+        function guardarSecadora(e) {
+            e.preventDefault();
+            const fecha = document.getElementById('secadora-fecha').value;
+            const hora = document.getElementById('secadora-hora').value;
+            const humedad = parseFloat(document.getElementById('secadora-humedad-input').value) || 0;
+            const obs = document.getElementById('secadora-obs').value.trim();
+
+            // Total kg for selected date calculated from truck receipts
+            const kgSecados = camionesData
+                .filter(c => c.fecha === fecha)
+                .reduce((sum, c) => sum + c.neto, 0);
+
+            const nuevaLectura = {
+                id: Date.now(),
+                fechaHora: `${fecha} ${hora}`,
+                fecha,
+                humedad,
+                kgSecados,
+                obs
+            };
+
+            secadoraData.unshift(nuevaLectura);
+            guardarEnStorage(STORAGE_SECADORA, secadoraData);
+
+            document.getElementById('secadora-humedad-input').value = '';
+            document.getElementById('secadora-obs').value = '';
+
+            renderSecadora();
+            showToast('Medición Guardada', `Humedad registrada: ${humedad}%`);
+        }
+
+        function renderSecadora() {
+            const hoy = new Date().toISOString().split('T')[0];
+            const kgSecadosHoy = camionesData
+                .filter(c => c.fecha === hoy)
+                .reduce((sum, c) => sum + c.neto, 0);
+
+            document.getElementById('secadora-kg-dia-calculado').innerText = `${kgSecadosHoy.toLocaleString('es-AR')} kg`;
+
+            if (secadoraData.length > 0) {
+                document.getElementById('secadora-humedad-actual').innerText = `${secadoraData[0].humedad}%`;
+            } else {
+                document.getElementById('secadora-humedad-actual').innerText = `0.0%`;
+            }
+
+            const tbody = document.getElementById('tabla-secadora-body');
+            tbody.innerHTML = '';
+
+            secadoraData.forEach(s => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-800/40 transition';
+                tr.innerHTML = `
+                    <td class="p-3">${s.fechaHora}</td>
+                    <td class="p-3 font-bold text-amber-400">${s.humedad}%</td>
+                    <td class="p-3 font-bold text-white">${s.kgSecados.toLocaleString('es-AR')} kg</td>
+                    <td class="p-3 text-slate-400">${s.obs || 'Sin observaciones'}</td>
+                    <td class="p-3 text-center">
+                        <button onclick="eliminarSecadora(${s.id})" class="p-1 bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded-lg transition">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        function eliminarSecadora(id) {
+            secadoraData = secadoraData.filter(s => s.id !== id);
+            guardarEnStorage(STORAGE_SECADORA, secadoraData);
+            renderSecadora();
+        }
+
+        function renderPrensas() {
+            const container = document.getElementById('grid-prensas-cards');
+            container.innerHTML = '';
+
+            for (let i = 1; i <= 8; i++) {
+                const info = prensasState[i] || { estado: 'En Producción', mantenimiento: 'Sin mantenimiento', repuestos: 'Ninguno', observaciones: 'Funcionando normal' };
+                
+                let badgeClass = 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
+                if (info.estado === 'En Mantenimiento') badgeClass = 'bg-amber-500/20 text-amber-400 border-amber-500/30';
+                if (info.estado === 'Detenida') badgeClass = 'bg-red-500/20 text-red-400 border-red-500/30';
+
+                const card = document.createElement('div');
+                card.className = 'bg-slate-900/80 border border-slate-800 rounded-2xl p-4 space-y-3 relative overflow-hidden';
+                card.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <span class="font-extrabold text-sm text-white flex items-center gap-2">
+                            <i data-lucide="cog" class="w-4 h-4 text-amber-400"></i> Prensa #${i}
+                        </span>
+                        <span class="text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${badgeClass}">${info.estado}</span>
+                    </div>
+
+                    <div class="space-y-1.5 text-xs">
+                        <div class="flex justify-between text-slate-400">
+                            <span>Mantenimiento:</span>
+                            <span class="font-medium text-slate-200">${info.mantenimiento}</span>
+                        </div>
+                        <div class="flex justify-between text-slate-400">
+                            <span>Repuestos:</span>
+                            <span class="font-medium text-slate-200 truncate max-w-[120px]">${info.repuestos}</span>
+                        </div>
+                    </div>
+
+                    <p class="text-[11px] text-slate-500 italic bg-slate-950 p-2 rounded-xl border border-slate-800/80 truncate">
+                        "${info.observaciones || 'Sin observaciones'}"
+                    </p>
+                `;
+                container.appendChild(card);
+            }
+
+            // Render table history
+            const tbody = document.getElementById('tabla-prensas-body');
+            tbody.innerHTML = '';
+
+            prensasHistorial.forEach(h => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-800/40 transition';
+                tr.innerHTML = `
+                    <td class="p-3">${h.fechaHora}</td>
+                    <td class="p-3 font-bold text-amber-400">Prensa #${h.numPrensa}</td>
+                    <td class="p-3">${h.mantenimiento}</td>
+                    <td class="p-3 font-bold">${h.estado}</td>
+                    <td class="p-3 text-slate-300">${h.repuestos || '-'}</td>
+                    <td class="p-3 text-slate-400">${h.obs || '-'}</td>
+                    <td class="p-3 text-center">
+                        <button onclick="eliminarMantenimientoPrensa(${h.id})" class="p-1 bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded-lg transition">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        function guardarMantenimientoPrensa(e) {
+            e.preventDefault();
+            const numPrensa = parseInt(document.getElementById('prensa-numero').value);
+            const mantenimiento = document.getElementById('prensa-mantenimiento').value;
+            const estado = document.getElementById('prensa-estado').value;
+            const repuestos = document.getElementById('prensa-repuestos').value.trim();
+            const obs = document.getElementById('prensa-observaciones').value.trim();
+
+            const fechaHora = new Date().toLocaleString('es-AR');
+
+            prensasState[numPrensa] = {
+                estado,
+                mantenimiento,
+                repuestos: repuestos || 'Ninguno',
+                observaciones: obs || 'Ninguna'
+            };
+
+            const nuevoRegistro = {
+                id: Date.now(),
+                fechaHora,
+                numPrensa,
+                mantenimiento,
+                estado,
+                repuestos,
+                obs
+            };
+
+            prensasHistorial.unshift(nuevoRegistro);
+            guardarEnStorage(STORAGE_PRENSAS, { estado: prensasState, historial: prensasHistorial });
+
+            document.getElementById('prensa-repuestos').value = '';
+            document.getElementById('prensa-observaciones').value = '';
+
+            renderPrensas();
+            showToast('Prensa Actualizada', `Prensa #${numPrensa} configurada como ${estado}.`);
+        }
+
+        function eliminarMantenimientoPrensa(id) {
+            prensasHistorial = prensasHistorial.filter(h => h.id !== id);
+            guardarEnStorage(STORAGE_PRENSAS, { estado: prensasState, historial: prensasHistorial });
+            renderPrensas();
+        }
+
+        function guardarProduccionTurno(e) {
+            e.preventDefault();
+            const fecha = document.getElementById('prod-fecha').value;
+            const turno = document.getElementById('prod-turno').value;
+            const expeller = parseFloat(document.getElementById('prod-expeller').value) || 0;
+            const aceite = parseFloat(document.getElementById('prod-aceite').value) || 0;
+
+            // Fill internal tanks (2 x 1500L = 3000L capacity per full shift)
+            // Llenado automático progresivo de los 2 tanques internos
+            let aceiteRestante = aceite;
+
+            // Fill internal tank 1 up to 1500 L
+            const espacio1 = 1500 - tanquesState.interno1;
+            const agregar1 = Math.min(espacio1, aceiteRestante);
+            tanquesState.interno1 += agregar1;
+            aceiteRestante -= agregar1;
+
+            // Fill internal tank 2 up to 1500 L
+            const espacio2 = 1500 - tanquesState.interno2;
+            const agregar2 = Math.min(espacio2, aceiteRestante);
+            tanquesState.interno2 += agregar2;
+            aceiteRestante -= agregar2;
+
+            // Count filled tanks
+            let llenados = 0;
+            if (tanquesState.interno1 >= 1500) llenados++;
+            if (tanquesState.interno2 >= 1500) llenados++;
+
+            const nuevoTurno = {
+                id: Date.now(),
+                fecha,
+                turno,
+                expeller,
+                aceite,
+                llenados
+            };
+
+            produccionData.unshift(nuevoTurno);
+            guardarEnStorage(STORAGE_PRODUCCION, produccionData);
+            guardarEnStorage(STORAGE_TANQUES, tanquesState);
+
+            document.getElementById('prod-expeller').value = '';
+            document.getElementById('prod-aceite').value = '';
+
+            renderProduccion();
+            actualizarGraficoTanques();
+            showToast('Turno Guardado', `Registrados ${expeller.toLocaleString('es-AR')} kg Expeller y ${aceite.toLocaleString('es-AR')} L Aceite.`);
+        }
+
+        function actualizarGraficoTanques() {
+            // Internal Tank 1 (1500 L)
+            const pct1 = Math.min(100, Math.round((tanquesState.interno1 / 1500) * 100));
+            document.getElementById('tanque-int-1-fill').style.height = `${pct1}%`;
+            document.getElementById('tanque-int-1-litros').innerText = `${tanquesState.interno1.toLocaleString('es-AR')} L`;
+            document.getElementById('tanque-int-1-pct').innerText = `${pct1}% Lleno`;
+
+            // Internal Tank 2 (1500 L)
+            const pct2 = Math.min(100, Math.round((tanquesState.interno2 / 1500) * 100));
+            document.getElementById('tanque-int-2-fill').style.height = `${pct2}%`;
+            document.getElementById('tanque-int-2-litros').innerText = `${tanquesState.interno2.toLocaleString('es-AR')} L`;
+            document.getElementById('tanque-int-2-pct').innerText = `${pct2}% Lleno`;
+
+            // External Tank A (50,000 L)
+            const pctA = Math.min(100, Math.round((tanquesState.exteriorA / 50000) * 100));
+            document.getElementById('tanque-ext-a-fill').style.height = `${pctA}%`;
+            document.getElementById('tanque-ext-a-litros').innerText = `${tanquesState.exteriorA.toLocaleString('es-AR')} L`;
+            document.getElementById('tanque-ext-a-pct').innerText = `${pctA}% Capacidad`;
+
+            // External Tank B (50,000 L)
+            const pctB = Math.min(100, Math.round((tanquesState.exteriorB / 50000) * 100));
+            document.getElementById('tanque-ext-b-fill').style.height = `${pctB}%`;
+            document.getElementById('tanque-ext-b-litros').innerText = `${tanquesState.exteriorB.toLocaleString('es-AR')} L`;
+            document.getElementById('tanque-ext-b-pct').innerText = `${pctB}% Capacidad`;
+        }
+
+        function trasvasarAceiteAExteriores() {
+            const totalLitrosInternos = tanquesState.interno1 + tanquesState.interno2;
+
+            if (totalLitrosInternos <= 0) {
+                showToast('Tanques Vacíos', 'No hay aceite acumulado en los tanques internos para trasvasar.');
+                return;
+            }
+
+            let trasvasado = totalLitrosInternos;
+
+            // Transfer to External Tank A first (Cap 50,000L)
+            const espacioA = 50000 - tanquesState.exteriorA;
+            const aExteriorA = Math.min(espacioA, trasvasado);
+            tanquesState.exteriorA += aExteriorA;
+            trasvasado -= aExteriorA;
+
+            // Remaining to External Tank B (Cap 50,000L)
+            if (trasvasado > 0) {
+                const espacioB = 50000 - tanquesState.exteriorB;
+                const aExteriorB = Math.min(espacioB, trasvasado);
+                tanquesState.exteriorB += aExteriorB;
+            }
+
+            // Reset internal tanks
+            tanquesState.interno1 = 0;
+            tanquesState.interno2 = 0;
+
+            guardarEnStorage(STORAGE_TANQUES, tanquesState);
+            actualizarGraficoTanques();
+            showToast('Trasvasado Exitoso', `Se transfirieron ${totalLitrosInternos.toLocaleString('es-AR')} Litros a los tanques exteriores.`);
+        }
+
+        function renderProduccion() {
+            const tbody = document.getElementById('tabla-produccion-body');
+            tbody.innerHTML = '';
+
+            produccionData.forEach(p => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-800/40 transition';
+                tr.innerHTML = `
+                    <td class="p-3">${p.fecha}</td>
+                    <td class="p-3 font-semibold text-white">${p.turno}</td>
+                    <td class="p-3 font-bold text-emerald-400">${p.expeller.toLocaleString('es-AR')} kg</td>
+                    <td class="p-3 font-bold text-amber-400">${p.aceite.toLocaleString('es-AR')} L</td>
+                    <td class="p-3"><span class="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold text-[10px]">${p.llenados} / 2 Tanques</span></td>
+                    <td class="p-3 text-center">
+                        <button onclick="eliminarProduccion(${p.id})" class="p-1 bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded-lg transition">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        function eliminarProduccion(id) {
+            produccionData = produccionData.filter(p => p.id !== id);
+            guardarEnStorage(STORAGE_PRODUCCION, produccionData);
+            renderProduccion();
+        }
+
+        function inicializarResumenSelect() {
+            const select = document.getElementById('resumen-mes-select');
+            select.innerHTML = '';
+
+            const mesesSet = new Set();
+            const hoy = new Date();
+            const mesActualKey = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}`;
+            mesesSet.add(mesActualKey);
+
+            camionesData.forEach(c => {
+                if (c.fecha) mesesSet.add(c.fecha.substring(0, 7));
+            });
+
+            produccionData.forEach(p => {
+                if (p.fecha) mesesSet.add(p.fecha.substring(0, 7));
+            });
+
+            Array.from(mesesSet).sort().reverse().forEach(m => {
+                const [year, month] = m.split('-');
+                const dateObj = new Date(year, month - 1, 1);
+                const nombreMes = dateObj.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' });
+
+                const opt = document.createElement('option');
+                opt.value = m;
+                opt.innerText = nombreMes.charAt(0).toUpperCase() + nombreMes.slice(1);
+                select.appendChild(opt);
+            });
+        }
+
+        function renderResumenConsolidado() {
+            const mesSeleccionado = document.getElementById('resumen-mes-select').value || new Date().toISOString().substring(0, 7);
+
+            // Filter data for selected month
+            const camionesMes = camionesData.filter(c => c.fecha && c.fecha.startsWith(mesSeleccionado));
+            const produccionMes = produccionData.filter(p => p.fecha && p.fecha.startsWith(mesSeleccionado));
+
+            // KPIs
+            const totalSoja = camionesMes.reduce((sum, c) => sum + c.neto, 0);
+            const totalCamiones = camionesMes.length;
+            const totalExpeller = produccionMes.reduce((sum, p) => sum + p.expeller, 0);
+            const totalAceite = produccionMes.reduce((sum, p) => sum + p.aceite, 0);
+            const humProm = totalCamiones > 0 ? (camionesMes.reduce((sum, c) => sum + c.humedad, 0) / totalCamiones).toFixed(1) : '0';
+
+            document.getElementById('kpi-soja-recibida').innerText = `${totalSoja.toLocaleString('es-AR')} kg`;
+            document.getElementById('kpi-total-camiones').innerText = totalCamiones;
+            document.getElementById('kpi-expeller-total').innerText = `${totalExpeller.toLocaleString('es-AR')} kg`;
+            document.getElementById('kpi-aceite-total').innerText = `${totalAceite.toLocaleString('es-AR')} L`;
+            document.getElementById('kpi-humedad-promedio').innerText = `${humProm}%`;
+
+            // Daily Breakdown Table
+            const diasMap = {};
+
+            camionesMes.forEach(c => {
+                if (!diasMap[c.fecha]) {
+                    diasMap[c.fecha] = { fecha: c.fecha, camiones: 0, soja: 0, humedadSum: 0, expeller: 0, aceite: 0 };
+                }
+                diasMap[c.fecha].camiones++;
+                diasMap[c.fecha].soja += c.neto;
+                diasMap[c.fecha].humedadSum += c.humedad;
+            });
+
+            produccionMes.forEach(p => {
+                if (!diasMap[p.fecha]) {
+                    diasMap[p.fecha] = { fecha: p.fecha, camiones: 0, soja: 0, humedadSum: 0, expeller: 0, aceite: 0 };
+                }
+                diasMap[p.fecha].expeller += p.expeller;
+                diasMap[p.fecha].aceite += p.aceite;
+            });
+
+            const tbodyDiario = document.getElementById('tabla-resumen-diario-body');
+            tbodyDiario.innerHTML = '';
+
+            Object.values(diasMap).sort((a, b) => b.fecha.localeCompare(a.fecha)).forEach(d => {
+                const humMedia = d.camiones > 0 ? (d.humedadSum / d.camiones).toFixed(1) : '-';
+                const rendAceite = d.soja > 0 ? ((d.aceite / d.soja) * 100).toFixed(1) : '0';
+
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-800/40 transition';
+                tr.innerHTML = `
+                    <td class="p-3 font-bold text-white">${d.fecha}</td>
+                    <td class="p-3">${d.camiones}</td>
+                    <td class="p-3 font-semibold text-amber-400">${d.soja.toLocaleString('es-AR')}</td>
+                    <td class="p-3 text-sky-400">${humMedia}%</td>
+                    <td class="p-3 font-bold text-emerald-400">${d.expeller.toLocaleString('es-AR')}</td>
+                    <td class="p-3 font-bold text-amber-400">${d.aceite.toLocaleString('es-AR')}</td>
+                    <td class="p-3 text-emerald-300 font-bold">${rendAceite}%</td>
+                `;
+                tbodyDiario.appendChild(tr);
+            });
+
+            // Monthly Historical Table
+            const mesesMap = {};
+
+            camionesData.forEach(c => {
+                const mKey = c.fecha ? c.fecha.substring(0, 7) : 'S/D';
+                if (!mesesMap[mKey]) mesesMap[mKey] = { mes: mKey, camiones: 0, soja: 0, expeller: 0, aceite: 0 };
+                mesesMap[mKey].camiones++;
+                mesesMap[mKey].soja += c.neto;
+            });
+
+            produccionData.forEach(p => {
+                const mKey = p.fecha ? p.fecha.substring(0, 7) : 'S/D';
+                if (!mesesMap[mKey]) mesesMap[mKey] = { mes: mKey, camiones: 0, soja: 0, expeller: 0, aceite: 0 };
+                mesesMap[mKey].expeller += p.expeller;
+                mesesMap[mKey].aceite += p.aceite;
+            });
+
+            const tbodyMensual = document.getElementById('tabla-resumen-mensual-body');
+            tbodyMensual.innerHTML = '';
+
+            Object.values(mesesMap).sort((a, b) => b.mes.localeCompare(a.mes)).forEach(m => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-800/40 transition';
+                tr.innerHTML = `
+                    <td class="p-3 font-bold text-amber-400">${m.mes}</td>
+                    <td class="p-3">${m.camiones}</td>
+                    <td class="p-3 font-bold text-white">${m.soja.toLocaleString('es-AR')} kg</td>
+                    <td class="p-3 text-emerald-400 font-semibold">${m.expeller.toLocaleString('es-AR')} kg</td>
+                    <td class="p-3 text-amber-400 font-semibold">${m.aceite.toLocaleString('es-AR')} L</td>
+                `;
+                tbodyMensual.appendChild(tr);
+            });
+        }
+
+        function exportarCamionesCSV() {
+            let csv = 'Fecha,Patente,Empresa,Producto,Humedad,Peso Bruto,Tara,Peso Neto\n';
+            camionesData.forEach(c => {
+                csv += `"${c.fecha}","${c.patente}","${c.empresa}","${c.producto}",${c.humedad},${c.bruto},${c.tara},${c.neto}\n`;
+            });
+            descargarArchivo(csv, 'recepcion_camiones_soja.csv', 'text/csv');
+        }
+
+        function exportarResumenCSV() {
+            let csv = 'Fecha,Camiones,Soja Recibida (kg),Humedad Recepcion,Expeller (kg),Aceite (L)\n';
+            const rows = document.querySelectorAll('#tabla-resumen-diario-body tr');
+            rows.forEach(r => {
+                const cols = Array.from(r.querySelectorAll('td')).map(td => td.innerText.replace(/,/g, ''));
+                csv += cols.join(',') + '\n';
+            });
+            descargarArchivo(csv, 'resumen_diario_aceitera.csv', 'text/csv');
+        }
+
+        function descargarArchivo(contenido, nombreArchivo, mimeType) {
+            const blob = new Blob([contenido], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = nombreArchivo;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function showToast(titulo, mensaje) {
+            const toast = document.getElementById('toast-notification');
+            document.getElementById('toast-title').innerText = titulo;
+            document.getElementById('toast-message').innerText = mensaje;
+
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            toast.classList.add('translate-y-0', 'opacity-100');
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-0', 'opacity-100');
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3500);
+        }
+    </script>
+</body>
+</html>
