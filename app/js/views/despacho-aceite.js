@@ -55,7 +55,8 @@
   function actualizarNeto() {
     const n = neto() > 0 ? neto() : 0;
     $('#da-neto').textContent = fmt.kg(n);
-    $('#da-litros').textContent = `≈ ${fmt.entero(aLitros(n))} L (densidad ${String(densidad).replace('.', ',')} kg/L)`;
+    $('#da-litros').textContent = `≈ ${fmt.entero(aLitros(n))} L`;
+    $('#da-litros').title = `Con densidad ${String(densidad).replace('.', ',')} kg/L (se cambia en config.js)`;
   }
 
   SoyaCore.views = SoyaCore.views || {};
