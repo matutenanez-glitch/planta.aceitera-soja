@@ -1,0 +1,32 @@
+# Dependencias de Node (se instalan con `npm install`)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Compilación e instaladores (Electron / Inno Setup)
+dist/
+out/
+build/win/
+*.exe
+*.msi
+*.zip
+
+# Copias de seguridad y datos de la planta: NUNCA se suben al repo
+*.tmp
+*.bak
+backup_*.json
+soyacore_backup_*.json
+
+# Configuración local y claves privadas
+.env
+.env.local
+.vscode/
+.idea/
+
+# Archivos del sistema operativo
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# OJO: app/css/styles.css SÍ se versiona (la app la necesita para funcionar sin compilar).

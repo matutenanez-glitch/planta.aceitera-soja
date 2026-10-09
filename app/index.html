@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="es" class="h-full bg-slate-950 text-slate-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+    <title>SoyaCore OS · Planta Aceitera</title>
+
+    <!-- Todo es local: la app funciona sin internet. -->
+    <link rel="stylesheet" href="css/styles.css">
+
+    <!-- Scripts: "defer" los descarga en paralelo y los ejecuta en orden, cuando el HTML ya está listo. -->
+    <script src="js/config.js" defer></script>
+    <script src="js/icons.js" defer></script>
+    <script src="js/ui.js" defer></script>
+    <script src="js/store.js" defer></script>
+    <script src="js/graficos.js" defer></script>
+    <script src="js/views/recepcion.js" defer></script>
+    <script src="js/views/secadora.js" defer></script>
+    <script src="js/views/produccion.js" defer></script>
+    <script src="js/views/aceite.js" defer></script>
+    <script src="js/views/despacho-aceite.js" defer></script>
+    <script src="js/views/mantenimiento.js" defer></script>
+    <script src="js/views/equipos.js" defer></script>
+    <script src="js/views/resumen.js" defer></script>
+    <script src="js/app.js" defer></script>
+</head>
+<body class="flex h-full overflow-hidden bg-radial-[at_top_right] from-slate-900 via-slate-950 to-black font-sans antialiased">
+
+    <!-- ============================================================
+         1. BARRA LATERAL: marca, navegación y estado de los datos
+         ============================================================ -->
+    <aside class="glass-panel z-20 flex w-64 shrink-0 flex-col overflow-hidden border-r border-slate-800">
+        <div class="flex h-20 shrink-0 items-center gap-3 border-b border-slate-800/60 px-6">
+            <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-linear-to-br from-brand-400 to-brand-600 shadow-[0_0_15px_rgba(245,158,11,0.3)]">
+                <i data-lucide="droplet" class="h-6 w-6 text-slate-900"></i>
+            </div>
+            <div>
+                <h1 class="glow-text text-lg font-bold tracking-tight text-white">SoyaCore <span class="font-black text-brand-400">OS</span></h1>
+                <p class="text-[10px] tracking-widest text-slate-400 uppercase">Planta Aceitera</p>
+            </div>
+        </div>
+
+        <nav id="nav" aria-label="Secciones" class="flex flex-1 flex-col gap-1 overflow-y-auto px-3 py-4 text-sm font-medium text-slate-400">
+            <p class="nav-group mt-2">Logística</p>
+            <button type="button" class="nav-item" data-view="recepcion" aria-current="page">
+                <i data-lucide="truck" class="h-4 w-4"></i> Recepción Camiones
+            </button>
+            <button type="button" class="nav-item" data-view="despacho">
+                <i data-lucide="package-open" class="h-4 w-4"></i> Despacho Expeller
+            </button>
+            <button type="button" class="nav-item" data-view="despachoAceite">
+                <i data-lucide="fuel" class="h-4 w-4"></i> Despacho Aceite
+            </button>
+
+            <p class="nav-group">Proceso Operativo</p>
+            <button type="button" class="nav-item" data-view="secadora">
+                <i data-lucide="thermometer-sun" class="h-4 w-4"></i> Secadora
+            </button>
+            <button type="button" class="nav-item" data-view="produccion">
+                <i data-lucide="factory" class="h-4 w-4"></i> Producción (Turnos)
+            </button>
+            <button type="button" class="nav-item" data-view="aceite">
+                <i data-lucide="droplet" class="h-4 w-4"></i> Aceite por Operador
+            </button>
+
+            <p class="nav-group">Mantenimiento</p>
+            <button type="button" class="nav-item" data-view="equipos">
+                <i data-lucide="gauge" class="h-4 w-4"></i> Estado de Equipos
+            </button>
+            <button type="button" class="nav-item" data-view="mantenimiento">
+                <i data-lucide="wrench" class="h-4 w-4"></i> Mantenimientos
+            </button>
+
+            <p class="nav-group">Gestión</p>
+            <button type="button" class="nav-item" data-view="resumen">
+                <i data-lucide="calendar-days" class="h-4 w-4"></i> Resumen (día y mes)
+            </button>
+        </nav>
+
+        <!-- Estado real de los datos + backup -->
+        <section aria-labelledby="datos-titulo" class="shrink-0 border-t border-slate-800/60 bg-slate-900/50 p-4">
+            <h2 id="datos-titulo" class="flex items-center gap-2 text-xs font-semibold text-slate-300">
+                <i data-lucide="hard-drive" class="h-3.5 w-3.5 text-slate-400"></i> Datos en este equipo
+            </h2>
+            <p id="datos-resumen" class="mt-1 text-[11px] text-slate-500">—</p>
+            <p id="datos-backup" class="mt-0.5 text-[11px] text-slate-500">—</p>
+            <div class="mt-3 grid grid-cols-2 gap-2">
+                <button type="button" id="btn-backup-exportar" class="btn-sm">
+                    <i data-lucide="download" class="h-3.5 w-3.5"></i> Exportar
+                </button>
+                <button type="button" id="btn-backup-importar" class="btn-sm">
+                    <i data-lucide="upload" class="h-3.5 w-3.5"></i> Importar
+                </button>
+            </div>
+            <input type="file" id="input-backup" accept=".json,application/json" hidden>
+        </section>
+    </aside>
+
+    <!-- ============================================================
+         2. CONTENIDO PRINCIPAL: encabezado + una sección por vista
+         Cada formulario sirve para cargar y para editar: al tocar el lápiz
+         de una fila, el formulario pasa a "modo edición".
+         ============================================================ -->
+    <main class="relative flex flex-1 flex-col overflow-y-auto">
+        <header class="glass-panel sticky top-0 z-10 flex h-20 shrink-0 items-center justify-between border-b border-slate-800 px-8">
+            <h2 id="page-title" tabindex="-1" class="flex items-center gap-3 text-xl font-semibold text-slate-100 focus:outline-hidden">
+                <i id="page-icon" data-lucide="truck" class="text-brand-400"></i>
+                <span id="page-name">Recepción de Camiones</span>
+            </h2>
+            <div class="flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900 px-3 py-1.5 text-slate-300 shadow-inner">
+                <span class="h-2 w-2 animate-pulse rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]" aria-hidden="true"></span>
+                <span id="app-version" class="text-xs font-medium">v—</span>
+            </div>
+        </header>
+
+        <div id="alertas" class="space-y-3 px-8 pt-6 empty:hidden"></div>
+
+        <div class="flex-1 p-8">
+
+            <!-- 2.1 RECEPCIÓN DE CAMIONES ------------------------------------------ -->
+            <section id="view-recepcion" class="view" aria-label="Recepción de camiones">
+                <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                    <div class="glass-panel col-span-1 rounded-2xl p-6">
+                        <h3 class="mb-4 flex items-center gap-2 font-semibold text-brand-400"><i data-lucide="clipboard-list" class="h-4 w-4"></i> <span data-form-titulo>Nuevo Ingreso</span></h3>
+                        <form id="form-ingreso" class="space-y-4 text-sm" autocomplete="off">
+                            <div>
+                                <label for="in-empresa" class="field-label">Nombre de la Empresa</label>
+                                <input type="text" id="in-empresa" required maxlength="120" class="field">
+                            </div>
+                            <div>
+                                <label for="in-conductor" class="field-label">Nombre del Conductor</label>
+                                <input type="text" id="in-conductor" required maxlength="120" class="field">
+                            </div>
+                            <div>
+                                <label for="in-carga" class="field-label font-semibold text-brand-400">Carga / Qué transporta</label>
+                                <input type="text" id="in-carga" value="Soja" required maxlength="60" placeholder="Ej: Soja, Girasol, Insumos..." aria-describedby="in-carga-ayuda" class="field border-brand-500/50 bg-slate-900 text-slate-100 shadow-inner focus:border-brand-400">
+                                <p id="in-carga-ayuda" class="field-hint">Solo la carga marcada como "Soja" irá a los totales de la secadora.</p>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label for="in-bruto" class="field-label">Peso Bruto (kg)</label>
+                                    <input type="number" id="in-bruto" required min="1" step="1" inputmode="numeric" class="field">
+                                </div>
+                                <div>
+                                    <label for="in-tara" class="field-label">Tara (kg)</label>
+                                    <input type="number" id="in-tara" required min="0" step="1" inputmode="numeric" class="field">
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-between rounded-xl border border-brand-500/30 bg-brand-900/20 p-3 shadow-inner">
+                                <span class="text-xs font-medium tracking-wider text-brand-400 uppercase">Peso Neto Calculado:</span>
+                                <output id="in-neto" for="in-bruto in-tara" class="text-xl font-bold text-white">0 kg</output>
+                            </div>
+                            <div data-campo-fecha hidden>
+                                <label for="in-fecha" class="field-label">Fecha y hora del registro</label>
+                                <input type="datetime-local" id="in-fecha" class="field">
+                            </div>
+                            <div class="mt-2 flex gap-2">
+                                <button type="submit" class="btn flex-1 bg-brand-500 text-slate-900 shadow-[0_0_15px_rgba(245,158,11,0.2)] hover:bg-brand-400">Registrar Ingreso</button>
+                                <button type="button" data-cancelar hidden class="btn-cancelar">Cancelar</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="glass-panel col-span-1 flex flex-col overflow-hidden rounded-2xl p-6 lg:col-span-2">
+                        <h3 class="mb-4 font-semibold text-slate-200">Últimos Ingresos Registrados</h3>
+                        <div class="flex-1 overflow-x-auto">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Fecha/Hora</th>
+                                        <th scope="col">Empresa</th>
+                                        <th scope="col" class="text-brand-300">Carga</th>
+                                        <th scope="col">Conductor</th>
+                                        <th scope="col" class="num text-brand-400">Neto (kg)</th>
+                                        <th scope="col" class="w-px"><span class="sr-only">Acciones</span></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbody-ingresos"></tbody>
+                            </table>
+                        </div>
+                        <p id="caption-ingresos" class="table-caption"></p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 2.2 DESPACHO DE EXPELLER ------------------------------------------- -->
+            <section id="view-despacho" class="view" aria-label="Despacho de expeller" hidden>
+                <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                    <div class="glass-panel col-span-1 rounded-2xl p-6">
+                        <h3 class="mb-4 flex items-center gap-2 font-semibold text-emerald-400"><i data-lucide="package-check" class="h-4 w-4"></i> <span data-form-titulo>Nuevo Despacho</span></h3>
+                        <form id="form-despacho" class="space-y-4 text-sm" autocomplete="off">
+                            <div>
+                                <label for="out-empresa" class="field-label">Empresa Destino / Cliente</label>
+                                <input type="text" id="out-empresa" required maxlength="120" class="field focus:border-emerald-500">
+                            </div>
+                            <div>
+                                <label for="out-conductor" class="field-label">Nombre del Conductor</label>
+                                <input type="text" id="out-conductor" required maxlength="120" class="field focus:border-emerald-500">
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label for="out-bruto" class="field-label">Peso Bruto (kg)</label>
+                                    <input type="number" id="out-bruto" required min="1" step="1" inputmode="numeric" class="field focus:border-emerald-500">
+                                </div>
+                                <div>
+                                    <label for="out-tara" class="field-label">Tara (kg)</label>
+                                    <input type="number" id="out-tara" required min="0" step="1" inputmode="numeric" class="field focus:border-emerald-500">
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-between rounded-xl border border-emerald-500/30 bg-emerald-900/20 p-3 shadow-inner">
+                                <span class="text-xs font-medium tracking-wider text-emerald-400 uppercase">Expeller Extraído:</span>
+                                <output id="out-neto" for="out-bruto out-tara" class="text-xl font-bold text-white">0 kg</output>
+                            </div>
+                            <div data-campo-fecha hidden>
+                                <label for="out-fecha" class="field-label">Fecha y hora del registro</label>
+                                <input type="datetime-local" id="out-fecha" class="field focus:border-emerald-500">
+                            </div>
+                            <div class="mt-2 flex gap-2">
+                                <button type="submit" class="btn flex-1 bg-emerald-500 text-slate-900 hover:bg-emerald-400">Registrar Despacho</button>
+                                <button type="button" data-cancelar hidden class="btn-cancelar">Cancelar</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="glass-panel col-span-1 flex flex-col overflow-hidden rounded-2xl p-6 lg:col-span-2">
+                        <h3 class="mb-4 font-semibold text-slate-200">Últimos Despachos (Expeller)</h3>
+                        <div class="flex-1 overflow-x-auto">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Fecha/Hora</th>
+                                        <th scope="col">Cliente</th>
+                                        <th scope="col">Conductor</th>
+                                        <th scope="col" class="num text-emerald-400">Neto (kg)</th>
+                                        <th scope="col" class="w-px"><span class="sr-only">Acciones</span></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbody-despachos"></tbody>
+                            </table>
+                        </div>
+                        <p id="caption-despachos" class="table-caption"></p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 2.3 DESPACHO DE ACEITE (camiones pesados en balanza) ------------------ -->
+            <section id="view-despachoAceite" class="view" aria-label="Despacho de aceite" hidden>
+                <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                    <div class="glass-panel col-span-1 rounded-2xl p-6">
+                        <h3 class="mb-4 flex items-center gap-2 font-semibold text-purple-400"><i data-lucide="fuel" class="h-4 w-4"></i> <span data-form-titulo>Nuevo Despacho de Aceite</span></h3>
+                        <form id="form-despacho-aceite" class="space-y-4 text-sm" autocomplete="off">
+                            <div>
+                                <label for="da-empresa" class="field-label">Empresa Destino / Cliente</label>
+                                <input type="text" id="da-empresa" required maxlength="120" class="field focus:border-purple-500">
+                            </div>
+                            <div>
+                                <label for="da-conductor" class="field-label">Nombre del Conductor</label>
+                                <input type="text" id="da-conductor" required maxlength="120" class="field focus:border-purple-500">
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label for="da-bruto" class="field-label">Peso Bruto (kg)</label>
+                                    <input type="number" id="da-bruto" required min="1" step="1" inputmode="numeric" class="field focus:border-purple-500">
+                                </div>
+                                <div>
+                                    <label for="da-tara" class="field-label">Tara (kg)</label>
+                                    <input type="number" id="da-tara" required min="0" step="1" inputmode="numeric" class="field focus:border-purple-500">
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-between rounded-xl border border-purple-500/30 bg-purple-900/20 p-3 shadow-inner">
+                                <span class="text-xs font-medium tracking-wider text-purple-300 uppercase">Aceite cargado:</span>
+                                <span class="text-right">
+                                    <output id="da-neto" for="da-bruto da-tara" class="block text-xl font-bold text-white">0 kg</output>
+                                    <output id="da-litros" for="da-bruto da-tara" class="block text-[11px] text-purple-200">(≈ 0 L)</output>
+                                </span>
+                            </div>
+                            <div data-campo-fecha hidden>
+                                <label for="da-fecha" class="field-label">Fecha y hora del registro</label>
+                                <input type="datetime-local" id="da-fecha" class="field focus:border-purple-500">
+                            </div>
+                            <div class="mt-2 flex gap-2">
+                                <button type="submit" class="btn flex-1 bg-purple-500 text-white hover:bg-purple-400">Registrar Despacho</button>
+                                <button type="button" data-cancelar hidden class="btn-cancelar">Cancelar</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="glass-panel col-span-1 flex flex-col overflow-hidden rounded-2xl p-6 lg:col-span-2">
+                        <h3 class="mb-4 font-semibold text-slate-200">Últimos Despachos de Aceite</h3>
+                        <div class="flex-1 overflow-x-auto">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Fecha/Hora</th>
+                                        <th scope="col">Cliente</th>
+                                        <th scope="col">Conductor</th>
+                                        <th scope="col" class="num text-purple-400">Neto (kg)</th>
+                                        <th scope="col" class="num text-slate-500">(≈ litros)</th>
+                                        <th scope="col" class="w-px"><span class="sr-only">Acciones</span></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbody-despachosAceite"></tbody>
+                            </table>
+                        </div>
+                        <p id="caption-despachosAceite" class="table-caption"></p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 2.4 SECADORA ------------------------------------------------------- -->
+            <section id="view-secadora" class="view" aria-label="Secadora y tomas de laboratorio" hidden>
+                <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                    <div class="glass-panel col-span-1 flex items-center justify-between rounded-2xl border-brand-500/20 bg-linear-to-r from-brand-900/20 to-transparent p-6 lg:col-span-3">
+                        <div>
+                            <h3 class="text-lg font-bold text-slate-200">Soja Acumulada para Secado (Hoy)</h3>
+                            <p class="mt-1 text-xs text-slate-400">Suma automática de los camiones ingresados hoy con carga etiquetada como "Soja".</p>
+                        </div>
+                        <output id="secadora-total-kg" class="glow-text text-right text-4xl font-black text-brand-400">0 kg</output>
+                    </div>
+
+                    <div class="glass-panel col-span-1 rounded-2xl p-6">
+                        <h3 class="mb-4 flex items-center gap-2 font-semibold text-orange-400"><i data-lucide="flame" class="h-4 w-4"></i> <span data-form-titulo>Toma de Muestras (Lab)</span></h3>
+                        <form id="form-secadora" class="space-y-4 text-sm" autocomplete="off">
+                            <div>
+                                <label for="sec-empresa" class="field-label">Empresa Proveedora (Soja)</label>
+                                <select id="sec-empresa" class="field focus:border-orange-500"></select>
+                            </div>
+                            <div>
+                                <label for="sec-humedad-camion" class="field-label">Humedad Inicial de Camión (%)</label>
+                                <input type="number" id="sec-humedad-camion" required min="0" max="100" step="0.1" inputmode="decimal" class="field focus:border-orange-500">
+                            </div>
+                            <div class="space-y-3 border-t border-slate-800/60 pt-4">
+                                <div>
+                                    <label for="sec-humedad-caliente" class="field-label flex items-center gap-1 text-xs font-semibold tracking-wider text-orange-300 uppercase"><i data-lucide="sun" class="h-3 w-3"></i> Humedad en Caliente (%)</label>
+                                    <input type="number" id="sec-humedad-caliente" required min="0" max="100" step="0.1" inputmode="decimal" placeholder="Toma actual" class="field focus:border-orange-500">
+                                </div>
+                                <div>
+                                    <label for="sec-humedad-frio" class="field-label flex items-center gap-1 text-xs font-semibold tracking-wider text-blue-300 uppercase"><i data-lucide="snowflake" class="h-3 w-3"></i> Humedad en Frío (%)</label>
+                                    <input type="number" id="sec-humedad-frio" required min="0" max="100" step="0.1" inputmode="decimal" placeholder="Toma +30 minutos" class="field focus:border-blue-500">
+                                </div>
+                            </div>
+                            <div data-campo-fecha hidden>
+                                <label for="sec-fecha" class="field-label">Fecha y hora del registro</label>
+                                <input type="datetime-local" id="sec-fecha" class="field focus:border-orange-500">
+                            </div>
+                            <div class="mt-2 flex gap-2">
+                                <button type="submit" class="btn flex-1 bg-orange-600 text-white hover:bg-orange-500">Registrar Muestras</button>
+                                <button type="button" data-cancelar hidden class="btn-cancelar">Cancelar</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="glass-panel col-span-1 flex flex-col overflow-hidden rounded-2xl p-6 lg:col-span-2">
+                        <h3 class="mb-4 font-semibold text-slate-200">Registro Histórico (Toma cada 1 Hora)</h3>
+                        <div class="flex-1 overflow-x-auto">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Hora</th>
+                                        <th scope="col">Empresa</th>
+                                        <th scope="col" class="num">H. Inicial</th>
+                                        <th scope="col" class="num text-orange-400">H. Caliente</th>
+                                        <th scope="col" class="num text-blue-400">H. Frío</th>
+                                        <th scope="col" class="w-px"><span class="sr-only">Acciones</span></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbody-secadora"></tbody>
+                            </table>
+                        </div>
+                        <p id="caption-secadora" class="table-caption"></p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 2.5 PRODUCCIÓN POR TURNOS ------------------------------------------ -->
+            <section id="view-produccion" class="view" aria-label="Producción por turnos" hidden>
+                <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                    <div class="glass-panel rounded-2xl p-6">
+                        <h3 class="mb-4 flex items-center gap-2 font-semibold text-brand-400"><i data-lucide="clock" class="h-4 w-4"></i> <span data-form-titulo>Registro de Turno (Extracción)</span></h3>
+                        <form id="form-produccion" class="space-y-4 text-sm" autocomplete="off">
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label for="prod-turno" class="field-label">Turno Operativo</label>
+                                    <select id="prod-turno" required class="field"></select>
+                                </div>
+                                <div>
+                                    <label for="prod-operador" class="field-label">Operador</label>
+                                    <input type="text" id="prod-operador" required maxlength="60" list="lista-operadores" placeholder="Nombre y apellido" class="field">
+                                    <datalist id="lista-operadores"></datalist>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label for="prod-expeller" class="field-label">Expeller Producido (kg)</label>
+                                    <input type="number" id="prod-expeller" required min="0" step="1" inputmode="numeric" class="field focus:border-emerald-500">
+                                </div>
+                                <div>
+                                    <label for="prod-aceite" class="field-label">Aceite Extraído (Lts)</label>
+                                    <input type="number" id="prod-aceite" required min="0" step="1" inputmode="numeric" class="field">
+                                </div>
+                            </div>
+                            <p class="mt-2 flex items-center gap-1.5 rounded-lg border border-slate-700/50 bg-slate-800/50 p-3 text-xs text-slate-400">
+                                <i data-lucide="info" class="h-3 w-3 text-blue-400"></i> Lo que cargues acá se ve en "Aceite por Operador" y en el Resumen.
+                            </p>
+                            <div data-campo-fecha hidden>
+                                <label for="prod-fecha" class="field-label">Fecha y hora del cierre</label>
+                                <input type="datetime-local" id="prod-fecha" class="field">
+                            </div>
+                            <div class="mt-4 flex gap-2">
+                                <button type="submit" class="btn flex-1 bg-brand-500 text-slate-900 hover:bg-brand-400">Guardar Cierre de Turno</button>
+                                <button type="button" data-cancelar hidden class="btn-cancelar">Cancelar</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="glass-panel flex flex-col overflow-hidden rounded-2xl p-6">
+                        <h3 class="mb-4 font-semibold text-slate-200">Historial de Turnos</h3>
+                        <div class="flex-1 overflow-x-auto">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Fecha</th>
+                                        <th scope="col">Turno</th>
+                                        <th scope="col">Operador</th>
+                                        <th scope="col" class="num text-emerald-400">Expeller (kg)</th>
+                                        <th scope="col" class="num text-brand-400">Aceite (Lts)</th>
+                                        <th scope="col" class="w-px"><span class="sr-only">Acciones</span></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbody-produccion"></tbody>
+                            </table>
+                        </div>
+                        <p id="caption-produccion" class="table-caption"></p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 2.6 ACEITE POR OPERADOR Y TURNO ----------------------------------- -->
+            <section id="view-aceite" class="view" aria-label="Aceite por operador y turno" hidden>
+                <div class="mb-6 flex flex-wrap items-center gap-2" role="group" aria-label="Período">
+                    <span class="mr-1 text-[11px] font-bold tracking-wider text-slate-500 uppercase">Período</span>
+                    <button type="button" class="seg" data-periodo="7d" aria-pressed="true">Últimos 7 días</button>
+                    <button type="button" class="seg" data-periodo="30d" aria-pressed="false">Últimos 30 días</button>
+                    <button type="button" class="seg" data-periodo="mes" aria-pressed="false">Este mes</button>
+                    <button type="button" class="seg" data-periodo="mesAnterior" aria-pressed="false">Mes anterior</button>
+                    <span id="ac-periodo-rango" class="ml-auto text-xs text-slate-500"></span>
+                </div>
+
+                <div id="ac-kpis" class="mb-6 grid grid-cols-2 gap-4 xl:grid-cols-4"></div>
+
+                <div class="mb-6 grid grid-cols-1 gap-6 2xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+                    <div class="glass-panel min-w-0 rounded-2xl p-6">
+                        <h3 class="font-semibold text-slate-200">Por operador</h3>
+                        <p class="mb-4 mt-1 text-[11px] text-slate-500">Ordenado por el aceite total que pasó en el período.</p>
+                        <div class="overflow-x-auto">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Operador</th>
+                                        <th scope="col" class="num">Turnos</th>
+                                        <th scope="col" class="min-w-44">Aceite total (L)</th>
+                                        <th scope="col" class="num">Prom. por turno (L)</th>
+                                        <th scope="col" class="num">Expeller (kg)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="ac-operadores"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="glass-panel min-w-0 rounded-2xl p-6">
+                        <h3 class="font-semibold text-slate-200">Por turno</h3>
+                        <p class="mb-4 mt-1 text-[11px] text-slate-500">Cuánto rinde cada franja horaria.</p>
+                        <div class="overflow-x-auto">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Turno</th>
+                                        <th scope="col" class="num">Cierres</th>
+                                        <th scope="col" class="num">Aceite total (L)</th>
+                                        <th scope="col" class="num">Promedio (L)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="ac-turnos"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass-panel rounded-2xl p-6">
+                    <h3 class="font-semibold text-slate-200">Turno por turno</h3>
+                    <p class="mb-4 mt-1 text-[11px] text-slate-500">Quién estuvo en cada turno y cuánto aceite pasó. Para corregir un dato, editalo en Producción (Turnos).</p>
+                    <div class="overflow-x-auto">
+                        <table class="data-table">
+                            <thead id="ac-grilla-cabecera"></thead>
+                            <tbody id="ac-grilla"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 2.7 ESTADO DE EQUIPOS (tablero) ------------------------------------ -->
+            <section id="view-equipos" class="view" aria-label="Estado de equipos" hidden>
+                <div class="mb-6 flex flex-wrap items-center gap-2" role="group" aria-label="Filtrar por estado">
+                    <span class="mr-1 text-[11px] font-bold tracking-wider text-slate-500 uppercase">Mostrar</span>
+                    <div id="eq-filtros" class="flex flex-wrap gap-2"></div>
+                </div>
+
+                <div class="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_300px]">
+                    <aside class="glass-panel h-fit rounded-2xl p-5 xl:sticky xl:top-24 xl:order-last" aria-labelledby="eq-sabado-titulo">
+                        <h3 id="eq-sabado-titulo" class="flex items-center gap-2 font-semibold text-slate-200"><i data-lucide="calendar-days" class="h-4 w-4 text-brand-400"></i> <span id="eq-sabado-fecha">Para el sábado</span></h3>
+                        <p class="mt-1 text-[11px] text-slate-500">La producción suele cortar el viernes a las 22:00. Equipos para revisar:</p>
+                        <ul id="eq-pendientes" class="mt-4 space-y-2 text-sm"></ul>
+                        <h4 class="mt-6 text-[11px] font-bold tracking-wider text-slate-500 uppercase">Más tiempo sin mantenimiento</h4>
+                        <ul id="eq-antiguos" class="mt-2 space-y-1.5 text-sm"></ul>
+                    </aside>
+                    <div id="eq-grupos" class="min-w-0 space-y-8"></div>
+                </div>
+
+                <dialog id="eq-dialogo" class="dialogo" aria-labelledby="eq-dialogo-titulo">
+                    <div class="flex items-start justify-between gap-4 border-b border-slate-800 p-5">
+                        <div>
+                            <h3 id="eq-dialogo-titulo" class="text-lg font-bold text-white"></h3>
+                            <p id="eq-dialogo-sub" class="mt-1 text-xs text-slate-400"></p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span id="eq-dialogo-estado" class="chip"></span>
+                            <button type="button" id="eq-dialogo-cerrar" class="btn-icon" aria-label="Cerrar"><i data-lucide="x" class="h-4 w-4"></i></button>
+                        </div>
+                    </div>
+                    <div class="max-h-[55vh] overflow-y-auto p-5">
+                        <h4 class="mb-3 text-[11px] font-bold tracking-wider text-slate-500 uppercase">Historial de intervenciones</h4>
+                        <ol id="eq-dialogo-historial" class="space-y-3 text-sm"></ol>
+                    </div>
+                    <div class="flex justify-end gap-2 border-t border-slate-800 p-4">
+                        <button type="button" id="eq-dialogo-registrar" class="btn w-auto bg-brand-500 px-4 text-slate-900 hover:bg-brand-400"><i data-lucide="wrench" class="h-4 w-4"></i> Registrar mantenimiento</button>
+                    </div>
+                </dialog>
+            </section>
+
+            <!-- 2.8 REGISTRO DE MANTENIMIENTO --------------------------------------- -->
+            <section id="view-mantenimiento" class="view" aria-label="Mantenimiento mecánico" hidden>
+                <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                    <div class="glass-panel col-span-1 rounded-2xl p-6">
+                        <h3 class="mb-4 flex items-center gap-2 font-semibold text-slate-200"><i data-lucide="wrench" class="h-4 w-4 text-slate-400"></i> <span data-form-titulo>Registro de Mantenimiento</span></h3>
+                        <form id="form-mantenimiento" class="space-y-4 text-sm" autocomplete="off">
+                            <div>
+                                <label for="mant-tipo" class="field-label">Sector / Tipo</label>
+                                <select id="mant-tipo" required class="field"></select>
+                            </div>
+                            <div>
+                                <label for="mant-equipo" class="field-label">Equipo Específico</label>
+                                <select id="mant-equipo" required class="field"></select>
+                            </div>
+                            <div>
+                                <label for="mant-tarea" class="field-label">Tarea Realizada / Tipo</label>
+                                <input type="text" id="mant-tarea" required maxlength="200" placeholder="Ej: Cambio de aceite, Ajuste correas, Preventivo" class="field">
+                            </div>
+                            <div>
+                                <label for="mant-piezas" class="field-label">Piezas / Repuestos Utilizados</label>
+                                <input type="text" id="mant-piezas" maxlength="200" placeholder="Ej: Anillos, Sinfín, Rodamiento, Ninguno" class="field">
+                            </div>
+                            <div>
+                                <label for="mant-estado" class="field-label">Cómo quedó el equipo</label>
+                                <select id="mant-estado" required class="field"></select>
+                            </div>
+                            <div>
+                                <label for="mant-obs" class="field-label">Observaciones</label>
+                                <textarea id="mant-obs" rows="2" maxlength="500" placeholder="Estado general..." class="field"></textarea>
+                            </div>
+                            <div data-campo-fecha hidden>
+                                <label for="mant-fecha" class="field-label">Fecha y hora del registro</label>
+                                <input type="datetime-local" id="mant-fecha" class="field">
+                            </div>
+                            <div class="flex gap-2">
+                                <button type="submit" class="btn flex-1 border border-slate-600 bg-slate-700 text-white hover:bg-slate-600">Registrar Orden</button>
+                                <button type="button" data-cancelar hidden class="btn-cancelar">Cancelar</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="glass-panel col-span-1 flex flex-col rounded-2xl p-6 lg:col-span-2">
+                        <h3 class="mb-4 font-semibold text-slate-200">Historial de Intervenciones Mecánicas</h3>
+                        <div class="flex-1 overflow-x-auto">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Fecha</th>
+                                        <th scope="col">Equipo</th>
+                                        <th scope="col">Tarea</th>
+                                        <th scope="col">Repuestos</th>
+                                        <th scope="col">Quedó</th>
+                                        <th scope="col">Observaciones</th>
+                                        <th scope="col" class="w-px"><span class="sr-only">Acciones</span></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbody-mantenimiento"></tbody>
+                            </table>
+                        </div>
+                        <p id="caption-mantenimiento" class="table-caption"></p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 2.9 RESUMEN POR DÍA Y POR MES ----------------------------------------- -->
+            <section id="view-resumen" class="view" aria-label="Resumen" hidden>
+                <div class="mb-6 flex flex-wrap items-center gap-3">
+                    <div role="tablist" aria-label="Tipo de resumen" class="flex gap-2">
+                        <button type="button" role="tab" class="seg" id="res-tab-mes" aria-selected="true" aria-controls="res-mes">Por mes</button>
+                        <button type="button" role="tab" class="seg" id="res-tab-dia" aria-selected="false" aria-controls="res-dia">Por día</button>
+                    </div>
+                    <div id="res-ctrl-mes" class="ml-auto flex items-center gap-2">
+                        <button type="button" class="btn-icon border-slate-700" data-mover-mes="-1" aria-label="Mes anterior"><i data-lucide="chevron-left" class="h-4 w-4"></i></button>
+                        <label for="resumen-mes" class="sr-only">Mes</label>
+                        <select id="resumen-mes" class="rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-semibold text-slate-200 shadow-inner outline-hidden focus:border-brand-500"></select>
+                        <button type="button" class="btn-icon border-slate-700" data-mover-mes="1" aria-label="Mes siguiente"><i data-lucide="chevron-right" class="h-4 w-4"></i></button>
+                    </div>
+                    <div id="res-ctrl-dia" class="ml-auto flex items-center gap-2" hidden>
+                        <button type="button" class="btn-icon border-slate-700" data-mover-dia="-1" aria-label="Día anterior"><i data-lucide="chevron-left" class="h-4 w-4"></i></button>
+                        <label for="resumen-dia" class="sr-only">Día</label>
+                        <input type="date" id="resumen-dia" class="rounded-lg border border-slate-700 bg-slate-900 px-3 py-1.5 text-sm font-semibold text-slate-200 shadow-inner outline-hidden focus:border-brand-500">
+                        <button type="button" class="btn-icon border-slate-700" data-mover-dia="1" aria-label="Día siguiente"><i data-lucide="chevron-right" class="h-4 w-4"></i></button>
+                        <button type="button" id="res-hoy" class="seg">Hoy</button>
+                    </div>
+                </div>
+
+                <!-- Por mes -->
+                <div id="res-mes" role="tabpanel" aria-labelledby="res-tab-mes">
+                    <div id="res-mes-kpis" class="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-3 2xl:grid-cols-6"></div>
+                    <div class="mb-6 grid grid-cols-1 gap-6 xl:grid-cols-3">
+                        <div class="glass-panel min-w-0 rounded-2xl p-6">
+                            <h4 class="mb-4 font-semibold text-slate-200">Soja ingresada por día <span class="text-xs font-normal text-slate-500">(kg)</span></h4>
+                            <div id="res-graf-soja"></div>
+                        </div>
+                        <div class="glass-panel min-w-0 rounded-2xl p-6">
+                            <h4 class="mb-4 font-semibold text-slate-200">Aceite producido por día <span class="text-xs font-normal text-slate-500">(litros)</span></h4>
+                            <div id="res-graf-aceite"></div>
+                        </div>
+                        <div class="glass-panel min-w-0 rounded-2xl p-6">
+                            <h4 class="mb-4 font-semibold text-slate-200">Expeller por día <span class="text-xs font-normal text-slate-500">(kg)</span></h4>
+                            <div id="res-graf-expeller"></div>
+                        </div>
+                    </div>
+                    <div class="glass-panel rounded-2xl p-6">
+                        <h4 class="mb-1 font-semibold text-slate-200">Día por día</h4>
+                        <p class="mb-4 text-[11px] text-slate-500">Tocá un día (en la tabla o en los gráficos) para ver el detalle.</p>
+                        <div class="overflow-x-auto">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Día</th>
+                                        <th scope="col" class="num">Soja (kg)</th>
+                                        <th scope="col" class="num">Aceite prod. (L)</th>
+                                        <th scope="col" class="num">Aceite desp. (kg)</th>
+                                        <th scope="col" class="num">Expeller prod. (kg)</th>
+                                        <th scope="col" class="num">Expeller desp. (kg)</th>
+                                        <th scope="col" class="num">Hum. inicial prom.</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbody-resumen"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Por día -->
+                <div id="res-dia" role="tabpanel" aria-labelledby="res-tab-dia" hidden>
+                    <h3 id="res-dia-titulo" class="mb-4 text-lg font-bold text-white"></h3>
+                    <div id="res-dia-kpis" class="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-3 2xl:grid-cols-6"></div>
+                    <div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
+                        <div class="glass-panel min-w-0 rounded-2xl p-6">
+                            <h4 class="mb-4 font-semibold text-slate-200">Turnos</h4>
+                            <div class="overflow-x-auto"><table class="data-table"><thead><tr><th scope="col">Cierre</th><th scope="col">Turno</th><th scope="col">Operador</th><th scope="col" class="num">Expeller (kg)</th><th scope="col" class="num">Aceite (L)</th></tr></thead><tbody id="res-dia-turnos"></tbody></table></div>
+                        </div>
+                        <div class="glass-panel min-w-0 rounded-2xl p-6">
+                            <h4 class="mb-4 font-semibold text-slate-200">Camiones</h4>
+                            <div class="overflow-x-auto"><table class="data-table"><thead><tr><th scope="col">Hora</th><th scope="col">Movimiento</th><th scope="col">Empresa</th><th scope="col" class="num">Cantidad</th></tr></thead><tbody id="res-dia-camiones"></tbody></table></div>
+                        </div>
+                        <div class="glass-panel min-w-0 rounded-2xl p-6">
+                            <h4 class="mb-4 font-semibold text-slate-200">Secadora</h4>
+                            <div class="overflow-x-auto"><table class="data-table"><thead><tr><th scope="col">Hora</th><th scope="col">Empresa</th><th scope="col" class="num">H. Inicial</th><th scope="col" class="num">H. Caliente</th><th scope="col" class="num">H. Frío</th></tr></thead><tbody id="res-dia-secadora"></tbody></table></div>
+                        </div>
+                        <div class="glass-panel min-w-0 rounded-2xl p-6">
+                            <h4 class="mb-4 font-semibold text-slate-200">Mantenimiento</h4>
+                            <div class="overflow-x-auto"><table class="data-table"><thead><tr><th scope="col">Hora</th><th scope="col">Equipo</th><th scope="col">Tarea</th><th scope="col">Quedó</th></tr></thead><tbody id="res-dia-mant"></tbody></table></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </div>
+    </main>
+
+    <!-- ============================================================
+         3. NOTIFICACIONES (fuera del flujo; los lectores de pantalla las anuncian)
+         ============================================================ -->
+    <div id="toast-container" role="status" aria-live="polite" class="fixed right-5 bottom-5 z-50 flex flex-col gap-2.5"></div>
+
+</body>
+</html>
