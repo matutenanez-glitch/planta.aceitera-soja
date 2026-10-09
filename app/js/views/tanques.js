@@ -1,5 +1,9 @@
 /*
- * Vista: Circuito de Aceite.
+ * Vista: Aceite.
+ *
+ * Arriba, lo que más importa: cuánto aceite se produjo y cuánto se despachó
+ * en el período (balance + gráficos por día). Abajo, dónde está el aceite
+ * ahora (circuito de tanques), los movimientos y la medición manual.
  *
  * No se carga nada a mano: todo sale de los cierres de turno, los despachos
  * de aceite y las mediciones (ver js/circuito-aceite.js). Se recalcula al
@@ -9,7 +13,7 @@
 (function (SoyaCore) {
   'use strict';
 
-  const { $, el, fmt, fillSelect, tablaRegistros, editorFormulario, guardarRegistro } = SoyaCore.ui;
+  const { $, $$, el, fmt, fillSelect, tablaRegistros, editorFormulario, guardarRegistro } = SoyaCore.ui;
   const store = SoyaCore.store;
   const cfg = SoyaCore.config.tanques;
   const icons = SoyaCore.icons;
@@ -149,6 +153,7 @@
 
   function pintar() {
     const ahora = Date.now();
+    pintarBalance(ahora);
     const r = calcular();
 
     // Tanques
@@ -213,6 +218,108 @@
     if (!formTocado && !editor.id) cargarNivelesEnFormulario(r);
   }
 
+  // ---------- Período, balance y gráficos ----------
+  const DIA = 86400000;
+  const DIAS_SEMANA = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+  const inicioDelDia = (ms) => { const d = new Date(ms); return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime(); };
+  const ddmm = (ms) => { const d = new Date(ms); return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}`; };
+  let periodo = '7d';
+
+  /** Rango [inicio, fin) del período y el comienzo de cada día. */
+  function rango(clave, ahora) {
+    const hoy = new Date(ahora);
+    let inicio;
+    let fin = ahora + 1;
+    if (clave === '30d') inicio = inicioDelDia(ahora) - 29 * DIA;
+    else if (clave === 'mes') inicio = new Date(hoy.getFullYear(), hoy.getMonth(), 1).getTime();
+    else if (clave === 'mesAnterior') {
+      inicio = new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1).getTime();
+      fin = new Date(hoy.getFullYear(), hoy.getMonth(), 1).getTime();
+    } else inicio = inicioDelDia(ahora) - 6 * DIA;
+    const dias = [];
+    for (const d = new Date(inicio); d.getTime() < fin; d.setDate(d.getDate() + 1)) dias.push(d.getTime());
+    return { inicio, fin, dias };
+  }
+
+  function datosCircuito() {
+    return { produccion: store.todos('produccion'), despachosAceite: store.todos('despachosAceite'), mediciones: store.todos('mediciones') };
+  }
+  const stockEn = (datos, t) => SoyaCore.circuito.simular(cfg, datos, t).totales.planta;
+
+  function sumarEntre(lista, campo, a, b) {
+    const parse = SoyaCore.circuito.parseFecha;
+    let total = 0, cantidad = 0;
+    lista.forEach((r) => {
+      const t = parse(r.fecha);
+      if (t >= a && t < b) { total += Number(r[campo]) || 0; cantidad++; }
+    });
+    return { total, cantidad };
+  }
+
+  function tarjetaBalance(titulo, valor, sub, opciones) {
+    const o = opciones || {};
+    const punto = o.color ? el('span', { className: 'inline-block h-2.5 w-2.5 rounded-sm' }) : null;
+    if (punto) punto.style.background = o.color;
+    return el('div', { className: 'min-w-40 flex-1 rounded-xl border p-4 ' + (o.final ? 'border-brand-500/40 bg-brand-500/10' : 'border-slate-800 bg-slate-900/50') }, [
+      el('p', { className: 'flex items-center gap-2 text-[11px] font-bold tracking-wide text-slate-400 uppercase' }, [punto, el('span', { text: titulo })]),
+      el('p', { className: 'mt-1 text-2xl font-black ' + (o.final ? 'text-brand-300' : 'text-white'), text: valor }),
+      el('p', { className: 'mt-1 text-[11px] text-slate-500', text: sub }),
+    ]);
+  }
+  const operador = (signo) => el('span', { className: 'self-center px-1 text-2xl font-light text-slate-500', text: signo, attrs: { 'aria-hidden': 'true' } });
+
+  function pintarBalance(ahora) {
+    const datos = datosCircuito();
+    const { inicio, fin, dias } = rango(periodo, ahora);
+    const hastaAhora = fin > ahora;
+    const prod = sumarEntre(datos.produccion, 'aceite', inicio, fin);
+    const desp = sumarEntre(datos.despachosAceite, 'litros', inicio, fin);
+    const stockInicio = stockEn(datos, inicio - 1);
+    const stockFin = stockEn(datos, hastaAhora ? ahora : fin - 1);
+    const ajuste = stockFin - (stockInicio + prod.total - desp.total);
+
+    $('#ac-periodo-rango').textContent = `${ddmm(inicio)} al ${hastaAhora ? 'hoy' : ddmm(fin - 1)}`;
+
+    const L = (v) => fmt.litros(v);
+    const partes = [
+      tarjetaBalance('Había', L(stockInicio), `al ${ddmm(inicio)} a las 00:00`),
+      operador('+'),
+      tarjetaBalance('Producido', L(prod.total), `${prod.cantidad} cierre${prod.cantidad === 1 ? '' : 's'} de turno`, { color: 'var(--color-viz-producido)' }),
+      operador('−'),
+      tarjetaBalance('Despachado', L(desp.total), `${desp.cantidad} camión${desp.cantidad === 1 ? '' : 'es'} de aceite`, { color: 'var(--color-viz-despachado)' }),
+    ];
+    if (Math.abs(ajuste) >= 1) {
+      // La diferencia sale de una medición cargada en el período, o de un despacho mayor
+      // a lo que el cálculo tenía en ese tanque (el cálculo no puede bajar de 0).
+      const huboMedicion = sumarEntre(datos.mediciones, 'id', inicio, fin).cantidad > 0;
+      partes.push(operador(ajuste > 0 ? '+' : '−'), huboMedicion
+        ? tarjetaBalance('Ajuste por medición', L(Math.abs(ajuste)), ajuste > 0 ? 'la medición dio más que el cálculo' : 'la medición dio menos que el cálculo')
+        : tarjetaBalance('Diferencia de cálculo', L(Math.abs(ajuste)), 'un camión cargó más de lo calculado: conviene cargar una medición'));
+    }
+    partes.push(operador('='), tarjetaBalance('Queda en planta', L(stockFin), hastaAhora ? 'ahora' : `al ${ddmm(fin - 1)}`, { final: true }));
+    partes.push(el('p', { className: 'sr-only', text: `Había ${L(stockInicio)}, se produjeron ${L(prod.total)}, se despacharon ${L(desp.total)} y quedan ${L(stockFin)}.` }));
+    $('#ac-balance').replaceChildren(...partes);
+
+    // Gráficos por día
+    const categorias = dias.map((d) => ({ etiqueta: pad(new Date(d).getDate()), titulo: `${DIAS_SEMANA[new Date(d).getDay()]} ${ddmm(d)}` }));
+    const porDia = (lista, campo) => dias.map((d) => sumarEntre(lista, campo, d, d + DIA).total);
+    SoyaCore.graficos.columnas($('#ac-graf-diario'), {
+      titulo: 'Aceite producido y despachado por día',
+      categorias,
+      unidad: 'L',
+      series: [
+        { nombre: 'Producido', color: 'var(--color-viz-producido)', valores: porDia(datos.produccion, 'aceite') },
+        { nombre: 'Despachado', color: 'var(--color-viz-despachado)', valores: porDia(datos.despachosAceite, 'litros') },
+      ],
+    });
+    SoyaCore.graficos.linea($('#ac-graf-stock'), {
+      titulo: 'Aceite en planta al cierre de cada día',
+      categorias,
+      unidad: 'L',
+      serie: { nombre: 'En planta', color: 'var(--color-viz-nivel)', valores: dias.map((d) => stockEn(datos, Math.min(d + DIA - 1, ahora))) },
+    });
+  }
+
   // ---------- Medición manual ----------
   let ultimoCalculo = null;
   let formTocado = false;
@@ -273,6 +380,12 @@
     init() {
       construir();
       construirFormularioMedicion();
+
+      $$('#view-tanques [data-periodo]').forEach((b) => b.addEventListener('click', () => {
+        periodo = b.dataset.periodo;
+        $$('#view-tanques [data-periodo]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+        pintarBalance(Date.now());
+      }));
 
       const tabla = tablaRegistros({
         tbody: $('#tbody-mediciones'),

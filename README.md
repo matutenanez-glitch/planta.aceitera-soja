@@ -2,7 +2,7 @@
 
 App de escritorio para registrar la operación diaria de una planta aceitera:
 recepción de camiones, despacho de expeller y de aceite, secadora, producción por turnos,
-circuito de aceite (tanques), mantenimiento y resumen mensual.
+aceite (producido, despachado y tanques), estado de equipos, mantenimiento y resumen por día y por mes.
 Todos los registros se pueden editar y borrar.
 
 Funciona **sin internet** y guarda los datos **en la PC donde se usa**.
@@ -26,6 +26,7 @@ app/                     ← la aplicación (esto es lo que se instala en la pla
   js/ui.js               utilidades de pantalla: formato, tablas, avisos
   js/store.js            guardado de datos, edición, migración y backup
   js/circuito-aceite.js  cálculo del circuito de aceite (sin pantalla, con pruebas)
+  js/graficos.js         gráficos de columnas y de línea en SVG (sin librerías)
   js/views/*.js          una vista por archivo (recepción, secadora, tanques…)
   js/app.js              arranque y navegación
 tests/                   pruebas automáticas del circuito de aceite (npm test)
@@ -35,9 +36,15 @@ scripts/sincronizar_github.bat   sube los cambios a GitHub (Windows)
 archivo/                 versiones anteriores, solo como referencia
 ```
 
-## Circuito de aceite
+## Aceite
 
-La vista **Circuito de Aceite** no se carga a mano: se calcula sola con los **cierres de turno**,
+Arriba se ve **cuánto se produjo y cuánto se despachó** en el período elegido (7 días, 30 días, este mes o el anterior), como un balance:
+
+> Había + Producido − Despachado = Queda en planta
+
+Debajo hay dos gráficos: lo producido y despachado por día, y el aceite en planta al cierre de cada día.
+
+Más abajo, **¿Dónde está el aceite ahora?** muestra el circuito de tanques. No se carga a mano: se calcula solo con los **cierres de turno**,
 los **despachos de aceite** y las **mediciones**. Reproduce cómo trabaja la planta:
 
 1. **Producción y bateas.** El aceite del turno cae a las bateas y la bomba lo manda al interior que se está llenando. Se asume que entró parejo durante las 8 h del turno.
@@ -50,6 +57,19 @@ los **despachos de aceite** y las **mediciones**. Reproduce cómo trabaja la pla
 4. **Grandes (3 × 30.000 L).** Se llenan en orden y bajan con cada **Despacho de Aceite**.
 
 Si el cálculo se desvía de la realidad, o el primer día que los tanques no están vacíos, usá **Cargar medición**: el cálculo sigue desde esos niveles. Las capacidades y reglas se cambian en `app/js/config.js` → `tanques`.
+
+## Estado de equipos
+
+- Hay una tarjeta por equipo: prensas, extrusores, reductores y bombas.
+- Cada tarjeta muestra cómo quedó el equipo en su último mantenimiento (*Operativo*, *Con observaciones* o *Fuera de servicio*), qué se hizo y hace cuánto.
+- Al tocar una tarjeta se ve el historial y se puede registrar un mantenimiento para ese equipo.
+- El panel **Para el sábado** junta los equipos con observaciones o fuera de servicio, y los que llevan más tiempo sin mantenimiento. La producción suele cortar el viernes a las 22:00 y el mantenimiento se hace el sábado.
+
+## Resumen
+
+- **Por mes:** totales con la variación contra el mes anterior, gráficos por día (soja, aceite y expeller) y la tabla día por día.
+- **Por día:** turnos, camiones, secadora y mantenimientos de ese día.
+- Al tocar un día, en la tabla o en un gráfico, se abre su detalle.
 
 ## Editar y borrar registros
 
@@ -100,6 +120,12 @@ npm test             # prueba el cálculo del circuito de aceite
 
 ## Historial
 
+- **2.11.0**:
+  - El aceite se muestra como balance (había + producido − despachado = queda), con gráficos por día.
+  - Pantalla nueva **Estado de Equipos**, con tarjetas por equipo, historial y pendientes para el sábado.
+  - Los mantenimientos registran cómo quedó el equipo.
+  - Se agregan 4 bombas.
+  - El resumen se divide en **por mes** (con comparación y gráficos) y **por día**.
 - **2.10.0**:
   - Circuito de aceite calculado con las reglas reales de la planta: interiores alternados con reposo, exteriores en ronda y vaciado de a uno a los tanques grandes.
   - Despacho de aceite, para registrar los camiones que vacían los tanques grandes.

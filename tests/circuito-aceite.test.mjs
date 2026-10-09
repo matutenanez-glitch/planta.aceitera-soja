@@ -139,3 +139,9 @@ test('un turno que termina después de una medición solo suma lo producido desp
   const mismo = simular(CFG, { ...datos, produccion: [turno('2026-10-05 12:00', 1600)] }, t('2026-10-05 13:00'));
   assert.equal(Math.round(mismo.totales.planta), 0);
 });
+
+test('se puede calcular el estado en un momento pasado (ignora lo posterior)', () => {
+  const datos = { produccion: turnos(20, 1600) };
+  const antes = simular(CFG, datos, t('2026-10-02 01:00')); // solo 2 cierres: 01/10 16:00 y 02/10 00:00
+  assert.equal(Math.round(antes.totales.planta), 3200);
+});

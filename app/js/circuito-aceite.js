@@ -221,7 +221,7 @@
     (datos.despachosAceite || []).forEach((r) => eventos.push({ t: parseFecha(r.fecha), orden: 1, tipo: 'despacho', r }));
     (datos.mediciones || []).forEach((r) => eventos.push({ t: parseFecha(r.fecha), orden: 2, tipo: 'medicion', r }));
     eventos
-      .filter((e) => Number.isFinite(e.t))
+      .filter((e) => Number.isFinite(e.t) && e.t <= ahora) // permite ver el estado en cualquier momento pasado
       .sort((a, b) => a.t - b.t || a.orden - b.orden)
       .forEach((e) => {
         if (e.tipo === 'medicion') {

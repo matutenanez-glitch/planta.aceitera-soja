@@ -29,6 +29,8 @@
     if (foco) $('#page-title').focus();
   }
 
+  SoyaCore.navegar = (vista) => mostrar(vista, { foco: false });
+
   $('#nav').addEventListener('click', (e) => {
     const boton = e.target.closest('[data-view]');
     if (boton) mostrar(boton.dataset.view, { foco: true });

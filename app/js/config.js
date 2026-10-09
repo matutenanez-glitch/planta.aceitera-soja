@@ -7,7 +7,7 @@
   'use strict';
 
   SoyaCore.config = Object.freeze({
-    version: '2.10.0',
+    version: '2.11.0',
     locale: 'es-AR',
 
     /** Cuántas filas muestran las tablas de "últimos registros". */
@@ -21,10 +21,11 @@
       despacho:      { titulo: 'Despacho de Expeller',              icono: 'package-open' },
       secadora:      { titulo: 'Secadora y Tomas de Laboratorio',   icono: 'thermometer-sun' },
       produccion:    { titulo: 'Producción Operativa (Extracción)', icono: 'factory' },
-      tanques:       { titulo: 'Circuito de Aceite',                icono: 'database' },
+      tanques:       { titulo: 'Aceite: producido, despachado y tanques', icono: 'droplet' },
       despachoAceite:{ titulo: 'Despacho de Aceite',                icono: 'fuel' },
-      mantenimiento: { titulo: 'Mantenimiento Mecánico',            icono: 'wrench' },
-      resumen:       { titulo: 'Dashboard Consolidado',             icono: 'chart-column' },
+      equipos:       { titulo: 'Estado de Equipos',                 icono: 'gauge' },
+      mantenimiento: { titulo: 'Registro de Mantenimiento',         icono: 'wrench' },
+      resumen:       { titulo: 'Resumen por día y por mes',         icono: 'chart-column' },
     },
 
     turnos: [
@@ -52,6 +53,20 @@
           'Motor/Reductor Agitador Tanque 1', 'Motor/Reductor Agitador Tanque 2',
         ],
       },
+      Bomba: {
+        etiqueta: 'Bombas',
+        lista: ['Bomba 1', 'Bomba 2', 'Bomba 3', 'Bomba 4'],
+      },
+    },
+
+    /** Día en que se hace el mantenimiento (0 = domingo … 6 = sábado). La producción suele cortar el viernes a las 22:00. */
+    diaMantenimiento: 6,
+
+    /** Cómo puede quedar un equipo después de una intervención. */
+    estadosEquipo: {
+      operativo:     { etiqueta: 'Operativo' },
+      observaciones: { etiqueta: 'Con observaciones' },
+      fuera:         { etiqueta: 'Fuera de servicio' },
     },
 
     /**

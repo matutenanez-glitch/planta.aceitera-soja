@@ -6,12 +6,16 @@
 
   const { $, el, fillSelect, tablaRegistros, editorFormulario, guardarRegistro } = SoyaCore.ui;
   const equipos = SoyaCore.config.equipos;
+  const estados = SoyaCore.config.estadosEquipo;
+  /** Los registros anteriores a la v2.11 no tenían estado: se toman como operativos. */
+  const estadoDe = (r) => (r && estados[r.estado] ? r.estado : 'operativo');
 
   const COLUMNAS = [
     { key: 'fecha' },
     { key: 'equipo' },
     { key: 'tarea', className: 'max-w-56 truncate' },
     { key: 'repuestos', className: 'max-w-44 truncate' },
+    { key: 'estado', format: (_, r) => estados[estadoDe(r)].etiqueta },
     { key: 'observaciones', className: 'max-w-56 truncate' },
   ];
 
@@ -27,6 +31,7 @@
   SoyaCore.views.mantenimiento = {
     init() {
       fillSelect($('#mant-tipo'), Object.entries(equipos).map(([value, def]) => ({ value, label: def.etiqueta })));
+      fillSelect($('#mant-estado'), Object.entries(estados).map(([value, def]) => ({ value, label: def.etiqueta })), 'operativo');
       $('#mant-tipo').addEventListener('change', actualizarEquipos);
       actualizarEquipos();
 
@@ -51,6 +56,7 @@
           $('#mant-tarea').value = r.tarea || '';
           $('#mant-piezas').value = r.repuestos === 'Ninguno' ? '' : r.repuestos || '';
           $('#mant-obs').value = r.observaciones || '';
+          $('#mant-estado').value = estadoDe(r);
         },
         alTerminar: actualizarEquipos,
       });
@@ -62,6 +68,7 @@
           equipo: $('#mant-equipo').value,
           tarea: $('#mant-tarea').value.trim(),
           repuestos: $('#mant-piezas').value.trim() || 'Ninguno',
+          estado: $('#mant-estado').value,
           observaciones: $('#mant-obs').value.trim(),
         }, { nuevo: 'Registro de mantenimiento guardado.' });
       });
@@ -70,5 +77,13 @@
       tabla.dibujar();
     },
     refresh() {},
+    /** Prepara el formulario para un equipo (lo usa el tablero de Estado de Equipos). */
+    nuevoPara(tipo, equipo) {
+      $('#mant-tipo').value = tipo;
+      actualizarEquipos();
+      $('#mant-equipo').value = equipo;
+      $('#mant-tarea').focus();
+    },
+    estadoDe,
   };
 })(window.SoyaCore = window.SoyaCore || {});

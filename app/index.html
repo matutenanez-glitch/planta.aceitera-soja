@@ -15,12 +15,14 @@
     <script src="js/ui.js" defer></script>
     <script src="js/store.js" defer></script>
     <script src="js/circuito-aceite.js" defer></script>
+    <script src="js/graficos.js" defer></script>
     <script src="js/views/recepcion.js" defer></script>
     <script src="js/views/secadora.js" defer></script>
     <script src="js/views/produccion.js" defer></script>
     <script src="js/views/tanques.js" defer></script>
     <script src="js/views/despacho-aceite.js" defer></script>
     <script src="js/views/mantenimiento.js" defer></script>
+    <script src="js/views/equipos.js" defer></script>
     <script src="js/views/resumen.js" defer></script>
     <script src="js/app.js" defer></script>
 </head>
@@ -60,17 +62,20 @@
                 <i data-lucide="factory" class="h-4 w-4"></i> Producción (Turnos)
             </button>
             <button type="button" class="nav-item" data-view="tanques">
-                <i data-lucide="database" class="h-4 w-4"></i> Circuito de Aceite
+                <i data-lucide="droplet" class="h-4 w-4"></i> Aceite
             </button>
 
             <p class="nav-group">Mantenimiento</p>
+            <button type="button" class="nav-item" data-view="equipos">
+                <i data-lucide="gauge" class="h-4 w-4"></i> Estado de Equipos
+            </button>
             <button type="button" class="nav-item" data-view="mantenimiento">
-                <i data-lucide="wrench" class="h-4 w-4"></i> Prensas &amp; Reductores
+                <i data-lucide="wrench" class="h-4 w-4"></i> Mantenimientos
             </button>
 
             <p class="nav-group">Gestión</p>
             <button type="button" class="nav-item" data-view="resumen">
-                <i data-lucide="calendar-days" class="h-4 w-4"></i> Calendario / Resumen
+                <i data-lucide="calendar-days" class="h-4 w-4"></i> Resumen (día y mes)
             </button>
         </nav>
 
@@ -419,8 +424,37 @@
             </section>
 
             <!-- 2.6 CIRCUITO DE ACEITE (se calcula solo con los cierres de turno) -- -->
-            <section id="view-tanques" class="view" aria-label="Circuito de aceite" hidden>
-                <!-- Resumen -->
+            <section id="view-tanques" class="view" aria-label="Aceite" hidden>
+                <!-- Período: afecta al balance y a los gráficos -->
+                <div class="mb-6 flex flex-wrap items-center gap-2" role="group" aria-label="Período">
+                    <span class="mr-1 text-[11px] font-bold tracking-wider text-slate-500 uppercase">Período</span>
+                    <button type="button" class="seg" data-periodo="7d" aria-pressed="true">Últimos 7 días</button>
+                    <button type="button" class="seg" data-periodo="30d" aria-pressed="false">Últimos 30 días</button>
+                    <button type="button" class="seg" data-periodo="mes" aria-pressed="false">Este mes</button>
+                    <button type="button" class="seg" data-periodo="mesAnterior" aria-pressed="false">Mes anterior</button>
+                    <span id="ac-periodo-rango" class="ml-auto text-xs text-slate-500"></span>
+                </div>
+
+                <!-- Balance: cuánto se generó y cuánto se despachó -->
+                <div class="glass-panel mb-6 rounded-2xl p-6">
+                    <h3 class="font-semibold text-slate-200">Balance de aceite</h3>
+                    <p class="mb-5 mt-1 text-[11px] text-slate-500">Lo que había, más lo que se produjo, menos lo que salió en camiones, es lo que queda en planta.</p>
+                    <div id="ac-balance" class="flex flex-wrap items-stretch gap-2"></div>
+                </div>
+
+                <div class="mb-8 grid grid-cols-1 gap-6 xl:grid-cols-2">
+                    <div class="glass-panel min-w-0 rounded-2xl p-6">
+                        <h3 class="mb-4 font-semibold text-slate-200">Producido y despachado por día <span class="text-xs font-normal text-slate-500">(litros)</span></h3>
+                        <div id="ac-graf-diario"></div>
+                    </div>
+                    <div class="glass-panel min-w-0 rounded-2xl p-6">
+                        <h3 class="mb-4 font-semibold text-slate-200">Aceite en planta al cierre de cada día <span class="text-xs font-normal text-slate-500">(litros)</span></h3>
+                        <div id="ac-graf-stock"></div>
+                    </div>
+                </div>
+
+                <h3 class="mb-4 flex items-center gap-2 text-lg font-bold text-white"><i data-lucide="database" class="h-5 w-5 text-brand-400"></i> ¿Dónde está el aceite ahora?</h3>
+                <!-- Estado actual -->
                 <div class="mb-6 grid grid-cols-2 gap-4 xl:grid-cols-4">
                     <div class="glass-panel rounded-xl border-l-4 border-l-brand-500 p-5">
                         <p class="text-xs font-bold tracking-wide text-slate-400 uppercase">Aceite en planta</p>
@@ -509,7 +543,46 @@
                 </div>
             </section>
 
-            <!-- 2.7 MANTENIMIENTO -------------------------------------------------- -->
+            <!-- 2.7 ESTADO DE EQUIPOS (tablero) ------------------------------------ -->
+            <section id="view-equipos" class="view" aria-label="Estado de equipos" hidden>
+                <div class="mb-6 flex flex-wrap items-center gap-2" role="group" aria-label="Filtrar por estado">
+                    <span class="mr-1 text-[11px] font-bold tracking-wider text-slate-500 uppercase">Mostrar</span>
+                    <div id="eq-filtros" class="flex flex-wrap gap-2"></div>
+                </div>
+
+                <div class="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_300px]">
+                    <aside class="glass-panel h-fit rounded-2xl p-5 xl:sticky xl:top-24 xl:order-last" aria-labelledby="eq-sabado-titulo">
+                        <h3 id="eq-sabado-titulo" class="flex items-center gap-2 font-semibold text-slate-200"><i data-lucide="calendar-days" class="h-4 w-4 text-brand-400"></i> <span id="eq-sabado-fecha">Para el sábado</span></h3>
+                        <p class="mt-1 text-[11px] text-slate-500">La producción suele cortar el viernes a las 22:00. Equipos para revisar:</p>
+                        <ul id="eq-pendientes" class="mt-4 space-y-2 text-sm"></ul>
+                        <h4 class="mt-6 text-[11px] font-bold tracking-wider text-slate-500 uppercase">Más tiempo sin mantenimiento</h4>
+                        <ul id="eq-antiguos" class="mt-2 space-y-1.5 text-sm"></ul>
+                    </aside>
+                    <div id="eq-grupos" class="min-w-0 space-y-8"></div>
+                </div>
+
+                <dialog id="eq-dialogo" class="dialogo" aria-labelledby="eq-dialogo-titulo">
+                    <div class="flex items-start justify-between gap-4 border-b border-slate-800 p-5">
+                        <div>
+                            <h3 id="eq-dialogo-titulo" class="text-lg font-bold text-white"></h3>
+                            <p id="eq-dialogo-sub" class="mt-1 text-xs text-slate-400"></p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span id="eq-dialogo-estado" class="chip"></span>
+                            <button type="button" id="eq-dialogo-cerrar" class="btn-icon" aria-label="Cerrar"><i data-lucide="x" class="h-4 w-4"></i></button>
+                        </div>
+                    </div>
+                    <div class="max-h-[55vh] overflow-y-auto p-5">
+                        <h4 class="mb-3 text-[11px] font-bold tracking-wider text-slate-500 uppercase">Historial de intervenciones</h4>
+                        <ol id="eq-dialogo-historial" class="space-y-3 text-sm"></ol>
+                    </div>
+                    <div class="flex justify-end gap-2 border-t border-slate-800 p-4">
+                        <button type="button" id="eq-dialogo-registrar" class="btn w-auto bg-brand-500 px-4 text-slate-900 hover:bg-brand-400"><i data-lucide="wrench" class="h-4 w-4"></i> Registrar mantenimiento</button>
+                    </div>
+                </dialog>
+            </section>
+
+            <!-- 2.8 REGISTRO DE MANTENIMIENTO --------------------------------------- -->
             <section id="view-mantenimiento" class="view" aria-label="Mantenimiento mecánico" hidden>
                 <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
                     <div class="glass-panel col-span-1 rounded-2xl p-6">
@@ -530,6 +603,10 @@
                             <div>
                                 <label for="mant-piezas" class="field-label">Piezas / Repuestos Utilizados</label>
                                 <input type="text" id="mant-piezas" maxlength="200" placeholder="Ej: Anillos, Sinfín, Rodamiento, Ninguno" class="field">
+                            </div>
+                            <div>
+                                <label for="mant-estado" class="field-label">Cómo quedó el equipo</label>
+                                <select id="mant-estado" required class="field"></select>
                             </div>
                             <div>
                                 <label for="mant-obs" class="field-label">Observaciones</label>
@@ -556,6 +633,7 @@
                                         <th scope="col">Equipo</th>
                                         <th scope="col">Tarea</th>
                                         <th scope="col">Repuestos</th>
+                                        <th scope="col">Quedó</th>
                                         <th scope="col">Observaciones</th>
                                         <th scope="col" class="w-px"><span class="sr-only">Acciones</span></th>
                                     </tr>
@@ -568,49 +646,88 @@
                 </div>
             </section>
 
-            <!-- 2.8 RESUMEN / DASHBOARD -------------------------------------------- -->
-            <section id="view-resumen" class="view" aria-label="Resumen mensual" hidden>
-                <div class="mb-6 flex items-center justify-between">
-                    <h3 class="flex items-center gap-2 text-lg font-bold text-white"><i data-lucide="chart-column" class="text-brand-400"></i> Análisis Consolidado</h3>
-                    <label for="resumen-mes" class="sr-only">Mes</label>
-                    <select id="resumen-mes" class="rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-semibold text-slate-200 shadow-inner outline-hidden focus:border-brand-500"></select>
-                </div>
-
-                <div class="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
-                    <div class="glass-panel rounded-xl border-l-4 border-l-slate-400 p-5">
-                        <p class="text-xs font-bold tracking-wide text-slate-400 uppercase">Soja Ingresada</p>
-                        <output id="kpi-soja" class="mt-1 block text-2xl font-black text-white">0 tn</output>
+            <!-- 2.9 RESUMEN POR DÍA Y POR MES ----------------------------------------- -->
+            <section id="view-resumen" class="view" aria-label="Resumen" hidden>
+                <div class="mb-6 flex flex-wrap items-center gap-3">
+                    <div role="tablist" aria-label="Tipo de resumen" class="flex gap-2">
+                        <button type="button" role="tab" class="seg" id="res-tab-mes" aria-selected="true" aria-controls="res-mes">Por mes</button>
+                        <button type="button" role="tab" class="seg" id="res-tab-dia" aria-selected="false" aria-controls="res-dia">Por día</button>
                     </div>
-                    <div class="glass-panel rounded-xl border-l-4 border-l-emerald-500 p-5">
-                        <p class="text-xs font-bold tracking-wide text-slate-400 uppercase">Expeller Prod.</p>
-                        <output id="kpi-expeller" class="mt-1 block text-2xl font-black text-emerald-400">0 tn</output>
+                    <div id="res-ctrl-mes" class="ml-auto flex items-center gap-2">
+                        <button type="button" class="btn-icon border-slate-700" data-mover-mes="-1" aria-label="Mes anterior"><i data-lucide="chevron-left" class="h-4 w-4"></i></button>
+                        <label for="resumen-mes" class="sr-only">Mes</label>
+                        <select id="resumen-mes" class="rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-semibold text-slate-200 shadow-inner outline-hidden focus:border-brand-500"></select>
+                        <button type="button" class="btn-icon border-slate-700" data-mover-mes="1" aria-label="Mes siguiente"><i data-lucide="chevron-right" class="h-4 w-4"></i></button>
                     </div>
-                    <div class="glass-panel rounded-xl border-l-4 border-l-brand-500 p-5">
-                        <p class="text-xs font-bold tracking-wide text-slate-400 uppercase">Aceite Extraído</p>
-                        <output id="kpi-aceite" class="glow-text mt-1 block text-2xl font-black text-brand-400">0 Lts</output>
-                    </div>
-                    <div class="glass-panel rounded-xl border-l-4 border-l-blue-500 p-5">
-                        <p class="text-xs font-bold tracking-wide text-slate-400 uppercase">Camiones (In/Out)</p>
-                        <output id="kpi-camiones" class="mt-1 block text-2xl font-black text-blue-400">0 / 0</output>
+                    <div id="res-ctrl-dia" class="ml-auto flex items-center gap-2" hidden>
+                        <button type="button" class="btn-icon border-slate-700" data-mover-dia="-1" aria-label="Día anterior"><i data-lucide="chevron-left" class="h-4 w-4"></i></button>
+                        <label for="resumen-dia" class="sr-only">Día</label>
+                        <input type="date" id="resumen-dia" class="rounded-lg border border-slate-700 bg-slate-900 px-3 py-1.5 text-sm font-semibold text-slate-200 shadow-inner outline-hidden focus:border-brand-500">
+                        <button type="button" class="btn-icon border-slate-700" data-mover-dia="1" aria-label="Día siguiente"><i data-lucide="chevron-right" class="h-4 w-4"></i></button>
+                        <button type="button" id="res-hoy" class="seg">Hoy</button>
                     </div>
                 </div>
 
-                <div class="glass-panel rounded-2xl p-6">
-                    <h4 class="mb-4 font-semibold text-slate-200">Desglose Diario (Histórico del Mes)</h4>
-                    <div class="overflow-x-auto">
-                        <table class="data-table">
-                            <thead>
-                                <tr>
-                                    <th scope="col">Día</th>
-                                    <th scope="col" class="num">Soja (kg)</th>
-                                    <th scope="col" class="num">Expeller (kg)</th>
-                                    <th scope="col" class="num text-brand-400">Aceite (Lts)</th>
-                                    <th scope="col" class="num text-purple-400">Aceite desp. (Lts)</th>
-                                    <th scope="col" class="num">Hum. Promedio</th>
-                                </tr>
-                            </thead>
-                            <tbody id="tbody-resumen"></tbody>
-                        </table>
+                <!-- Por mes -->
+                <div id="res-mes" role="tabpanel" aria-labelledby="res-tab-mes">
+                    <div id="res-mes-kpis" class="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-3 2xl:grid-cols-6"></div>
+                    <div class="mb-6 grid grid-cols-1 gap-6 xl:grid-cols-3">
+                        <div class="glass-panel min-w-0 rounded-2xl p-6">
+                            <h4 class="mb-4 font-semibold text-slate-200">Soja ingresada por día <span class="text-xs font-normal text-slate-500">(kg)</span></h4>
+                            <div id="res-graf-soja"></div>
+                        </div>
+                        <div class="glass-panel min-w-0 rounded-2xl p-6">
+                            <h4 class="mb-4 font-semibold text-slate-200">Aceite por día <span class="text-xs font-normal text-slate-500">(litros)</span></h4>
+                            <div id="res-graf-aceite"></div>
+                        </div>
+                        <div class="glass-panel min-w-0 rounded-2xl p-6">
+                            <h4 class="mb-4 font-semibold text-slate-200">Expeller por día <span class="text-xs font-normal text-slate-500">(kg)</span></h4>
+                            <div id="res-graf-expeller"></div>
+                        </div>
+                    </div>
+                    <div class="glass-panel rounded-2xl p-6">
+                        <h4 class="mb-1 font-semibold text-slate-200">Día por día</h4>
+                        <p class="mb-4 text-[11px] text-slate-500">Tocá un día (en la tabla o en los gráficos) para ver el detalle.</p>
+                        <div class="overflow-x-auto">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Día</th>
+                                        <th scope="col" class="num">Soja (kg)</th>
+                                        <th scope="col" class="num">Aceite prod. (L)</th>
+                                        <th scope="col" class="num">Aceite desp. (L)</th>
+                                        <th scope="col" class="num">Expeller prod. (kg)</th>
+                                        <th scope="col" class="num">Expeller desp. (kg)</th>
+                                        <th scope="col" class="num">Hum. inicial prom.</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbody-resumen"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Por día -->
+                <div id="res-dia" role="tabpanel" aria-labelledby="res-tab-dia" hidden>
+                    <h3 id="res-dia-titulo" class="mb-4 text-lg font-bold text-white"></h3>
+                    <div id="res-dia-kpis" class="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-3 2xl:grid-cols-6"></div>
+                    <div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
+                        <div class="glass-panel min-w-0 rounded-2xl p-6">
+                            <h4 class="mb-4 font-semibold text-slate-200">Turnos</h4>
+                            <div class="overflow-x-auto"><table class="data-table"><thead><tr><th scope="col">Cierre</th><th scope="col">Turno</th><th scope="col" class="num">Expeller (kg)</th><th scope="col" class="num">Aceite (L)</th></tr></thead><tbody id="res-dia-turnos"></tbody></table></div>
+                        </div>
+                        <div class="glass-panel min-w-0 rounded-2xl p-6">
+                            <h4 class="mb-4 font-semibold text-slate-200">Camiones</h4>
+                            <div class="overflow-x-auto"><table class="data-table"><thead><tr><th scope="col">Hora</th><th scope="col">Movimiento</th><th scope="col">Empresa</th><th scope="col" class="num">Cantidad</th></tr></thead><tbody id="res-dia-camiones"></tbody></table></div>
+                        </div>
+                        <div class="glass-panel min-w-0 rounded-2xl p-6">
+                            <h4 class="mb-4 font-semibold text-slate-200">Secadora</h4>
+                            <div class="overflow-x-auto"><table class="data-table"><thead><tr><th scope="col">Hora</th><th scope="col">Empresa</th><th scope="col" class="num">H. Inicial</th><th scope="col" class="num">H. Caliente</th><th scope="col" class="num">H. Frío</th></tr></thead><tbody id="res-dia-secadora"></tbody></table></div>
+                        </div>
+                        <div class="glass-panel min-w-0 rounded-2xl p-6">
+                            <h4 class="mb-4 font-semibold text-slate-200">Mantenimiento</h4>
+                            <div class="overflow-x-auto"><table class="data-table"><thead><tr><th scope="col">Hora</th><th scope="col">Equipo</th><th scope="col">Tarea</th><th scope="col">Quedó</th></tr></thead><tbody id="res-dia-mant"></tbody></table></div>
+                        </div>
                     </div>
                 </div>
             </section>
