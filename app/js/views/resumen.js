@@ -25,7 +25,7 @@
   function dibujar() {
     const mes = $('#resumen-mes').value;
     const dias = {};
-    const dia = (d) => (dias[d] = dias[d] || { soja: 0, expeller: 0, aceite: 0, humedades: [] });
+    const dia = (d) => (dias[d] = dias[d] || { soja: 0, expeller: 0, aceite: 0, aceiteDesp: 0, humedades: [] });
     let soja = 0, expeller = 0, aceite = 0, camionesIn = 0, camionesOut = 0;
 
     if (mes) {
@@ -36,7 +36,12 @@
           dia(diaDe(c)).soja += Number(c.neto) || 0;
         }
       });
+      // Salen camiones de expeller y de aceite.
       camionesOut = store.todos('despachos').filter((c) => mesDe(c) === mes).length;
+      store.todos('despachosAceite').filter((d) => mesDe(d) === mes).forEach((d) => {
+        camionesOut++;
+        dia(diaDe(d)).aceiteDesp += Number(d.litros) || 0;
+      });
       store.todos('produccion').filter((p) => mesDe(p) === mes).forEach((p) => {
         expeller += Number(p.expeller) || 0;
         aceite += Number(p.aceite) || 0;
@@ -62,10 +67,11 @@
         el('td', { className: 'num', text: fmt.entero(v.soja) }),
         el('td', { className: 'num', text: fmt.entero(v.expeller) }),
         el('td', { className: 'num font-medium text-brand-400', text: fmt.entero(v.aceite) }),
+        el('td', { className: 'num text-purple-300', text: v.aceiteDesp ? fmt.entero(v.aceiteDesp) : '-' }),
         el('td', { className: 'num', text: fmt.porcentaje(promedio) }),
       ]);
     });
-    if (filas.length === 0) filas.push(el('tr', null, [el('td', { className: 'empty', text: 'Sin datos para este mes.', attrs: { colspan: '5' } })]));
+    if (filas.length === 0) filas.push(el('tr', null, [el('td', { className: 'empty', text: 'Sin datos para este mes.', attrs: { colspan: '6' } })]));
     $('#tbody-resumen').replaceChildren(...filas);
   }
 

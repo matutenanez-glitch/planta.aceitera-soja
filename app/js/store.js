@@ -21,6 +21,8 @@
     secadora:      { clave: 'secadora',      etiqueta: 'Secadora',              numeros: ['hCamion', 'hCaliente', 'hFrio'] },
     produccion:    { clave: 'produccion',    etiqueta: 'Producción',            numeros: ['expeller', 'aceite'] },
     mantenimiento: { clave: 'mantenimiento', etiqueta: 'Mantenimiento',         numeros: [] },
+    despachosAceite: { clave: 'aceite_despachos', etiqueta: 'Despacho de aceite', numeros: ['litros', 'tanque'] },
+    mediciones:    { clave: 'tanques_mediciones', etiqueta: 'Mediciones de tanques', numeros: [] },
   };
 
   const datos = {};
@@ -112,6 +114,48 @@
     return r;
   }
 
+  const buscar = (nombre, id) => datos[nombre].find((r) => r.id === id) || null;
+
+  /** Reemplaza los campos de un registro existente. Marca cuándo se editó. */
+  function actualizar(nombre, id, cambios) {
+    const i = datos[nombre].findIndex((r) => r.id === id);
+    if (i < 0) return null;
+    const anterior = datos[nombre][i];
+    const nuevo = normalizar(nombre, Object.assign({}, anterior, cambios, { id, editado: SoyaCore.ui.ahora() }));
+    datos[nombre][i] = nuevo;
+    if (!persistir(nombre)) {
+      datos[nombre][i] = anterior;
+      return null;
+    }
+    notificar(nombre);
+    return nuevo;
+  }
+
+  /** Borra un registro. Devuelve lo necesario para deshacer: { registro, indice }. */
+  function borrar(nombre, id) {
+    const i = datos[nombre].findIndex((r) => r.id === id);
+    if (i < 0) return null;
+    const [registro] = datos[nombre].splice(i, 1);
+    if (!persistir(nombre)) {
+      datos[nombre].splice(i, 0, registro);
+      return null;
+    }
+    notificar(nombre);
+    return { registro, indice: i };
+  }
+
+  /** Vuelve a poner un registro borrado en su lugar (botón "Deshacer"). */
+  function restaurar(nombre, { registro, indice }) {
+    if (buscar(nombre, registro.id)) return false;
+    datos[nombre].splice(Math.min(indice, datos[nombre].length), 0, registro);
+    if (!persistir(nombre)) {
+      datos[nombre].splice(datos[nombre].indexOf(registro), 1);
+      return false;
+    }
+    notificar(nombre);
+    return true;
+  }
+
   const totalRegistros = () => Object.values(datos).reduce((n, lista) => n + lista.length, 0);
 
   function exportarBackup() {
@@ -169,7 +213,11 @@
 
   SoyaCore.store = {
     todos,
+    buscar,
     agregar,
+    actualizar,
+    borrar,
+    restaurar,
     totalRegistros,
     exportarBackup,
     validarBackup,

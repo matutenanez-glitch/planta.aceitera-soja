@@ -34,6 +34,12 @@
     if (boton) mostrar(boton.dataset.view, { foco: true });
   });
 
+  // Enlaces internos entre vistas (por ejemplo, "Registrar despacho de aceite")
+  document.addEventListener('click', (e) => {
+    const enlace = e.target.closest('[data-ir]');
+    if (enlace) mostrar(enlace.dataset.ir, { foco: true });
+  });
+
   // ---------- Panel "Datos en este equipo" ----------
   function actualizarPanelDatos() {
     $('#datos-resumen').textContent = `${fmt.entero(store.totalRegistros())} registros guardados`;

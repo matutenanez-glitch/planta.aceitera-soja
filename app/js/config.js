@@ -7,7 +7,7 @@
   'use strict';
 
   SoyaCore.config = Object.freeze({
-    version: '2.9.0',
+    version: '2.10.0',
     locale: 'es-AR',
 
     /** Cuántas filas muestran las tablas de "últimos registros". */
@@ -21,10 +21,10 @@
       despacho:      { titulo: 'Despacho de Expeller',              icono: 'package-open' },
       secadora:      { titulo: 'Secadora y Tomas de Laboratorio',   icono: 'thermometer-sun' },
       produccion:    { titulo: 'Producción Operativa (Extracción)', icono: 'factory' },
-      tanques:       { titulo: 'Gestión y Niveles de Tanques',      icono: 'database' },
+      tanques:       { titulo: 'Circuito de Aceite',                icono: 'database' },
+      despachoAceite:{ titulo: 'Despacho de Aceite',                icono: 'fuel' },
       mantenimiento: { titulo: 'Mantenimiento Mecánico',            icono: 'wrench' },
       resumen:       { titulo: 'Dashboard Consolidado',             icono: 'chart-column' },
-      ia:            { titulo: 'Asistente IA (RCTFRI)',             icono: 'bot' },
     },
 
     turnos: [
@@ -55,13 +55,20 @@
     },
 
     /**
-     * Tanques, en el orden en que se llenan (cascada).
-     * Para agregar un tanque exterior, sumá un nombre a la lista.
+     * Circuito del aceite (ver js/circuito-aceite.js).
+     * Los nombres definen cuántos tanques hay de cada tipo.
      */
     tanques: {
-      interiores: { capacidad: 1525, nombres: ['INT 1', 'INT 2'], decantacion: '1h decantación' },
-      exteriores: { capacidad: 6862, nombres: ['EXT 1', 'EXT 2', 'EXT 3', 'EXT 4'] },
-      masivos:    { capacidadPorTanque: 30000, cantidad: 3 }, // capacidad referencial
+      // 2 interiores que se alternan; el lleno reposa antes de bajar al exterior.
+      interiores: { capacidad: 1525, nombres: ['INT 1', 'INT 2'], reposoMinutos: 60 },
+      // 4 exteriores que se llenan en ronda. 1 exterior = 5 interiores (A CONFIRMAR: la v2.8 decía 6.862 L).
+      exteriores: { capacidad: 7625, nombres: ['EXT 1', 'EXT 2', 'EXT 3', 'EXT 4'] },
+      // Tanques grandes que vacían los camiones. CAPACIDAD A CONFIRMAR.
+      grandes: { capacidad: 30000, nombres: ['GRANDE 1', 'GRANDE 2', 'GRANDE 3'] },
+      // Cuando al último exterior le faltan estos litros o menos, se vacían todos a los grandes.
+      trasvaseCuandoFalten: 1525,
+      // Duración de un turno: el aceite del cierre se reparte parejo en estas horas.
+      horasTurno: 8,
     },
   });
 })(window.SoyaCore = window.SoyaCore || {});

@@ -47,37 +47,6 @@
   /** Lee un <input type="number"> como número (NaN si está vacío). */
   const num = (input) => (input.value === '' ? NaN : Number(input.value));
 
-  /**
-   * Dibuja las últimas filas de una colección en un <tbody>.
-   * columns: [{ key, format?, className? }]
-   */
-  function renderRows(tbody, rows, columns, opts) {
-    const o = opts || {};
-    const limit = o.limit || SoyaCore.config.filasPorTabla;
-    const visibles = rows.slice(-limit).reverse();
-    const frag = document.createDocumentFragment();
-
-    if (visibles.length === 0) {
-      frag.appendChild(el('tr', null, [el('td', { className: 'empty', text: o.empty || 'Sin registros todavía.', attrs: { colspan: columns.length } })]));
-    }
-    visibles.forEach((row) => {
-      frag.appendChild(el('tr', null, columns.map((col) => {
-        const raw = row[col.key];
-        const value = col.format ? col.format(raw, row) : raw;
-        const td = el('td', { className: col.className || '', text: value == null || value === '' ? '-' : value });
-        if (td.classList.contains('truncate')) td.title = td.textContent; // texto completo al pasar el mouse
-        return td;
-      })));
-    });
-    tbody.replaceChildren(frag);
-
-    if (o.caption) {
-      o.caption.textContent = rows.length > limit
-        ? `Mostrando los últimos ${limit} de ${fmt.entero(rows.length)} registros.`
-        : rows.length > 0 ? `${fmt.entero(rows.length)} registro(s).` : '';
-    }
-  }
-
   /** Llena un <select> con opciones [{ value, label }] o strings. */
   function fillSelect(select, options, selected) {
     const frag = document.createDocumentFragment();
@@ -90,15 +59,24 @@
     select.replaceChildren(frag);
   }
 
-  /** Aviso flotante. type: 'info' | 'ok' | 'error' */
-  function toast(msg, type) {
+  /**
+   * Aviso flotante. type: 'info' | 'ok' | 'error'
+   * accion (opcional): { texto, fn } → agrega un botón, por ejemplo "Deshacer".
+   */
+  function toast(msg, type, accion) {
     const container = $('#toast-container');
-    const node = el('div', { className: 'toast' + (type === 'error' ? ' toast-error' : type === 'ok' ? ' toast-ok' : ''), text: msg });
-    container.appendChild(node);
-    setTimeout(() => {
+    const node = el('div', { className: 'toast' + (type === 'error' ? ' toast-error' : type === 'ok' ? ' toast-ok' : '') }, [el('span', { text: msg })]);
+    const cerrar = () => {
       node.style.opacity = '0';
       setTimeout(() => node.remove(), 300);
-    }, type === 'error' ? 6000 : 3000);
+    };
+    if (accion) {
+      const boton = el('button', { className: 'toast-accion', text: accion.texto, attrs: { type: 'button' } });
+      boton.addEventListener('click', () => { cerrar(); accion.fn(); }, { once: true });
+      node.appendChild(boton);
+    }
+    container.appendChild(node);
+    setTimeout(cerrar, accion ? 8000 : type === 'error' ? 6000 : 3000);
   }
 
   /** Banner persistente en la parte superior del contenido. */
@@ -121,17 +99,178 @@
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
-  /** Copia texto al portapapeles (con alternativa para navegadores viejos). */
-  async function copiar(texto, textarea) {
-    try {
-      await navigator.clipboard.writeText(texto);
-      return true;
-    } catch (_) {
-      if (!textarea) return false;
-      textarea.select();
-      return document.execCommand('copy');
+  /**
+   * Tabla de registros con botones Editar y Borrar en cada fila.
+   *   coleccion  nombre en el store
+   *   columnas   [{ key, format?, className? }] (como renderRows)
+   *   onEditar   fn(registro) → normalmente editor.editar
+   * Borrar pide confirmación con un segundo clic y ofrece "Deshacer".
+   * Devuelve { dibujar(), marcar(id|null) }.
+   */
+  function tablaRegistros({ tbody, caption, coleccion, columnas, onEditar, vacio }) {
+    const store = SoyaCore.store;
+    let verTodos = false;
+    let editandoId = null;
+
+    function botonAccion(accion, icono, etiqueta, extra) {
+      return el('button', {
+        className: 'btn-icon' + (extra ? ' ' + extra : ''),
+        attrs: { type: 'button', 'data-accion': accion, 'aria-label': etiqueta, title: etiqueta },
+      }, [el('i', { attrs: { 'data-lucide': icono }, className: 'h-3.5 w-3.5' })]);
     }
+
+    function dibujar() {
+      const filas = store.todos(coleccion);
+      const limite = verTodos ? filas.length || 1 : SoyaCore.config.filasPorTabla;
+      const visibles = filas.slice(-limite).reverse();
+      const frag = document.createDocumentFragment();
+      if (visibles.length === 0) {
+        frag.appendChild(el('tr', null, [el('td', { className: 'empty', text: vacio || 'Sin registros todavía.', attrs: { colspan: columnas.length + 1 } })]));
+      }
+      visibles.forEach((row) => {
+        const celdas = columnas.map((col) => {
+          const raw = row[col.key];
+          const value = col.format ? col.format(raw, row) : raw;
+          const td = el('td', { className: col.className || '', text: value == null || value === '' ? '-' : value });
+          if (td.classList.contains('truncate')) td.title = td.textContent;
+          return td;
+        });
+        const quien = `registro del ${row.fecha}`;
+        celdas.push(el('td', { className: 'acciones' }, [
+          botonAccion('editar', 'pencil', 'Editar ' + quien),
+          botonAccion('borrar', 'trash-2', 'Borrar ' + quien, 'btn-icon-borrar'),
+        ]));
+        const tr = el('tr', { attrs: { 'data-id': row.id } }, celdas);
+        if (row.id === editandoId) tr.classList.add('fila-editando');
+        frag.appendChild(tr);
+      });
+      tbody.replaceChildren(frag);
+      SoyaCore.icons.render(tbody);
+
+      if (caption) {
+        const partes = [];
+        if (filas.length > SoyaCore.config.filasPorTabla) {
+          partes.push(el('span', { text: verTodos ? `Mostrando los ${fmt.entero(filas.length)} registros. ` : `Mostrando los últimos ${SoyaCore.config.filasPorTabla} de ${fmt.entero(filas.length)} registros. ` }));
+          const toggle = el('button', { className: 'link-btn', text: verTodos ? 'Ver solo los últimos' : 'Ver todos', attrs: { type: 'button' } });
+          toggle.addEventListener('click', () => { verTodos = !verTodos; dibujar(); });
+          partes.push(toggle);
+        } else if (filas.length > 0) {
+          partes.push(el('span', { text: `${fmt.entero(filas.length)} registro(s).` }));
+        }
+        caption.replaceChildren(...partes);
+      }
+    }
+
+    tbody.addEventListener('click', (e) => {
+      const boton = e.target.closest('button[data-accion]');
+      if (!boton) return;
+      const id = boton.closest('tr').dataset.id;
+
+      if (boton.dataset.accion === 'editar') {
+        const registro = store.buscar(coleccion, id);
+        if (registro) onEditar(registro);
+        return;
+      }
+
+      // Borrar: el primer clic pide confirmación, el segundo borra.
+      if (!boton.classList.contains('confirmar')) {
+        boton.classList.add('confirmar');
+        boton.replaceChildren(document.createTextNode('¿Borrar?'));
+        boton.setAttribute('aria-label', 'Confirmar borrado');
+        setTimeout(() => boton.isConnected && dibujar(), 4000);
+        return;
+      }
+      const borrado = store.borrar(coleccion, id);
+      if (!borrado) return;
+      toast('Registro borrado.', 'info', {
+        texto: 'Deshacer',
+        fn: () => store.restaurar(coleccion, borrado) && toast('Registro restaurado.', 'ok'),
+      });
+    });
+
+    return {
+      dibujar,
+      marcar(id) { editandoId = id; dibujar(); },
+    };
   }
 
-  SoyaCore.ui = { $, $$, el, fmt, ahora, hoy, num, renderRows, fillSelect, toast, alerta, descargar, copiar };
+  /**
+   * Pone un formulario en "modo edición": carga el registro, muestra la
+   * fecha, cambia el botón a "Guardar cambios" y muestra "Cancelar".
+   *   rellenar(registro)  carga los valores en los campos (propio de cada vista)
+   *   alTerminar()        se llama al guardar o cancelar (para limpiar extras)
+   *   tabla               la tablaRegistros, para resaltar la fila
+   * El formulario necesita: [data-form-titulo], [data-campo-fecha] con un
+   * <input type="datetime-local">, el botón submit y un botón [data-cancelar].
+   */
+  function editorFormulario(form, { rellenar, alTerminar, tabla }) {
+    const panel = form.closest('.glass-panel');
+    const titulo = panel.querySelector('[data-form-titulo]');
+    const tituloNuevo = titulo ? titulo.textContent : '';
+    const submit = form.querySelector('button[type="submit"]');
+    const textoNuevo = submit.textContent.trim();
+    const cancelar = form.querySelector('[data-cancelar]');
+    const campoFecha = form.querySelector('[data-campo-fecha]');
+    const inputFecha = campoFecha ? campoFecha.querySelector('input') : null;
+    let id = null;
+
+    function terminar() {
+      id = null;
+      form.reset();
+      if (campoFecha) { campoFecha.hidden = true; inputFecha.required = false; }
+      submit.textContent = textoNuevo;
+      cancelar.hidden = true;
+      if (titulo) titulo.textContent = tituloNuevo;
+      panel.classList.remove('editando');
+      if (tabla) tabla.marcar(null);
+      if (alTerminar) alTerminar();
+    }
+
+    function editar(registro) {
+      terminar();
+      id = registro.id;
+      rellenar(registro);
+      if (campoFecha) {
+        campoFecha.hidden = false;
+        inputFecha.required = true;
+        inputFecha.value = String(registro.fecha).replace(' ', 'T').slice(0, 16);
+      }
+      submit.textContent = 'Guardar cambios';
+      cancelar.hidden = false;
+      if (titulo) titulo.textContent = `Editando el registro del ${registro.fecha}`;
+      panel.classList.add('editando');
+      if (tabla) tabla.marcar(id);
+      panel.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      const primero = form.querySelector('input:not([type="hidden"]):not([readonly]), select, textarea');
+      if (primero) primero.focus({ preventScroll: true });
+    }
+
+    cancelar.addEventListener('click', terminar);
+
+    return {
+      get id() { return id; },
+      editar,
+      terminar,
+      /** Fecha elegida en modo edición ("AAAA-MM-DD HH:MM"), o null si es un registro nuevo. */
+      fecha: () => (id && inputFecha && inputFecha.value ? inputFecha.value.replace('T', ' ').slice(0, 16) : null),
+    };
+  }
+
+  /**
+   * Guarda lo que tiene un formulario: si está editando, actualiza; si no, agrega.
+   * Devuelve el registro guardado o null.
+   */
+  function guardarRegistro(coleccion, editor, datos, mensajes) {
+    const store = SoyaCore.store;
+    const editando = editor.id;
+    const guardado = editando
+      ? store.actualizar(coleccion, editando, Object.assign({}, datos, { fecha: editor.fecha() }))
+      : store.agregar(coleccion, Object.assign({ fecha: ahora() }, datos));
+    if (!guardado) return null;
+    editor.terminar();
+    toast(editando ? 'Cambios guardados.' : mensajes.nuevo, 'ok');
+    return guardado;
+  }
+
+  SoyaCore.ui = { $, $$, el, fmt, ahora, hoy, num, fillSelect, toast, alerta, descargar, tablaRegistros, editorFormulario, guardarRegistro };
 })(window.SoyaCore = window.SoyaCore || {});

@@ -78,6 +78,12 @@
   .btn {
     @apply flex w-full items-center justify-center gap-2 rounded-lg py-2.5 font-bold transition-colors;
   }
+  .btn-cancelar {
+    @apply rounded-lg border border-slate-600 px-4 py-2.5 font-semibold text-slate-300 transition-colors hover:bg-slate-800 hover:text-white;
+  }
+  .link-btn {
+    @apply font-semibold text-brand-400 underline-offset-2 hover:text-brand-300 hover:underline;
+  }
   .btn-sm {
     @apply flex items-center justify-center gap-1.5 rounded-lg border border-slate-700 bg-slate-800/50 px-2 py-1.5 text-[11px] font-semibold text-slate-300 transition hover:bg-slate-800 hover:text-white;
   }
@@ -92,6 +98,31 @@
   .data-table td.num, .data-table th.num { @apply text-right tabular-nums; }
   .data-table td.empty { @apply py-6 text-center text-slate-500 italic; }
   .table-caption { @apply mt-3 text-[11px] text-slate-500; }
+  /* Los botones de la fila quedan siempre a la vista aunque la tabla tenga scroll horizontal */
+  .data-table td.acciones { @apply sticky right-0 bg-slate-900 py-1.5 pr-0 pl-2 text-right; }
+  .data-table tr.fila-editando { @apply bg-brand-500/10; }
+
+  /* Botones de fila (editar / borrar) */
+  .btn-icon {
+    @apply ml-1 inline-flex h-7 min-w-7 items-center justify-center rounded-md border border-transparent px-1.5 text-slate-500 transition-colors hover:border-slate-700 hover:bg-slate-800 hover:text-slate-200;
+  }
+  .btn-icon-borrar:hover { @apply text-red-400; }
+  .btn-icon.confirmar { @apply border-red-500/60 bg-red-500/15 text-[11px] font-bold text-red-300; }
+
+  /* Formulario en modo edición */
+  .glass-panel.editando { @apply ring-2 ring-brand-500/60; }
+
+  /* Estado de un tanque */
+  .chip {
+    @apply inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold tracking-wide whitespace-nowrap uppercase;
+  }
+  .chip-llenando   { @apply border-brand-500/50 bg-brand-500/15 text-brand-300; }
+  .chip-reposo     { @apply border-sky-500/50 bg-sky-500/15 text-sky-300; }
+  .chip-decantando { @apply border-blue-500/40 bg-blue-500/10 text-blue-300; }
+  .chip-aceite     { @apply border-slate-500/50 bg-slate-500/10 text-slate-300; }
+  .chip-vacio      { @apply border-slate-700 bg-transparent text-slate-500; }
+  .chip-excedido   { @apply border-red-500/60 bg-red-500/15 text-red-300; }
+  .tanque-activo   { @apply ring-2 ring-brand-400/70 ring-offset-2 ring-offset-slate-900; }
 
   /* Vistas */
   .view:not([hidden]) { @apply animate-fade-in; }
@@ -101,7 +132,10 @@
 
   /* Notificaciones */
   .toast {
-    @apply animate-slide-in rounded-md border-l-4 border-brand-400 bg-slate-800 px-5 py-3 text-sm text-white shadow-lg shadow-black/50 transition-opacity duration-300;
+    @apply flex animate-slide-in items-center gap-4 rounded-md border-l-4 border-brand-400 bg-slate-800 px-5 py-3 text-sm text-white shadow-lg shadow-black/50 transition-opacity duration-300;
+  }
+  .toast-accion {
+    @apply rounded-md border border-slate-600 px-2.5 py-1 text-xs font-bold text-brand-300 hover:bg-slate-700;
   }
   .toast-error { @apply border-red-500; }
   .toast-ok { @apply border-emerald-400; }

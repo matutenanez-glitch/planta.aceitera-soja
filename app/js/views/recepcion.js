@@ -5,8 +5,7 @@
 (function (SoyaCore) {
   'use strict';
 
-  const { $, fmt, ahora, num, renderRows, toast } = SoyaCore.ui;
-  const store = SoyaCore.store;
+  const { $, fmt, num, toast, tablaRegistros, editorFormulario, guardarRegistro } = SoyaCore.ui;
 
   const COLUMNAS = {
     ingresos: [
@@ -24,19 +23,40 @@
     ],
   };
 
-  function balanza(prefijo, coleccion, mensaje) {
-    const form = $(`#form-${coleccion === 'ingresos' ? 'ingreso' : 'despacho'}`);
+  function balanza(prefijo, coleccion, formId, mensaje) {
+    const form = $('#' + formId);
     const bruto = $(`#${prefijo}-bruto`);
     const tara = $(`#${prefijo}-tara`);
     const salida = $(`#${prefijo}-neto`);
     const neto = () => num(bruto) - num(tara);
-
     const actualizarNeto = () => {
       const n = neto();
       salida.textContent = fmt.kg(n > 0 ? n : 0);
     };
     bruto.addEventListener('input', actualizarNeto);
     tara.addEventListener('input', actualizarNeto);
+
+    let editor;
+    const tabla = tablaRegistros({
+      tbody: $(`#tbody-${coleccion}`),
+      caption: $(`#caption-${coleccion}`),
+      coleccion,
+      columnas: COLUMNAS[coleccion],
+      onEditar: (r) => editor.editar(r),
+    });
+    editor = editorFormulario(form, {
+      tabla,
+      rellenar(r) {
+        $(`#${prefijo}-empresa`).value = r.empresa || '';
+        $(`#${prefijo}-conductor`).value = r.conductor || '';
+        // Los registros anteriores a la v2.10 solo guardaban el neto.
+        bruto.value = r.bruto != null ? r.bruto : r.neto;
+        tara.value = r.tara != null ? r.tara : 0;
+        if (coleccion === 'ingresos') $('#in-carga').value = r.carga || 'Soja';
+        actualizarNeto();
+      },
+      alTerminar: actualizarNeto,
+    });
 
     form.addEventListener('submit', (e) => {
       e.preventDefault();
@@ -47,43 +67,27 @@
         return;
       }
       const registro = {
-        fecha: ahora(),
         empresa: $(`#${prefijo}-empresa`).value.trim(),
         conductor: $(`#${prefijo}-conductor`).value.trim(),
+        bruto: num(bruto),
+        tara: num(tara),
         neto: n,
       };
       if (coleccion === 'ingresos') registro.carga = $('#in-carga').value.trim() || 'Soja';
-
-      if (!store.agregar(coleccion, registro)) return;
-      form.reset(); // vuelve "Carga" a su valor por defecto (Soja)
-      actualizarNeto();
-      toast(mensaje, 'ok');
-      $(`#${prefijo}-empresa`).focus();
+      if (guardarRegistro(coleccion, editor, registro, { nuevo: mensaje })) $(`#${prefijo}-empresa`).focus();
     });
-  }
 
-  function dibujar(coleccion) {
-    const tbody = $(`#tbody-${coleccion}`);
-    renderRows(tbody, store.todos(coleccion), COLUMNAS[coleccion], { caption: $(`#caption-${coleccion}`) });
+    SoyaCore.store.alCambiar((c) => (c === coleccion || c === '*') && tabla.dibujar());
+    tabla.dibujar();
   }
 
   SoyaCore.views = SoyaCore.views || {};
-
   SoyaCore.views.recepcion = {
-    init() {
-      balanza('in', 'ingresos', 'Ingreso registrado');
-      store.alCambiar((c) => (c === 'ingresos' || c === '*') && dibujar('ingresos'));
-      dibujar('ingresos');
-    },
+    init: () => balanza('in', 'ingresos', 'form-ingreso', 'Ingreso registrado.'),
     refresh() {},
   };
-
   SoyaCore.views.despacho = {
-    init() {
-      balanza('out', 'despachos', 'Despacho registrado');
-      store.alCambiar((c) => (c === 'despachos' || c === '*') && dibujar('despachos'));
-      dibujar('despachos');
-    },
+    init: () => balanza('out', 'despachos', 'form-despacho', 'Despacho registrado.'),
     refresh() {},
   };
 })(window.SoyaCore = window.SoyaCore || {});

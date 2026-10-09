@@ -1,11 +1,11 @@
 /*
  * Vista: Producción por turnos.
+ * Cada cierre de turno alimenta el Circuito de Aceite (ver circuito-aceite.js).
  */
 (function (SoyaCore) {
   'use strict';
 
-  const { $, fmt, ahora, num, renderRows, fillSelect, toast } = SoyaCore.ui;
-  const store = SoyaCore.store;
+  const { $, fmt, num, fillSelect, tablaRegistros, editorFormulario, guardarRegistro } = SoyaCore.ui;
 
   const COLUMNAS = [
     { key: 'fecha' },
@@ -14,28 +14,38 @@
     { key: 'aceite', format: fmt.entero, className: 'num' },
   ];
 
-  function dibujar() {
-    renderRows($('#tbody-produccion'), store.todos('produccion'), COLUMNAS, { caption: $('#caption-produccion') });
-  }
-
   SoyaCore.views = SoyaCore.views || {};
   SoyaCore.views.produccion = {
     init() {
       fillSelect($('#prod-turno'), SoyaCore.config.turnos);
+      let editor;
+      const tabla = tablaRegistros({
+        tbody: $('#tbody-produccion'),
+        caption: $('#caption-produccion'),
+        coleccion: 'produccion',
+        columnas: COLUMNAS,
+        onEditar: (r) => editor.editar(r),
+      });
+      editor = editorFormulario($('#form-produccion'), {
+        tabla,
+        rellenar(r) {
+          $('#prod-turno').value = r.turno;
+          $('#prod-expeller').value = r.expeller ?? '';
+          $('#prod-aceite').value = r.aceite ?? '';
+        },
+      });
+
       $('#form-produccion').addEventListener('submit', (e) => {
         e.preventDefault();
-        const registro = {
-          fecha: ahora(),
+        guardarRegistro('produccion', editor, {
           turno: $('#prod-turno').value,
           expeller: num($('#prod-expeller')),
           aceite: num($('#prod-aceite')),
-        };
-        if (!store.agregar('produccion', registro)) return;
-        e.target.reset();
-        toast('Cierre de turno guardado correctamente', 'ok');
+        }, { nuevo: 'Cierre de turno guardado. El aceite ya entró al circuito.' });
       });
-      store.alCambiar((c) => (c === 'produccion' || c === '*') && dibujar());
-      dibujar();
+
+      SoyaCore.store.alCambiar((c) => (c === 'produccion' || c === '*') && tabla.dibujar());
+      tabla.dibujar();
     },
     refresh() {},
   };

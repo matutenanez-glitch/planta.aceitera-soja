@@ -1,12 +1,13 @@
 {
   "name": "soyacore-os",
-  "version": "2.9.0",
+  "version": "2.10.0",
   "private": true,
   "description": "Sistema operativo de planta aceitera de soja (app de escritorio, datos locales).",
   "type": "module",
   "scripts": {
     "build:css": "node scripts/build-css.mjs",
-    "watch:css": "node scripts/build-css.mjs --watch"
+    "watch:css": "node scripts/build-css.mjs --watch",
+    "test": "node --test"
   },
   "devDependencies": {
     "tailwindcss": "4.3.3"
