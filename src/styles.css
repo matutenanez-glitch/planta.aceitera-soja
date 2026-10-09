@@ -35,7 +35,6 @@
   :root {
     --color-viz-producido: #d97706;
     --color-viz-despachado: #8b5cf6;
-    --color-viz-nivel: #0284c7;
     --color-viz-soja: #cbd5e1;
   }
 
@@ -122,17 +121,10 @@
   /* Formulario en modo edición */
   .glass-panel.editando { @apply ring-2 ring-brand-500/60; }
 
-  /* Estado de un tanque */
+  /* Etiquetas de estado */
   .chip {
     @apply inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold tracking-wide whitespace-nowrap uppercase;
   }
-  .chip-llenando   { @apply border-brand-500/50 bg-brand-500/15 text-brand-300; }
-  .chip-reposo     { @apply border-sky-500/50 bg-sky-500/15 text-sky-300; }
-  .chip-decantando { @apply border-blue-500/40 bg-blue-500/10 text-blue-300; }
-  .chip-aceite     { @apply border-slate-500/50 bg-slate-500/10 text-slate-300; }
-  .chip-vacio      { @apply border-slate-700 bg-transparent text-slate-500; }
-  .chip-excedido   { @apply border-red-500/60 bg-red-500/15 text-red-300; }
-  .tanque-activo   { @apply ring-2 ring-brand-400/70 ring-offset-2 ring-offset-slate-900; }
 
   /* Selector segmentado (períodos, pestañas, filtros) */
   .seg {
@@ -177,9 +169,6 @@
 
   /* Vistas */
   .view:not([hidden]) { @apply animate-fade-in; }
-
-  /* Tanques */
-  .liquid-fill { transition: height 1.5s cubic-bezier(0.4, 0, 0.2, 1); }
 
   /* Notificaciones */
   .toast {

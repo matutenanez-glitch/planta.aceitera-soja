@@ -1,13 +1,13 @@
 /*
  * Configuración de la planta.
- * Todo lo que cambia de una planta a otra (tanques, equipos, turnos) vive acá,
+ * Todo lo que cambia de una planta a otra (equipos, turnos, densidad) vive acá,
  * así no hay que tocar el HTML ni la lógica para adaptarlo.
  */
 (function (SoyaCore) {
   'use strict';
 
   SoyaCore.config = Object.freeze({
-    version: '2.12.0',
+    version: '2.13.0',
     locale: 'es-AR',
 
     /** Cuántas filas muestran las tablas de "últimos registros". */
@@ -21,7 +21,7 @@
       despacho:      { titulo: 'Despacho de Expeller',              icono: 'package-open' },
       secadora:      { titulo: 'Secadora y Tomas de Laboratorio',   icono: 'thermometer-sun' },
       produccion:    { titulo: 'Producción Operativa (Extracción)', icono: 'factory' },
-      tanques:       { titulo: 'Aceite: producido, despachado y tanques', icono: 'droplet' },
+      aceite:        { titulo: 'Aceite por operador y turno',       icono: 'droplet' },
       despachoAceite:{ titulo: 'Despacho de Aceite',                icono: 'fuel' },
       equipos:       { titulo: 'Estado de Equipos',                 icono: 'gauge' },
       mantenimiento: { titulo: 'Registro de Mantenimiento',         icono: 'wrench' },
@@ -36,13 +36,14 @@
 
     /** Equipos por sector, para el formulario de mantenimiento. */
     equipos: {
+      // 2 líneas de 4 prensas; cada línea tiene un extrusor.
       Prensa: {
-        etiqueta: 'Prensas (1 al 8)',
+        etiqueta: 'Prensas (Línea 1: 1 a 4 · Línea 2: 5 a 8)',
         lista: ['Prensa 1', 'Prensa 2', 'Prensa 3', 'Prensa 4', 'Prensa 5', 'Prensa 6', 'Prensa 7', 'Prensa 8'],
       },
       Extrusor: {
-        etiqueta: 'Extrusores / Dosificadores',
-        lista: [1, 2, 3, 4, 5, 6, 7, 8].map((n) => 'Extrusor/Dosificador P' + n),
+        etiqueta: 'Extrusores (uno por línea)',
+        lista: ['Extrusor Línea 1', 'Extrusor Línea 2'],
       },
       Reductor: {
         etiqueta: 'Cajas Reductoras (WEG/Bronto)',
@@ -70,24 +71,10 @@
     },
 
     /**
-     * Circuito del aceite (ver js/circuito-aceite.js).
-     * Los nombres definen cuántos tanques hay de cada tipo.
+     * Densidad del aceite de soja (kg por litro). Solo se usa para mostrar, entre
+     * paréntesis, a cuántos litros equivalen los kg de balanza. Todo se guarda en kg.
+     * (El circuito de tanques quedó guardado en archivo/circuito-aceite/.)
      */
-    tanques: {
-      // 2 interiores que se alternan; el lleno reposa antes de bajar al exterior.
-      interiores: { capacidad: 1525, nombres: ['INT 1', 'INT 2'], reposoMinutos: 60 },
-      // 4 exteriores que se llenan en ronda. Limpio entran 5 interiores (7.625 L), pero en el cono
-      // queda residuo y en la práctica entran 4 y medio: 6.862 L útiles.
-      exteriores: { capacidad: 6862, capacidadLimpio: 7625, nombres: ['EXT 1', 'EXT 2', 'EXT 3', 'EXT 4'] },
-      // Tanques grandes que vacían los camiones. CAPACIDAD A CONFIRMAR.
-      grandes: { capacidad: 30000, nombres: ['GRANDE 1', 'GRANDE 2', 'GRANDE 3'] },
-      // Cuando al último exterior le faltan estos litros o menos, se vacían todos a los grandes.
-      trasvaseCuandoFalten: 1525,
-      // Duración de un turno: el aceite del cierre se reparte parejo en estas horas.
-      horasTurno: 8,
-    },
-
-    /** Densidad del aceite de soja (kg por litro), para pasar a litros lo que pesa la balanza. */
     densidadAceite: 0.92,
   });
 })(window.SoyaCore = window.SoyaCore || {});

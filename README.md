@@ -2,7 +2,7 @@
 
 App de escritorio para registrar la operación diaria de una planta aceitera:
 recepción de camiones, despacho de expeller y de aceite, secadora, producción por turnos,
-aceite (producido, despachado y tanques), estado de equipos, mantenimiento y resumen por día y por mes.
+aceite por operador y turno, estado de equipos, mantenimiento y resumen por día y por mes.
 Todos los registros se pueden editar y borrar.
 
 Funciona **sin internet** y guarda los datos **en la PC donde se usa**.
@@ -21,54 +21,48 @@ Funciona **sin internet** y guarda los datos **en la PC donde se usa**.
 app/                     ← la aplicación (esto es lo que se instala en la planta)
   index.html             estructura de la página (sin estilos ni lógica adentro)
   css/styles.css         estilos GENERADOS (no editar a mano)
-  js/config.js           ← datos de la planta: tanques, equipos, turnos, versión
+  js/config.js           ← datos de la planta: equipos, turnos, versión
   js/icons.js            íconos (Lucide) incluidos localmente
   js/ui.js               utilidades de pantalla: formato, tablas, avisos
   js/store.js            guardado de datos, edición, migración y backup
-  js/circuito-aceite.js  cálculo del circuito de aceite (sin pantalla, con pruebas)
   js/graficos.js         gráficos de columnas y de línea en SVG (sin librerías)
-  js/views/*.js          una vista por archivo (recepción, secadora, tanques…)
+  js/views/*.js          una vista por archivo (recepción, secadora, aceite…)
   js/app.js              arranque y navegación
-tests/                   pruebas automáticas del circuito de aceite (npm test)
 src/styles.css           ← fuente de los estilos (Tailwind CSS v4)
 scripts/build-css.mjs    compila src/styles.css → app/css/styles.css
 scripts/sincronizar_github.bat   sube los cambios a GitHub (Windows)
-archivo/                 versiones anteriores, solo como referencia
+archivo/                 versiones anteriores y el circuito de tanques (en pausa), solo como referencia
 ```
 
-## Aceite
+## Aceite por operador y turno
 
-Arriba se ve **cuánto se produjo y cuánto se despachó** en el período elegido (7 días, 30 días, este mes o el anterior), como un balance:
+Sale de los **cierres de turno** (Producción → Turnos), que ahora piden el **operador**. Para el período elegido (7 días, 30 días, este mes o el anterior) muestra:
 
-> Había + Producido − Despachado = Queda en planta
+- **Totales:** aceite producido, promedio por turno, expeller y aceite despachado.
+- **Por operador:** cuántos turnos hizo, cuánto aceite pasó en total y en promedio, y cuánto expeller.
+- **Por turno:** cuánto rinde cada franja horaria (T1, T2, T3).
+- **Turno por turno:** una grilla día × turno con quién estuvo y cuánto pasó.
 
-Debajo hay dos gráficos: lo producido y despachado por día, y el aceite en planta al cierre de cada día.
+Para corregir un dato se edita el cierre de turno en Producción.
 
-Más abajo, **¿Dónde está el aceite ahora?** muestra el circuito de tanques. No se carga a mano: se calcula solo con los **cierres de turno**,
-los **despachos de aceite** y las **mediciones**. Reproduce cómo trabaja la planta:
+## Despacho de aceite
 
-1. **Producción y bateas.** El aceite del turno cae a las bateas y la bomba lo manda al interior que se está llenando. Se asume que entró parejo durante las 8 h del turno.
-2. **Interiores (2 × 1.525 L).**
-    - Se llena uno y, cuando se llena, se cambian las canillas al otro.
-    - El lleno queda **1 h en reposo** (se ve la cuenta regresiva) y después baja al exterior.
-3. **Exteriores (4 × 6.862 L útiles), en ronda 1 → 2 → 3 → 4 → 1.** Limpio, un exterior recibe 5 interiores (7.625 L); con el residuo del cono entran 4 y medio.
-    - Cuando al que se está llenando le falta un interior o menos, se vacía a los grandes **solo el siguiente de la ronda**, que es el que más tiempo lleva decantando.
-    - Los demás siguen decantando (se ve hace cuánto).
-4. **Grandes (3 × 30.000 L, provisorio).** Se llenan en orden y bajan con cada **Despacho de Aceite**. El camión se pesa en la balanza y el neto se pasa a litros con la densidad del aceite (0,92 kg/L, en `config.js`).
+El camión se pesa en la balanza: **bruto − tara = neto**, y se guarda y se muestra **en kg**. Solo como referencia aparece entre paréntesis a cuántos litros equivale (densidad 0,92 kg/L, en `config.js` → `densidadAceite`); no se guarda ninguna conversión.
 
-Si el cálculo se desvía de la realidad, o el primer día que los tanques no están vacíos, usá **Cargar medición**: el cálculo sigue desde esos niveles. Las capacidades y reglas se cambian en `app/js/config.js` → `tanques`.
+> El cálculo del circuito de tanques (interiores, exteriores y grandes) quedó **en pausa** en `archivo/circuito-aceite/`, con sus pruebas, para retomarlo cuando estén las capacidades de los tanques grandes.
 
 ## Estado de equipos
 
-- Hay una tarjeta por equipo: prensas, extrusores, reductores y bombas.
+- Hay una tarjeta por equipo: 8 prensas (línea 1: 1 a 4, línea 2: 5 a 8), 2 extrusores (uno por línea), reductores y 4 bombas.
 - Cada tarjeta muestra cómo quedó el equipo en su último mantenimiento (*Operativo*, *Con observaciones* o *Fuera de servicio*), qué se hizo y hace cuánto.
 - Al tocar una tarjeta se ve el historial y se puede registrar un mantenimiento para ese equipo.
+- Si un equipo deja de estar en la lista pero tiene mantenimientos cargados, aparece en el grupo **Otros** para no perder su historial.
 - El panel **Para el sábado** junta los equipos con observaciones o fuera de servicio, y los que llevan más tiempo sin mantenimiento. La producción suele cortar el viernes a las 22:00 y el mantenimiento se hace el sábado.
 
 ## Resumen
 
 - **Por mes:** totales con la variación contra el mes anterior, gráficos por día (soja, aceite y expeller) y la tabla día por día.
-- **Por día:** turnos, camiones, secadora y mantenimientos de ese día.
+- **Por día:** turnos (con su operador), camiones, secadora y mantenimientos de ese día.
 - Al tocar un día, en la tabla o en un gráfico, se abre su detalle.
 
 ## Editar y borrar registros
@@ -82,7 +76,6 @@ Cada fila tiene un lápiz (editar) y un tacho (borrar).
 
 | Quiero…                                    | Dónde                                                           |
 |--------------------------------------------|-----------------------------------------------------------------|
-| Agregar un tanque o cambiar capacidades    | `app/js/config.js` → `tanques`                                  |
 | Agregar una prensa, reductor o extrusor    | `app/js/config.js` → `equipos`                                  |
 | Cambiar turnos                             | `app/js/config.js` → `turnos`                                   |
 | Cambiar el color de marca                  | `src/styles.css` → `@theme` y después `npm run build:css`        |
@@ -97,7 +90,7 @@ El CSS se genera solo con las clases que se usan. Si agregás una clase nueva, r
 npm install          # la primera vez (requiere Node 20+)
 npm run build:css    # compila una vez
 npm run watch:css    # recompila solo cada vez que guardás
-npm test             # prueba el cálculo del circuito de aceite
+npm test             # prueba el cálculo del circuito de tanques (archivado)
 ```
 
 `scripts/sincronizar_github.bat` recompila automáticamente antes de subir si encuentra `node_modules`.
@@ -114,12 +107,17 @@ npm test             # prueba el cálculo del circuito de aceite
 
 ## Limitaciones conocidas (decisiones pendientes)
 
-1. **Capacidad de los tanques grandes:** 30.000 L es provisorio.
+1. **Circuito de tanques en pausa:** falta la capacidad de los tanques grandes (se miden con manguera de nivel).
 2. **Fecha del turno:** un registro nuevo toma la fecha y hora del momento en que se guarda. Si hace falta, se corrige con **Editar**.
 3. **Datos en el navegador:** si se borran los datos de navegación, se pierde todo lo que no esté en un backup.
 
 ## Historial
 
+- **2.13.0**:
+  - Pantalla nueva **Aceite por operador y turno**. El cierre de turno pide el operador.
+  - El despacho de aceite se guarda y se muestra solo en kg de balanza (litros aproximados entre paréntesis).
+  - El circuito de tanques se saca de la app y queda archivado.
+  - 2 extrusores, uno por línea.
 - **2.12.0**:
   - El despacho de aceite se carga con bruto y tara de balanza. Se guarda el neto en kg y su equivalente en litros.
   - Los exteriores pasan a 6.862 L útiles (4 ½ interiores), por el residuo del cono.

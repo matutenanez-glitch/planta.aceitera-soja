@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-await import('../app/js/circuito-aceite.js');
+await import('./circuito-aceite.js');
 const { simular, parseFecha } = globalThis.SoyaCore.circuito;
 
 const CFG = {

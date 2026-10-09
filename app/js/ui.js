@@ -44,6 +44,12 @@
   }
   const hoy = () => ahora().slice(0, 10);
 
+  /** "AAAA-MM-DD HH:MM" (hora local) → milisegundos. NaN si no se entiende. */
+  function fechaMs(texto) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/.exec(String(texto || ''));
+    return m ? new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]).getTime() : NaN;
+  }
+
   /** Lee un <input type="number"> como número (NaN si está vacío). */
   const num = (input) => (input.value === '' ? NaN : Number(input.value));
 
@@ -272,5 +278,5 @@
     return guardado;
   }
 
-  SoyaCore.ui = { $, $$, el, fmt, ahora, hoy, num, fillSelect, toast, alerta, descargar, tablaRegistros, editorFormulario, guardarRegistro };
+  SoyaCore.ui = { $, $$, el, fmt, ahora, hoy, fechaMs, num, fillSelect, toast, alerta, descargar, tablaRegistros, editorFormulario, guardarRegistro };
 })(window.SoyaCore = window.SoyaCore || {});

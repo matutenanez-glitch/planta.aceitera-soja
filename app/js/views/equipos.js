@@ -13,7 +13,7 @@
   const store = SoyaCore.store;
   const { equipos, estadosEquipo: estados } = SoyaCore.config;
   const icons = SoyaCore.icons;
-  const parse = (f) => SoyaCore.circuito.parseFecha(f);
+  const parse = SoyaCore.ui.fechaMs;
 
   const ESTILO = {
     operativo:     { tarjeta: 'estado-operativo',     chip: 'chip-operativo',     icono: 'circle-check' },
@@ -22,6 +22,11 @@
     sin:           { tarjeta: 'estado-sin',           chip: 'chip-sin',           icono: 'info' },
   };
   const etiquetaEstado = (e) => (e === 'sin' ? 'Sin registros' : estados[e].etiqueta);
+
+  /** Equipos con registros que ya no están en config.js (por ejemplo, si se renombraron). */
+  const OTROS = '_otros';
+  const grupos = () => [...Object.entries(equipos), [OTROS, { etiqueta: 'Otros equipos con registros (no están en la lista actual)' }]];
+  const etiquetaGrupo = (tipo) => (tipo === OTROS ? 'Otros' : equipos[tipo].etiqueta);
 
   let filtro = 'todos';
   let abierto = null; // { tipo, equipo }
@@ -48,7 +53,9 @@
     const porEquipo = {};
     store.todos('mantenimiento').forEach((r) => (porEquipo[r.equipo] = porEquipo[r.equipo] || []).push(r));
     const lista = [];
-    Object.entries(equipos).forEach(([tipo, def]) => {
+    const enLista = new Set(Object.values(equipos).flatMap((d) => d.lista));
+    const otros = Object.keys(porEquipo).filter((n) => !enLista.has(n)).sort();
+    [...Object.entries(equipos), [OTROS, { lista: otros }]].forEach(([tipo, def]) => {
       def.lista.forEach((equipo) => {
         const historial = (porEquipo[equipo] || []).slice().sort((a, b) => String(a.fecha).localeCompare(String(b.fecha)));
         const ultimo = historial[historial.length - 1] || null;
@@ -97,7 +104,7 @@
   }
 
   function dibujarGrupos(lista) {
-    const grupos = Object.entries(equipos).map(([tipo, def]) => {
+    const bloques = grupos().map(([tipo, def]) => {
       const items = lista.filter((e) => e.tipo === tipo && (filtro === 'todos' || e.estado === filtro));
       if (!items.length) return null;
       const fuera = items.filter((e) => e.estado === 'fuera').length;
@@ -109,7 +116,7 @@
         el('div', { className: 'grid grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-3' }, items.map(tarjeta)),
       ]);
     }).filter(Boolean);
-    $('#eq-grupos').replaceChildren(...(grupos.length ? grupos : [el('p', { className: 'text-sm text-slate-500 italic', text: 'No hay equipos con ese estado.' })]));
+    $('#eq-grupos').replaceChildren(...(bloques.length ? bloques : [el('p', { className: 'text-sm text-slate-500 italic', text: 'No hay equipos con ese estado.' })]));
   }
 
   /** Próximo sábado (o hoy, si hoy es sábado). */
@@ -163,7 +170,7 @@
     if (!e) return;
     abierto = { tipo: e.tipo, equipo: e.equipo };
     $('#eq-dialogo-titulo').textContent = e.equipo;
-    $('#eq-dialogo-sub').textContent = `${equipos[e.tipo].etiqueta} · ${e.historial.length} intervención${e.historial.length === 1 ? '' : 'es'}${e.ultimo ? ` · último mantenimiento ${haceDias(e.ultimoMs)}` : ''}`;
+    $('#eq-dialogo-sub').textContent = `${etiquetaGrupo(e.tipo)} · ${e.historial.length} intervención${e.historial.length === 1 ? '' : 'es'}${e.ultimo ? ` · último mantenimiento ${haceDias(e.ultimoMs)}` : ''}`;
     $('#eq-dialogo-estado').replaceWith(Object.assign(chipEstado(e.estado), { id: 'eq-dialogo-estado' }));
     $('#eq-dialogo-historial').replaceChildren(...(e.historial.length
       ? e.historial.slice().reverse().map((r) => el('li', { className: 'rounded-xl border border-slate-800 bg-slate-950/40 p-3' }, [
@@ -194,7 +201,7 @@
         const { tipo, equipo } = abierto;
         $('#eq-dialogo').close();
         SoyaCore.navegar('mantenimiento');
-        SoyaCore.views.mantenimiento.nuevoPara(tipo, equipo);
+        if (tipo !== OTROS) SoyaCore.views.mantenimiento.nuevoPara(tipo, equipo);
       });
       store.alCambiar((c) => (c === 'mantenimiento' || c === '*') && dibujar());
       dibujar();
