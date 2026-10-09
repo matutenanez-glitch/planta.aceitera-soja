@@ -1,6 +1,6 @@
 {
   "name": "soyacore-os",
-  "version": "2.11.0",
+  "version": "2.12.0",
   "private": true,
   "description": "Sistema operativo de planta aceitera de soja (app de escritorio, datos locales).",
   "type": "module",

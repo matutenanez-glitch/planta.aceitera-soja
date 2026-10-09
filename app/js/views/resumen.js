@@ -47,6 +47,7 @@
       camionesSoja: soja.length,
       aceiteProd: sum(produccion, 'aceite'),
       aceiteDesp: sum(despAce, 'litros'),
+      aceiteDespKg: sum(despAce, 'neto'),
       expProd: sum(produccion, 'expeller'),
       expDesp: sum(despExp, 'neto'),
       camionesIn: ingresos.length,
@@ -117,7 +118,7 @@
     $('#res-mes-kpis').replaceChildren(
       kpi({ titulo: 'Soja ingresada', valor: fmt.toneladas(t.sojaKg), delta: variacion(t.sojaKg, prev.sojaKg), sub: `${t.camionesSoja} camión${t.camionesSoja === 1 ? '' : 'es'}`, nombreMesPrevio: nPrev }),
       kpi({ titulo: 'Aceite producido', valor: fmt.litros(t.aceiteProd), delta: variacion(t.aceiteProd, prev.aceiteProd), nombreMesPrevio: nPrev, color: 'var(--color-viz-producido)' }),
-      kpi({ titulo: 'Aceite despachado', valor: fmt.litros(t.aceiteDesp), delta: variacion(t.aceiteDesp, prev.aceiteDesp), sub: `${t.despAce.length} camión${t.despAce.length === 1 ? '' : 'es'}`, nombreMesPrevio: nPrev, color: 'var(--color-viz-despachado)' }),
+      kpi({ titulo: 'Aceite despachado', valor: fmt.litros(t.aceiteDesp), delta: variacion(t.aceiteDesp, prev.aceiteDesp), sub: `${t.despAce.length} camión${t.despAce.length === 1 ? '' : 'es'} · ${fmt.kg(t.aceiteDespKg)}`, nombreMesPrevio: nPrev, color: 'var(--color-viz-despachado)' }),
       kpi({ titulo: 'Expeller producido', valor: fmt.toneladas(t.expProd), delta: variacion(t.expProd, prev.expProd), nombreMesPrevio: nPrev, color: 'var(--color-viz-producido)' }),
       kpi({ titulo: 'Expeller despachado', valor: fmt.toneladas(t.expDesp), delta: variacion(t.expDesp, prev.expDesp), sub: `${t.despExp.length} camión${t.despExp.length === 1 ? '' : 'es'}`, nombreMesPrevio: nPrev, color: 'var(--color-viz-despachado)' }),
       kpi({ titulo: 'Camiones entrada / salida', valor: `${t.camionesIn} / ${t.camionesOut}`, sub: 'ingresos / despachos de expeller y aceite' }),
@@ -185,7 +186,7 @@
       kpi({ titulo: 'Soja ingresada', valor: fmt.kg(t.sojaKg), sub: `${t.camionesSoja} camión${t.camionesSoja === 1 ? '' : 'es'} de soja` }),
       kpi({ titulo: 'Humedad inicial prom.', valor: fmt.porcentaje(t.humedad), sub: `${t.secadora.length} muestra${t.secadora.length === 1 ? '' : 's'} de secadora` }),
       kpi({ titulo: 'Aceite producido', valor: fmt.litros(t.aceiteProd), sub: `${t.produccion.length} cierre${t.produccion.length === 1 ? '' : 's'} de turno`, color: 'var(--color-viz-producido)' }),
-      kpi({ titulo: 'Aceite despachado', valor: fmt.litros(t.aceiteDesp), sub: `${t.despAce.length} camión${t.despAce.length === 1 ? '' : 'es'}`, color: 'var(--color-viz-despachado)' }),
+      kpi({ titulo: 'Aceite despachado', valor: fmt.litros(t.aceiteDesp), sub: `${t.despAce.length} camión${t.despAce.length === 1 ? '' : 'es'}${t.aceiteDespKg ? ' · ' + fmt.kg(t.aceiteDespKg) : ''}`, color: 'var(--color-viz-despachado)' }),
       kpi({ titulo: 'Expeller producido', valor: fmt.kg(t.expProd), sub: 'según cierres de turno', color: 'var(--color-viz-producido)' }),
       kpi({ titulo: 'Expeller despachado', valor: fmt.kg(t.expDesp), sub: `${t.despExp.length} camión${t.despExp.length === 1 ? '' : 'es'}`, color: 'var(--color-viz-despachado)' }),
     );
@@ -199,7 +200,7 @@
     const camiones = [
       ...t.ingresos.map((r) => ({ fecha: r.fecha, tipo: `Ingreso (${r.carga || 'Soja'})`, empresa: r.empresa, cantidad: fmt.kg(r.neto) })),
       ...t.despExp.map((r) => ({ fecha: r.fecha, tipo: 'Despacho expeller', empresa: r.empresa, cantidad: fmt.kg(r.neto) })),
-      ...t.despAce.map((r) => ({ fecha: r.fecha, tipo: 'Despacho aceite', empresa: r.empresa, cantidad: fmt.entero(r.litros) + ' L' })),
+      ...t.despAce.map((r) => ({ fecha: r.fecha, tipo: 'Despacho aceite', empresa: r.empresa, cantidad: (r.neto != null ? fmt.kg(r.neto) + ' · ' : '') + '≈ ' + fmt.entero(r.litros) + ' L' })),
     ].sort(porHora);
     filasTabla('#res-dia-camiones', camiones, [
       { valor: horaDe }, { valor: (r) => r.tipo }, { valor: (r) => r.empresa, className: 'max-w-48 truncate' }, { valor: (r) => r.cantidad, className: 'num' },

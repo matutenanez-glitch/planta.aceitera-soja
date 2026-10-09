@@ -51,10 +51,10 @@ los **despachos de aceite** y las **mediciones**. Reproduce cómo trabaja la pla
 2. **Interiores (2 × 1.525 L).**
     - Se llena uno y, cuando se llena, se cambian las canillas al otro.
     - El lleno queda **1 h en reposo** (se ve la cuenta regresiva) y después baja al exterior.
-3. **Exteriores (4 × 7.625 L), en ronda 1 → 2 → 3 → 4 → 1.**
+3. **Exteriores (4 × 6.862 L útiles), en ronda 1 → 2 → 3 → 4 → 1.** Limpio, un exterior recibe 5 interiores (7.625 L); con el residuo del cono entran 4 y medio.
     - Cuando al que se está llenando le falta un interior o menos, se vacía a los grandes **solo el siguiente de la ronda**, que es el que más tiempo lleva decantando.
     - Los demás siguen decantando (se ve hace cuánto).
-4. **Grandes (3 × 30.000 L).** Se llenan en orden y bajan con cada **Despacho de Aceite**.
+4. **Grandes (3 × 30.000 L, provisorio).** Se llenan en orden y bajan con cada **Despacho de Aceite**. El camión se pesa en la balanza y el neto se pasa a litros con la densidad del aceite (0,92 kg/L, en `config.js`).
 
 Si el cálculo se desvía de la realidad, o el primer día que los tanques no están vacíos, usá **Cargar medición**: el cálculo sigue desde esos niveles. Las capacidades y reglas se cambian en `app/js/config.js` → `tanques`.
 
@@ -114,12 +114,15 @@ npm test             # prueba el cálculo del circuito de aceite
 
 ## Limitaciones conocidas (decisiones pendientes)
 
-1. **Capacidades a confirmar:** tanques grandes (30.000 L provisorio) y exteriores (7.625 L = 5 interiores; la v2.8 decía 6.862 L).
+1. **Capacidad de los tanques grandes:** 30.000 L es provisorio.
 2. **Fecha del turno:** un registro nuevo toma la fecha y hora del momento en que se guarda. Si hace falta, se corrige con **Editar**.
 3. **Datos en el navegador:** si se borran los datos de navegación, se pierde todo lo que no esté en un backup.
 
 ## Historial
 
+- **2.12.0**:
+  - El despacho de aceite se carga con bruto y tara de balanza. Se guarda el neto en kg y su equivalente en litros.
+  - Los exteriores pasan a 6.862 L útiles (4 ½ interiores), por el residuo del cono.
 - **2.11.0**:
   - El aceite se muestra como balance (había + producido − despachado = queda), con gráficos por día.
   - Pantalla nueva **Estado de Equipos**, con tarjetas por equipo, historial y pendientes para el sábado.

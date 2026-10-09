@@ -7,7 +7,7 @@
   'use strict';
 
   SoyaCore.config = Object.freeze({
-    version: '2.11.0',
+    version: '2.12.0',
     locale: 'es-AR',
 
     /** Cuántas filas muestran las tablas de "últimos registros". */
@@ -76,8 +76,9 @@
     tanques: {
       // 2 interiores que se alternan; el lleno reposa antes de bajar al exterior.
       interiores: { capacidad: 1525, nombres: ['INT 1', 'INT 2'], reposoMinutos: 60 },
-      // 4 exteriores que se llenan en ronda. 1 exterior = 5 interiores (A CONFIRMAR: la v2.8 decía 6.862 L).
-      exteriores: { capacidad: 7625, nombres: ['EXT 1', 'EXT 2', 'EXT 3', 'EXT 4'] },
+      // 4 exteriores que se llenan en ronda. Limpio entran 5 interiores (7.625 L), pero en el cono
+      // queda residuo y en la práctica entran 4 y medio: 6.862 L útiles.
+      exteriores: { capacidad: 6862, capacidadLimpio: 7625, nombres: ['EXT 1', 'EXT 2', 'EXT 3', 'EXT 4'] },
       // Tanques grandes que vacían los camiones. CAPACIDAD A CONFIRMAR.
       grandes: { capacidad: 30000, nombres: ['GRANDE 1', 'GRANDE 2', 'GRANDE 3'] },
       // Cuando al último exterior le faltan estos litros o menos, se vacían todos a los grandes.
@@ -85,5 +86,8 @@
       // Duración de un turno: el aceite del cierre se reparte parejo en estas horas.
       horasTurno: 8,
     },
+
+    /** Densidad del aceite de soja (kg por litro), para pasar a litros lo que pesa la balanza. */
+    densidadAceite: 0.92,
   });
 })(window.SoyaCore = window.SoyaCore || {});

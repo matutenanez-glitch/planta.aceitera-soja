@@ -108,7 +108,9 @@
     $('#ac-interiores-regla').textContent =
       `${fmt.entero(cfg.interiores.capacidad)} L c/u. Se alternan: el lleno reposa ${cfg.interiores.reposoMinutos} min mientras se llena el otro.`;
     $('#ac-exteriores-regla').textContent =
-      `${fmt.entero(cfg.exteriores.capacidad)} L c/u${Number.isInteger(equivalen) ? ` (${equivalen} interiores)` : ''}. Se llenan en ronda: ${cfg.exteriores.nombres.map((n) => n.replace(/\D+/g, '')).join(' → ')} → …`;
+      `${fmt.entero(cfg.exteriores.capacidad)} L útiles c/u (≈ ${fmt.decimal1(equivalen)} interiores` +
+      (cfg.exteriores.capacidadLimpio ? `; limpio, ${fmt.entero(cfg.exteriores.capacidadLimpio)} L` : '') +
+      `). Se llenan en ronda: ${cfg.exteriores.nombres.map((n) => n.replace(/\D+/g, '')).join(' → ')} → …`;
     $('#ac-grandes-regla').textContent =
       `${fmt.entero(cfg.grandes.capacidad)} L c/u. Se llenan en orden.`;
   }

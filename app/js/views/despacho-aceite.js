@@ -1,6 +1,9 @@
 /*
  * Vista: Despacho de aceite (camiones que cargan desde los tanques grandes).
- * Cada despacho baja el nivel del tanque grande elegido en el Circuito de Aceite.
+ *
+ * El camión se pesa en la balanza (bruto − tara = neto en kg). Para el
+ * circuito y el balance de aceite, el neto se pasa a litros con la densidad
+ * de config.js. Se guardan los dos: neto (kg) y litros.
  */
 (function (SoyaCore) {
   'use strict';
@@ -8,13 +11,16 @@
   const { $, fmt, num, toast, fillSelect, tablaRegistros, editorFormulario, guardarRegistro } = SoyaCore.ui;
   const store = SoyaCore.store;
   const cfg = SoyaCore.config.tanques;
+  const densidad = SoyaCore.config.densidadAceite;
   const nombreTanque = (i) => cfg.grandes.nombres[Number(i)] || '-';
+  const aLitros = (kg) => kg / densidad;
 
   const COLUMNAS = [
     { key: 'fecha' },
     { key: 'empresa' },
     { key: 'conductor' },
     { key: 'tanque', format: nombreTanque },
+    { key: 'neto', format: (v) => (v != null ? fmt.entero(v) : '-'), className: 'num' }, // los registros de la v2.10 no tienen kg
     { key: 'litros', format: fmt.entero, className: 'num' },
   ];
 
@@ -42,7 +48,14 @@
 
   function actualizarDisponible() {
     const g = nivelesActuales()[Number($('#da-tanque').value)];
-    $('#da-disponible').textContent = g ? `Según el cálculo, ${g.nombre} tiene ${fmt.entero(g.litros)} L de ${fmt.entero(g.capacidad)} L.` : '';
+    $('#da-disponible').textContent = g ? `Según el cálculo, ${g.nombre} tiene ${fmt.entero(g.litros)} L (≈ ${fmt.entero(g.litros * densidad)} kg).` : '';
+  }
+
+  const neto = () => num($('#da-bruto')) - num($('#da-tara'));
+  function actualizarNeto() {
+    const n = neto() > 0 ? neto() : 0;
+    $('#da-neto').textContent = fmt.kg(n);
+    $('#da-litros').textContent = `≈ ${fmt.entero(aLitros(n))} L (densidad ${String(densidad).replace('.', ',')} kg/L)`;
   }
 
   SoyaCore.views = SoyaCore.views || {};
@@ -60,25 +73,40 @@
         rellenar(r) {
           $('#da-empresa').value = r.empresa || '';
           $('#da-conductor').value = r.conductor || '';
-          $('#da-litros').value = r.litros ?? '';
+          // Registros de la v2.10: solo litros → se estiman los kg.
+          const kg = r.neto != null ? r.neto : Math.round((Number(r.litros) || 0) * densidad);
+          $('#da-bruto').value = r.bruto != null ? r.bruto : kg;
+          $('#da-tara').value = r.tara != null ? r.tara : 0;
+          actualizarNeto();
           actualizarTanques();
           $('#da-tanque').value = String(r.tanque);
           actualizarDisponible();
         },
-        alTerminar: () => setTimeout(actualizarTanques),
+        alTerminar: () => { actualizarNeto(); setTimeout(actualizarTanques); },
       });
 
       $('#da-tanque').addEventListener('change', actualizarDisponible);
+      $('#da-bruto').addEventListener('input', actualizarNeto);
+      $('#da-tara').addEventListener('input', actualizarNeto);
 
       $('#form-despacho-aceite').addEventListener('submit', (e) => {
         e.preventDefault();
+        const kg = neto();
+        if (!(kg > 0)) {
+          toast('El peso neto debe ser mayor a 0 (revisá bruto y tara).', 'error');
+          $('#da-tara').focus();
+          return;
+        }
         const tanque = Number($('#da-tanque').value);
-        const litros = num($('#da-litros'));
+        const litros = Math.round(aLitros(kg));
         const disponible = nivelesActuales()[tanque].litros;
         const guardado = guardarRegistro('despachosAceite', editor, {
           empresa: $('#da-empresa').value.trim(),
           conductor: $('#da-conductor').value.trim(),
           tanque,
+          bruto: num($('#da-bruto')),
+          tara: num($('#da-tara')),
+          neto: kg,
           litros,
         }, { nuevo: 'Despacho de aceite registrado.' });
         // No se bloquea: el camión ya salió. Se avisa para corregir con una medición.
@@ -92,6 +120,7 @@
         if (['produccion', 'despachosAceite', 'mediciones', '*'].includes(c) && !editor.id) actualizarTanques();
       });
       tabla.dibujar();
+      actualizarNeto();
       actualizarTanques();
     },
     refresh: () => { if (!editor.id) actualizarTanques(); },
