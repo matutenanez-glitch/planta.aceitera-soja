@@ -113,6 +113,90 @@
     return candidatos.find((c) => !cargados || !cargados.has(clave(c.dia, c.etiqueta))) || candidatos[0];
   }
 
+  /** Un cierre cargado más de 12 h después de que terminó su turno (por ejemplo, el del martes cargado el jueves). */
+  function cargadoTarde(r) {
+    const t = porEtiqueta(r.turno);
+    const cargado = SoyaCore.ui.fechaMs(r.fecha);
+    return !!t && !isNaN(cargado) && cargado > finMs(t, diaDe(r)) + 12 * 3600000;
+  }
+
+  /**
+   * Control de carga a partir de todos los cierres de turno.
+   *
+   * Un día "se espera" (y entonces avisa si falta un turno) cuando es día de
+   * producción (config.diasProduccion) desde el primer cierre cargado en la app,
+   * o cuando tiene algún cierre (por ejemplo, un sábado que se trabajó).
+   *
+   * Estado de cada turno:
+   *   'cargado'       tiene cierre
+   *   'sinProduccion' se marcó que ese turno no se trabajó (parada, feriado)
+   *   'falta'         terminó, se esperaba y no tiene cierre
+   *   'noSeEspera'    terminó, pero ese día no se produce (fin de semana)
+   *   'enCurso' | 'pendiente'  todavía no terminó
+   */
+  function control(registros, ahoraMs) {
+    const ahora = ahoraMs == null ? Date.now() : ahoraMs;
+    const grupos = new Map();
+    let inicio = null;
+    registros.forEach((r) => {
+      const dia = diaDe(r);
+      const etiqueta = normalizarEtiqueta(r.turno);
+      if (!grupos.has(dia)) grupos.set(dia, new Map());
+      const g = grupos.get(dia);
+      if (!g.has(etiqueta)) g.set(etiqueta, []);
+      g.get(etiqueta).push(r);
+      if (!inicio || dia < inicio) inicio = dia;
+    });
+
+    function seEspera(dia) {
+      const g = grupos.get(dia);
+      if (g && g.size) return true;
+      return !!inicio && dia >= inicio && cfg.diasProduccion.includes(fechaDia(dia).getDay());
+    }
+
+    function turno(dia, etiqueta) {
+      const registrosTurno = (grupos.get(dia) && grupos.get(dia).get(etiqueta)) || [];
+      if (registrosTurno.length) {
+        return { estado: registrosTurno.every((r) => r.sinProduccion) ? 'sinProduccion' : 'cargado', registros: registrosTurno };
+      }
+      const e = estado(etiqueta, dia, ahora);
+      if (e !== 'terminado') return { estado: e, registros: [] };
+      return { estado: seEspera(dia) ? 'falta' : 'noSeEspera', registros: [] };
+    }
+
+    function resumenDia(dia) {
+      const turnos = lista.map((t) => Object.assign({ turno: t }, turno(dia, t.etiqueta)));
+      const registrosDia = turnos.flatMap((x) => x.registros);
+      const trabajados = registrosDia.filter((r) => !r.sinProduccion);
+      const cuantos = (est) => turnos.filter((x) => x.estado === est).length;
+      return {
+        dia,
+        turnos,
+        seEspera: seEspera(dia),
+        registros: registrosDia,
+        trabajados,
+        total: trabajados.reduce((s, r) => s + (Number(r.aceite) || 0), 0),
+        cargados: cuantos('cargado'),
+        sinProduccion: cuantos('sinProduccion'),
+        porVenir: cuantos('enCurso') + cuantos('pendiente'),
+        faltan: turnos.filter((x) => x.estado === 'falta'),
+      };
+    }
+
+    /** Días con turnos sin cargar entre `desde` y `hasta` (incluidos), el más reciente primero. */
+    function diasConFaltantes(desde, hasta) {
+      const out = [];
+      if (!inicio) return out;
+      for (let d = hasta; d >= desde && d >= inicio; d = sumarDias(d, -1)) {
+        const r = resumenDia(d);
+        if (r.faltan.length) out.push(r);
+      }
+      return out;
+    }
+
+    return { hoy: isoDia(new Date(ahora)), inicio, seEspera, turno, resumenDia, diasConFaltantes };
+  }
+
   /** "Turno 1 (00–08)" */
   const corto = (etiqueta) => { const t = porEtiqueta(etiqueta); return t ? `${t.nombre} (${t.desde}–${t.hasta})` : String(etiqueta || '-'); };
 
@@ -141,6 +225,8 @@
     estado,
     clave,
     sugerir,
+    cargadoTarde,
+    control,
     corto,
     textoTanques,
   };

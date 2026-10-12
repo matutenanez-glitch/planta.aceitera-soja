@@ -36,7 +36,7 @@
     if (boton) mostrar(boton.dataset.view, { foco: true });
   });
 
-  // Enlaces internos entre vistas (por ejemplo, "Registrar despacho de aceite")
+  // Enlaces internos entre vistas (por ejemplo, "Registrar venta de aceite")
   document.addEventListener('click', (e) => {
     const enlace = e.target.closest('[data-ir]');
     if (enlace) mostrar(enlace.dataset.ir, { foco: true });

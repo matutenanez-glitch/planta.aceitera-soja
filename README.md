@@ -1,7 +1,7 @@
 # SoyaCore OS — Sistema de planta aceitera de soja
 
 App de escritorio para registrar la operación diaria de una planta aceitera:
-recepción de camiones, despacho de expeller y de aceite, secadora, producción por turnos,
+recepción de camiones, despacho de expeller, venta de aceite, secadora, producción por turnos,
 aceite por día y turno, estado de equipos, mantenimiento y resumen por día y por mes.
 Todos los registros se pueden editar y borrar.
 
@@ -40,21 +40,24 @@ archivo/                 versiones anteriores y el circuito de tanques (en pausa
 - El día va de **00:00 a 24:00** y se completa con 3 turnos: **Turno 1** (00 a 08), **Turno 2** (08 a 16) y **Turno 3** (16 a 00).
 - Cada turno tiene **un solo cierre** con su operador. La app no deja cargar dos veces el mismo turno del mismo día y ofrece **Editarlo**.
 - El formulario propone automáticamente el **día y el turno** que corresponde cargar según la hora. Por ejemplo, el Turno 3 que se carga a las 00:05 queda en el día anterior.
-- El aceite se carga con los botones **1, 2, 3 o 4 tanques** (1 tanque = 1.525 L). Si no fue un tanque entero, se escriben los litros a mano.
+- El aceite se carga con los botones **1 tanque** o **2 tanques** (1 tanque = 1.525 L). En un turno se pasan hasta 2 tanques, así que la app no acepta más de 3.050 L. Si no fue un tanque entero, se escriben los litros a mano.
+- **Turnos sin cargar:** arriba de la pantalla aparecen los turnos de los últimos 30 días que no tienen cierre.
+    - **Cargar** abre el formulario con ese día y ese turno ya puestos. El cierre queda guardado en el día del turno, aunque se cargue días después (por ejemplo, el del martes cargado el jueves), y no cambia ningún otro día.
+    - **No se trabajó** marca que ese turno no tuvo producción (parada, feriado). Se puede deshacer. Si después se carga, se edita y pasa a ser un cierre normal.
 
 ## Aceite por día y turno
 
 Sale de los cierres de turno:
 
-- **Hoy:** los 3 turnos del día. Cada uno aparece como *Cargado* (con litros, tanques y operador), *En curso*, *Más tarde* o *Falta cargar*.
+- **Hoy:** los 3 turnos del día. Cada uno aparece como *Cargado* (con litros, tanques y operador), *En curso*, *Más tarde*, *Falta cargar* o *No se trabajó*.
 - **Totales del período** (7 días, 30 días, este mes o el anterior): aceite total, promedio por día y por turno, y cuántos turnos faltan cargar.
-- **Día por día:** una fila por día con los 3 turnos, el total del día y su estado (*Completo*, *Falta 1 turno*, *Sin carga*). Al tocar **Falta cargar** se abre el formulario con ese día y ese turno ya puestos.
+- **Día por día:** una fila por día con los 3 turnos, el total del día y su estado (*Completo*, *Falta 1 turno*, *No se trabajó*, *Sin producción*). Al tocar **Falta cargar** se abre el formulario con ese día y ese turno ya puestos. Un cierre cargado tarde lo indica ("Cargado el jue 08/10").
 
-Un día sin ningún cierre (fin de semana o parada) queda en gris y no se cuenta como faltante.
+Se produce de **lunes a viernes**. La semana arranca el lunes a las 00:00 con el Turno 1, y el viernes la producción corta a las 22:00. En esos días, un turno terminado sin cierre aparece como *Falta cargar*, desde el primer cierre cargado en la app. Sábados y domingos quedan en gris, salvo que se cargue algún turno: en ese caso, ese día también se controla.
 
-## Despacho de aceite
+## Venta de aceite
 
-El camión se pesa en la balanza: **bruto − tara = neto**, y se guarda y se muestra **en kg**. Solo como referencia aparece entre paréntesis a cuántos litros equivale (densidad 0,92 kg/L, en `config.js` → `densidadAceite`); no se guarda ninguna conversión.
+El aceite no lo despacha la planta: lo retira con su camión la empresa que lo compra. El camión se pesa en la balanza: **bruto − tara = neto**, y se guarda y se muestra **en kg**. Solo como referencia aparece entre paréntesis a cuántos litros equivale (densidad 0,92 kg/L, en `config.js` → `densidadAceite`); no se guarda ninguna conversión.
 
 > El cálculo del circuito de tanques (interiores, exteriores y grandes) quedó **en pausa** en `archivo/circuito-aceite/`, con sus pruebas, para retomarlo cuando estén las capacidades de los tanques grandes.
 
@@ -86,6 +89,8 @@ Cada fila tiene un lápiz (editar) y un tacho (borrar).
 | Agregar una prensa, reductor o extrusor    | `app/js/config.js` → `equipos`                                  |
 | Cambiar turnos                             | `app/js/config.js` → `turnos`                                   |
 | Cambiar los litros de un tanque            | `app/js/config.js` → `litrosPorTanque`                          |
+| Cambiar el máximo de tanques por turno     | `app/js/config.js` → `maxTanquesPorTurno`                       |
+| Cambiar los días en que se produce         | `app/js/config.js` → `diasProduccion`                           |
 | Cambiar el color de marca                  | `src/styles.css` → `@theme` y después `npm run build:css`        |
 | Agregar un ícono                           | `app/js/icons.js` (ver instrucciones al principio del archivo)  |
 | Subir la versión                           | `app/js/config.js` → `version` (y `package.json`)               |
@@ -116,11 +121,16 @@ npm test             # prueba el cálculo del circuito de tanques (archivado)
 ## Limitaciones conocidas (decisiones pendientes)
 
 1. **Circuito de tanques en pausa:** falta la capacidad de los tanques grandes (se miden con manguera de nivel).
-2. **Días de producción:** un día sin ningún cierre no se marca como faltante, porque la app no sabe si se produjo. Falta confirmar si el lunes arranca con el Turno 1 a las 00:00.
+2. **Feriados y paradas:** la app no los conoce. Un día hábil sin producción aparece con turnos faltantes hasta que se marca **No se trabajó**.
 3. **Datos en el navegador:** si se borran los datos de navegación, se pierde todo lo que no esté en un backup.
 
 ## Historial
 
+- **2.15.0**:
+  - "Despacho de aceite" pasa a llamarse **Venta de aceite**: la empresa compradora lo retira con su camión.
+  - Cierre de turno con botones de 1 y 2 tanques. No acepta más de 2 tanques por turno.
+  - Se produce de lunes a viernes. Un turno terminado sin cierre en esos días aparece como faltante.
+  - Lista de **turnos sin cargar** en Producción. Un turno olvidado se carga días después en su día, y lo que no se trabajó se marca **No se trabajó**.
 - **2.14.0**:
   - Los turnos pasan a ser 1 (00–08), 2 (08–16) y 3 (16–00), y el día va de 00:00 a 24:00. Los registros anteriores se renombran solos según su horario.
   - El cierre de turno guarda el día del turno, tiene botones de tanques (1.525 L) y no deja cargar dos veces el mismo turno.

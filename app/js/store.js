@@ -21,7 +21,7 @@
     secadora:      { clave: 'secadora',      etiqueta: 'Secadora',              numeros: ['hCamion', 'hCaliente', 'hFrio'] },
     produccion:    { clave: 'produccion',    etiqueta: 'Producción',            numeros: ['expeller', 'aceite'] },
     mantenimiento: { clave: 'mantenimiento', etiqueta: 'Mantenimiento',         numeros: [] },
-    despachosAceite: { clave: 'aceite_despachos', etiqueta: 'Despacho de aceite', numeros: ['bruto', 'tara', 'neto', 'litros'] },
+    despachosAceite: { clave: 'aceite_despachos', etiqueta: 'Venta de aceite', numeros: ['bruto', 'tara', 'neto', 'litros'] },
   };
 
   const datos = {};

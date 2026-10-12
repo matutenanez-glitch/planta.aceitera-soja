@@ -3,7 +3,8 @@
  *
  * Sale de los cierres de turno (Producción). Muestra, para hoy y para cada día
  * del período, el aceite que pasó cada turno y quién lo cargó, y avisa qué
- * turnos faltan cargar. El día va de 00:00 a 24:00 (Turno 1, 2 y 3).
+ * turnos faltan cargar. El día va de 00:00 a 24:00 (Turno 1, 2 y 3) y se
+ * produce de lunes a viernes (config.diasProduccion).
  */
 (function (SoyaCore) {
   'use strict';
@@ -17,9 +18,10 @@
   const DIAS_LARGOS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
   const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
   const ddmm = (iso) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
+  const diaSemana = (iso) => `${DIAS[T.fechaDia(iso).getDay()]} ${ddmm(iso)}`;
   const hhmm = (ms) => { const d = new Date(ms); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
   const plural = (n, uno, varios) => `${fmt.entero(n)} ${n === 1 ? uno : varios}`;
-  const sumaAceite = (lista) => lista.reduce((s, r) => s + (Number(r.aceite) || 0), 0);
+  const sumaAceite = (lista) => lista.reduce((s, r) => s + (r.sinProduccion ? 0 : Number(r.aceite) || 0), 0);
 
   let periodo = '7d';
 
@@ -38,27 +40,9 @@
     return { desde: T.sumarDias(hoyIso, -6), hasta: hoyIso };
   }
 
-  /** Cierres de turno agrupados por día y por turno: Map(dia → Map(etiqueta → [registros])). */
-  function agrupar() {
-    const porDia = new Map();
-    store.todos('produccion').forEach((r) => {
-      const dia = T.diaDe(r);
-      const etiqueta = T.normalizarEtiqueta(r.turno);
-      if (!porDia.has(dia)) porDia.set(dia, new Map());
-      const turnos = porDia.get(dia);
-      if (!turnos.has(etiqueta)) turnos.set(etiqueta, []);
-      turnos.get(etiqueta).push(r);
-    });
-    return porDia;
-  }
-
-  /** Estado de un día: cuántos turnos se cargaron, cuáles faltan y cuáles todavía no terminaron. */
-  function estadoDia(dia, turnos, ahora) {
-    const cargados = T.lista.filter((t) => turnos && turnos.has(t.etiqueta));
-    const faltan = T.lista.filter((t) => !(turnos && turnos.has(t.etiqueta)) && T.estado(t.etiqueta, dia, ahora) === 'terminado');
-    const porVenir = T.lista.filter((t) => !(turnos && turnos.has(t.etiqueta)) && T.estado(t.etiqueta, dia, ahora) !== 'terminado');
-    const registros = turnos ? [...turnos.values()].flat() : [];
-    return { cargados, faltan, porVenir, registros, total: sumaAceite(registros) };
+  function irACargar(etiqueta, dia) {
+    SoyaCore.navegar('produccion');
+    SoyaCore.views.produccion.nuevoPara(etiqueta, dia);
   }
 
   function botonCargar(t, dia, texto, neutro) {
@@ -66,28 +50,36 @@
       el('i', { attrs: { 'data-lucide': neutro ? 'clock' : 'circle-alert' }, className: 'h-3.5 w-3.5' }),
       el('span', { text: texto }),
     ]);
-    b.addEventListener('click', () => {
-      SoyaCore.navegar('produccion');
-      SoyaCore.views.produccion.nuevoPara(t.etiqueta, dia);
-    });
+    b.addEventListener('click', () => irACargar(t.etiqueta, dia));
     return b;
   }
 
-  function chip(clase, texto) {
-    return el('span', { className: 'chip ' + clase, text: texto });
+  function botonNoSeTrabajo(dia, etiquetas) {
+    const b = el('button', {
+      className: 'link-btn text-[11px]',
+      text: 'No se trabajó',
+      attrs: { type: 'button', 'data-sin-produccion': '', title: 'Marcar que no hubo producción en los turnos que faltan (parada, feriado). Se puede deshacer.' },
+    });
+    b.addEventListener('click', () => SoyaCore.views.produccion.marcarSinProduccion(dia, etiquetas));
+    return b;
+  }
+
+  const chip = (clase, texto) => el('span', { className: 'chip ' + clase, text: texto });
+
+  /** "Cargado a las 08:01" o, si se cargó otro día, "Cargado el jue 08/10 a las 10:15". */
+  function textoCargado(r, dia) {
+    const f = String(r.fecha);
+    return f.slice(0, 10) === dia ? `Cargado a las ${f.slice(11, 16)}` : `Cargado el ${diaSemana(f.slice(0, 10)).toLowerCase()} a las ${f.slice(11, 16)}`;
   }
 
   // ---------- Hoy ----------
-  function dibujarHoy(grupos, ahora) {
-    const hoy = T.isoDia(new Date(ahora));
+  function dibujarHoy(control) {
+    const hoy = control.hoy;
     const f = T.fechaDia(hoy);
     $('#ac-hoy-fecha').textContent = `${DIAS_LARGOS[f.getDay()]} ${f.getDate()} de ${MESES[f.getMonth()]}`;
-    const turnos = grupos.get(hoy);
-    const e = estadoDia(hoy, turnos, ahora);
+    const resumen = control.resumenDia(hoy);
 
-    $('#ac-hoy').replaceChildren(...T.lista.map((t) => {
-      const registros = (turnos && turnos.get(t.etiqueta)) || [];
-      const est = T.estado(t.etiqueta, hoy, ahora);
+    $('#ac-hoy').replaceChildren(...resumen.turnos.map(({ turno: t, estado, registros }) => {
       const cabecera = (estadoChip) => el('div', { className: 'flex items-start justify-between gap-2' }, [
         el('div', null, [
           el('p', { className: 'font-semibold text-slate-200', text: t.nombre }),
@@ -95,42 +87,42 @@
         ]),
         estadoChip,
       ]);
+      const tarjeta = (clase, est, hijos) => el('div', { className: 'turno-card ' + clase, attrs: { 'data-turno': t.etiqueta, 'data-estado': est } }, hijos);
 
-      if (registros.length) {
+      if (estado === 'cargado') {
         const litros = sumaAceite(registros);
-        const ultimo = registros[registros.length - 1];
         const hijos = [
           cabecera(chip('chip-operativo', 'Cargado')),
           el('p', { className: 'mt-2 text-2xl font-black text-white tabular-nums', text: fmt.litros(litros) }),
           el('p', { className: 'text-sm font-semibold text-brand-300', text: T.textoTanques(litros) || '—' }),
           el('p', { className: 'mt-1 truncate text-xs text-slate-400', text: registros.map((r) => r.operador || 'Sin operador').join(' · ') }),
         ];
-        if (registros.length > 1) hijos.push(el('p', { className: 'text-[11px] font-semibold text-amber-300', text: `Cargado ${registros.length} veces: revisalo en Producción.` }));
-        else hijos.push(el('p', { className: 'text-[11px] text-slate-500', text: `Cargado ${String(ultimo.fecha).slice(0, 10) === hoy ? 'a las ' + String(ultimo.fecha).slice(11, 16) : 'el ' + ddmm(String(ultimo.fecha)) + ' a las ' + String(ultimo.fecha).slice(11, 16)}` }));
-        return el('div', { className: 'turno-card estado-operativo', attrs: { 'data-turno': t.etiqueta, 'data-estado': 'cargado' } }, hijos);
+        hijos.push(registros.length > 1
+          ? el('p', { className: 'text-[11px] font-semibold text-amber-300', text: `Cargado ${registros.length} veces: revisalo en Producción.` })
+          : el('p', { className: 'text-[11px] text-slate-500', text: textoCargado(registros[0], hoy) }));
+        return tarjeta('estado-operativo', 'cargado', hijos);
       }
-
-      if (est === 'terminado') {
-        // Si hoy ya se cargó algún turno, es día de producción y el que falta se marca en ámbar.
-        // Si no se cargó ninguno (fin de semana, parada), queda en gris.
-        const produce = e.cargados.length > 0;
-        return el('div', { className: 'turno-card ' + (produce ? 'estado-observaciones' : 'estado-sin'), attrs: { 'data-turno': t.etiqueta, 'data-estado': produce ? 'falta' : 'sinCarga' } }, [
-          cabecera(produce ? chip('chip-observaciones', 'Falta cargar') : chip('chip-sin', 'Sin cargar')),
+      if (estado === 'sinProduccion') {
+        return tarjeta('estado-sin', 'sinProduccion', [cabecera(chip('chip-sin', 'No se trabajó')), el('p', { className: 'mt-2 text-sm text-slate-400', text: 'Marcado sin producción.' })]);
+      }
+      if (estado === 'falta' || estado === 'noSeEspera') {
+        const falta = estado === 'falta';
+        return tarjeta(falta ? 'estado-observaciones' : 'estado-sin', falta ? 'falta' : 'sinCarga', [
+          cabecera(falta ? chip('chip-observaciones', 'Falta cargar') : chip('chip-sin', 'Sin producción')),
           el('p', { className: 'mt-2 text-sm text-slate-300', text: `Terminó a las ${hhmm(T.finMs(t, hoy))} y no tiene cierre.` }),
-          el('div', { className: 'mt-2' }, [botonCargar(t, hoy, 'Cargar ahora', !produce)]),
+          el('div', { className: 'mt-2' }, [botonCargar(t, hoy, 'Cargar ahora', !falta)]),
         ]);
       }
-
-      const enCurso = est === 'enCurso';
-      return el('div', { className: 'turno-card estado-sin', attrs: { 'data-turno': t.etiqueta, 'data-estado': enCurso ? 'enCurso' : 'pendiente' } }, [
+      const enCurso = estado === 'enCurso';
+      return tarjeta('estado-sin', estado, [
         cabecera(chip('chip-sin', enCurso ? 'En curso' : 'Más tarde')),
         el('p', { className: 'mt-2 text-sm text-slate-400', text: enCurso ? `Termina a las ${hhmm(T.finMs(t, hoy))}.` : `Empieza a las ${hhmm(T.inicioMs(t, hoy))}.` }),
       ]);
     }));
     SoyaCore.icons.render($('#ac-hoy'));
 
-    const partes = [`${e.cargados.length} de ${T.lista.length} turnos cargados`];
-    if (e.total > 0) partes.unshift(`Total: ${fmt.litros(e.total)} (${T.textoTanques(e.total)})`);
+    const partes = [`${resumen.cargados + resumen.sinProduccion} de ${T.lista.length} turnos cargados`];
+    if (resumen.total > 0) partes.unshift(`Total: ${fmt.litros(resumen.total)} (${T.textoTanques(resumen.total)})`);
     $('#ac-hoy-total').textContent = partes.join(' · ');
   }
 
@@ -143,80 +135,72 @@
     ]);
   }
 
-  function celdaTurno(t, dia, registros, est) {
-    if (registros && registros.length) {
-      const hijos = registros.map((r) => el('div', { className: 'py-0.5' }, [
+  function celdaTurno(dia, { turno: t, estado, registros }) {
+    const attrs = { 'data-turno': t.etiqueta, 'data-estado': estado };
+    if (estado === 'cargado') {
+      const hijos = registros.filter((r) => !r.sinProduccion).map((r) => el('div', { className: 'py-0.5' }, [
         el('span', { className: 'block font-semibold ' + (r.operador ? 'text-slate-200' : 'text-slate-500 italic'), text: r.operador || 'Sin operador' }),
         el('span', { className: 'block text-sm text-brand-300 tabular-nums', text: fmt.litros(r.aceite) }),
         el('span', { className: 'block text-[11px] text-slate-500', text: T.textoTanques(r.aceite) }),
+        T.cargadoTarde(r) ? el('span', { className: 'block text-[11px] text-sky-300', text: textoCargado(r, dia), attrs: { 'data-tarde': '' } }) : null,
       ]));
       if (registros.length > 1) hijos.push(el('span', { className: 'block text-[11px] font-semibold text-amber-300', text: `Cargado ${registros.length} veces` }));
-      return el('td', { className: 'align-top', attrs: { 'data-turno': t.etiqueta, 'data-estado': 'cargado' } }, hijos);
+      return el('td', { className: 'align-top', attrs }, hijos);
     }
-    if (est === 'falta') return el('td', { className: 'align-top', attrs: { 'data-turno': t.etiqueta, 'data-estado': 'falta' } }, [botonCargar(t, dia, 'Falta cargar')]);
-    if (est === 'porVenir') return el('td', { className: 'align-top text-xs text-slate-500', text: 'Todavía no terminó', attrs: { 'data-turno': t.etiqueta, 'data-estado': 'porVenir' } });
-    return el('td', { className: 'align-top text-slate-600', text: '—', attrs: { 'data-turno': t.etiqueta, 'data-estado': 'vacio' } });
+    if (estado === 'sinProduccion') return el('td', { className: 'align-top text-xs text-slate-500 italic', text: 'No se trabajó', attrs });
+    if (estado === 'falta') return el('td', { className: 'align-top', attrs }, [botonCargar(t, dia, 'Falta cargar')]);
+    if (estado === 'enCurso' || estado === 'pendiente') return el('td', { className: 'align-top text-xs text-slate-500', text: 'Todavía no terminó', attrs });
+    return el('td', { className: 'align-top text-slate-600', text: '—', attrs });
   }
 
-  function dibujarPeriodo(grupos, ahora) {
+  function chipDia(r) {
+    const n = T.lista.length;
+    if (r.faltan.length) return chip('chip-observaciones', r.faltan.length === 1 ? 'Falta 1 turno' : `Faltan ${r.faltan.length} turnos`);
+    if (r.sinProduccion === n) return chip('chip-sin', 'No se trabajó');
+    if (r.cargados + r.sinProduccion === n) return chip('chip-operativo', 'Completo');
+    if (r.registros.length || r.porVenir) return chip('chip-sin', `${r.cargados + r.sinProduccion} de ${n}`);
+    return chip('chip-sin', 'Sin producción');
+  }
+
+  function dibujarPeriodo(control) {
     const { desde, hasta } = rango(periodo);
-    const hoy = T.isoDia(new Date(ahora));
+    const hoy = control.hoy;
     $('#ac-periodo-rango').textContent = `${ddmm(desde)} al ${hasta === hoy ? 'hoy' : ddmm(hasta)}`;
 
     const dias = [];
     for (let d = hasta; d >= desde; d = T.sumarDias(d, -1)) dias.push(d);
 
     let total = 0;
-    let turnosCargados = 0;
+    let turnosTrabajados = 0;
     let faltantes = 0;
     let diasConProduccion = 0;
-    let diasSinCarga = 0;
     let diasIncompletos = 0;
     const totalPorTurno = new Map(T.lista.map((t) => [t.etiqueta, 0]));
 
     const filas = dias.map((dia) => {
-      const turnos = grupos.get(dia);
-      const e = estadoDia(dia, turnos, ahora);
-      const hayCarga = e.cargados.length > 0;
-      total += e.total;
-      turnosCargados += e.cargados.length;
-      if (hayCarga) {
-        diasConProduccion++;
-        faltantes += e.faltan.length;
-        if (e.faltan.length) diasIncompletos++;
-      } else if (dia !== hoy) {
-        diasSinCarga++;
-      }
-      T.lista.forEach((t) => totalPorTurno.set(t.etiqueta, totalPorTurno.get(t.etiqueta) + sumaAceite((turnos && turnos.get(t.etiqueta)) || [])));
+      const r = control.resumenDia(dia);
+      total += r.total;
+      turnosTrabajados += r.cargados;
+      faltantes += r.faltan.length;
+      if (r.faltan.length) diasIncompletos++;
+      if (r.trabajados.length) diasConProduccion++;
+      r.turnos.forEach((x) => totalPorTurno.set(x.turno.etiqueta, totalPorTurno.get(x.turno.etiqueta) + sumaAceite(x.registros)));
 
-      let estadoChip;
-      if (e.cargados.length === T.lista.length) estadoChip = chip('chip-operativo', 'Completo');
-      else if (hayCarga && e.faltan.length) estadoChip = chip('chip-observaciones', e.faltan.length === 1 ? 'Falta 1 turno' : `Faltan ${e.faltan.length} turnos`);
-      else if (hayCarga) estadoChip = chip('chip-sin', `${e.cargados.length} de ${T.lista.length}`);
-      else estadoChip = chip('chip-sin', dia === hoy ? `0 de ${T.lista.length}` : 'Sin carga');
+      const estadoCelda = [chipDia(r)];
+      if (r.faltan.length) estadoCelda.push(el('div', { className: 'mt-1' }, [botonNoSeTrabajo(dia, r.faltan.map((x) => x.turno.etiqueta))]));
+      const apagado = !r.seEspera && !r.registros.length && dia !== hoy;
 
-      const f = T.fechaDia(dia);
-      const celdas = T.lista.map((t) => {
-        const registros = turnos && turnos.get(t.etiqueta);
-        let est = 'vacio';
-        if (!registros) {
-          if (e.porVenir.includes(t)) est = 'porVenir';
-          else if (hayCarga) est = 'falta';
-        }
-        return celdaTurno(t, dia, registros, est);
-      });
-
-      return el('tr', { className: hayCarga || dia === hoy ? '' : 'opacity-60', attrs: { 'data-dia': dia } }, [
+      return el('tr', { className: apagado ? 'opacity-60' : '', attrs: { 'data-dia': dia } }, [
         el('td', { className: 'align-top' }, [
-          el('span', { className: 'block font-semibold text-slate-200', text: `${DIAS[f.getDay()]} ${ddmm(dia)}` }),
+          el('span', { className: 'block font-semibold text-slate-200', text: diaSemana(dia) }),
           dia === hoy ? el('span', { className: 'block text-[11px] text-brand-300', text: 'Hoy' }) : null,
         ]),
-        ...celdas,
+        ...r.turnos.map((x) => celdaTurno(dia, x)),
         el('td', { className: 'num align-top' }, [
-          el('span', { className: 'block font-bold text-white', text: e.total ? fmt.litros(e.total) : '—' }),
-          el('span', { className: 'block text-[11px] text-slate-500', text: e.total ? T.textoTanques(e.total) : '' }),
+          el('span', { className: 'block font-bold text-white', text: r.total ? fmt.litros(r.total) : '—' }),
+          el('span', { className: 'block text-[11px] text-slate-500', text: r.total ? T.textoTanques(r.total) : '' }),
         ]),
-        el('td', { className: 'align-top' }, [estadoChip]),
+        el('td', { className: 'align-top' }, estadoCelda),
       ]);
     });
 
@@ -240,20 +224,17 @@
 
     const tanquesTotal = T.textoTanques(total);
     $('#ac-kpis').replaceChildren(
-      kpi('Aceite del período', fmt.litros(total), `${tanquesTotal ? tanquesTotal + ' · ' : ''}${plural(turnosCargados, 'turno cargado', 'turnos cargados')}`),
+      kpi('Aceite del período', fmt.litros(total), `${tanquesTotal ? tanquesTotal + ' · ' : ''}${plural(turnosTrabajados, 'turno trabajado', 'turnos trabajados')}`),
       kpi('Promedio por día', diasConProduccion ? fmt.litros(total / diasConProduccion) : '—', plural(diasConProduccion, 'día con producción', 'días con producción')),
-      kpi('Promedio por turno', turnosCargados ? fmt.litros(total / turnosCargados) : '—', turnosCargados ? T.textoTanques(total / turnosCargados) : 'sin turnos cargados'),
-      kpi('Turnos sin cargar', fmt.entero(faltantes),
-        faltantes ? `en ${plural(diasIncompletos, 'día', 'días')} con producción` : diasSinCarga ? `${plural(diasSinCarga, 'día', 'días')} sin ninguna carga` : 'todos los días están completos',
-        faltantes > 0),
+      kpi('Promedio por turno', turnosTrabajados ? fmt.litros(total / turnosTrabajados) : '—', turnosTrabajados ? T.textoTanques(total / turnosTrabajados) : 'sin turnos cargados'),
+      kpi('Turnos sin cargar', fmt.entero(faltantes), faltantes ? `en ${plural(diasIncompletos, 'día', 'días')}` : 'todo cargado', faltantes > 0),
     );
   }
 
   function dibujar() {
-    const ahora = Date.now();
-    const grupos = agrupar();
-    dibujarHoy(grupos, ahora);
-    dibujarPeriodo(grupos, ahora);
+    const control = T.control(store.todos('produccion'));
+    dibujarHoy(control);
+    dibujarPeriodo(control);
   }
 
   const visible = () => !$('#view-aceite').hidden;

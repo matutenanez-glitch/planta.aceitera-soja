@@ -7,7 +7,7 @@
   'use strict';
 
   SoyaCore.config = Object.freeze({
-    version: '2.14.0',
+    version: '2.15.0',
     locale: 'es-AR',
 
     /** Cuántas filas muestran las tablas de "últimos registros". */
@@ -22,7 +22,7 @@
       secadora:      { titulo: 'Secadora y Tomas de Laboratorio',   icono: 'thermometer-sun' },
       produccion:    { titulo: 'Producción Operativa (Extracción)', icono: 'factory' },
       aceite:        { titulo: 'Aceite por día y turno',            icono: 'droplet' },
-      despachoAceite:{ titulo: 'Despacho de Aceite',                icono: 'fuel' },
+      despachoAceite:{ titulo: 'Venta de Aceite',                   icono: 'fuel' },
       equipos:       { titulo: 'Estado de Equipos',                 icono: 'gauge' },
       mantenimiento: { titulo: 'Registro de Mantenimiento',         icono: 'wrench' },
       resumen:       { titulo: 'Resumen por día y por mes',         icono: 'chart-column' },
@@ -40,9 +40,18 @@
       'Turno 3 (16:00 - 00:00)',
     ],
 
+    /**
+     * Días en que se produce (0 = domingo … 6 = sábado). La semana arranca el lunes
+     * a las 00:00 con el Turno 1 y termina el viernes (la producción corta a las 22:00).
+     * En estos días se avisa si falta cargar un turno. Si se trabaja un sábado o un
+     * domingo, ese día también se controla en cuanto se carga algún turno.
+     */
+    diasProduccion: [1, 2, 3, 4, 5],
+
     /** Litros de un tanque interior. Los botones del cierre de turno cargan de a un tanque. */
     litrosPorTanque: 1525,
-    botonesTanques: [1, 2, 3, 4],
+    /** En un turno se pasan hasta 2 tanques: no se acepta más que eso. */
+    maxTanquesPorTurno: 2,
 
     /** Equipos por sector, para el formulario de mantenimiento. */
     equipos: {

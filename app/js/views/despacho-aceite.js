@@ -1,5 +1,7 @@
 /*
- * Vista: Despacho de aceite.
+ * Vista: Venta de aceite.
+ *
+ * El aceite lo retira la empresa que lo compra, con su propio camión.
  *
  * El camión se pesa en la balanza (bruto − tara = neto) y se guarda en kg.
  * Solo como referencia, se muestra entre paréntesis a cuántos litros equivale
@@ -70,7 +72,7 @@
           bruto: num($('#da-bruto')),
           tara: num($('#da-tara')),
           neto: kg,
-        }, { nuevo: 'Despacho de aceite registrado.' })) $('#da-empresa').focus();
+        }, { nuevo: 'Venta de aceite registrada.' })) $('#da-empresa').focus();
       });
 
       SoyaCore.store.alCambiar((c) => (c === 'despachosAceite' || c === '*') && tabla.dibujar());

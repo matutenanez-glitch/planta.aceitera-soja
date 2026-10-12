@@ -51,7 +51,7 @@
                 <i data-lucide="package-open" class="h-4 w-4"></i> Despacho Expeller
             </button>
             <button type="button" class="nav-item" data-view="despachoAceite">
-                <i data-lucide="fuel" class="h-4 w-4"></i> Despacho Aceite
+                <i data-lucide="fuel" class="h-4 w-4"></i> Venta de Aceite
             </button>
 
             <p class="nav-group">Proceso Operativo</p>
@@ -246,17 +246,18 @@
             </section>
 
             <!-- 2.3 DESPACHO DE ACEITE (camiones pesados en balanza) ------------------ -->
-            <section id="view-despachoAceite" class="view" aria-label="Despacho de aceite" hidden>
+            <section id="view-despachoAceite" class="view" aria-label="Venta de aceite" hidden>
                 <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
                     <div class="glass-panel col-span-1 rounded-2xl p-6">
-                        <h3 class="mb-4 flex items-center gap-2 font-semibold text-purple-400"><i data-lucide="fuel" class="h-4 w-4"></i> <span data-form-titulo>Nuevo Despacho de Aceite</span></h3>
+                        <h3 class="mb-4 flex items-center gap-2 font-semibold text-purple-400"><i data-lucide="fuel" class="h-4 w-4"></i> <span data-form-titulo>Nueva Venta de Aceite</span></h3>
+                        <p class="-mt-2 mb-4 text-[11px] text-slate-500">La empresa compradora retira el aceite con su camión. Se pesa en la balanza al entrar vacío y al salir cargado.</p>
                         <form id="form-despacho-aceite" class="space-y-4 text-sm" autocomplete="off">
                             <div>
-                                <label for="da-empresa" class="field-label">Empresa Destino / Cliente</label>
+                                <label for="da-empresa" class="field-label">Empresa compradora</label>
                                 <input type="text" id="da-empresa" required maxlength="120" class="field focus:border-purple-500">
                             </div>
                             <div>
-                                <label for="da-conductor" class="field-label">Nombre del Conductor</label>
+                                <label for="da-conductor" class="field-label">Chofer del camión</label>
                                 <input type="text" id="da-conductor" required maxlength="120" class="field focus:border-purple-500">
                             </div>
                             <div class="grid grid-cols-2 gap-4">
@@ -270,7 +271,7 @@
                                 </div>
                             </div>
                             <div class="flex items-center justify-between rounded-xl border border-purple-500/30 bg-purple-900/20 p-3 shadow-inner">
-                                <span class="text-xs font-medium tracking-wider text-purple-300 uppercase">Aceite cargado:</span>
+                                <span class="text-xs font-medium tracking-wider text-purple-300 uppercase">Aceite vendido:</span>
                                 <span class="text-right">
                                     <output id="da-neto" for="da-bruto da-tara" class="block text-xl font-bold text-white">0 kg</output>
                                     <output id="da-litros" for="da-bruto da-tara" class="block text-[11px] text-purple-200">(≈ 0 L)</output>
@@ -281,21 +282,21 @@
                                 <input type="datetime-local" id="da-fecha" class="field focus:border-purple-500">
                             </div>
                             <div class="mt-2 flex gap-2">
-                                <button type="submit" class="btn flex-1 bg-purple-500 text-white hover:bg-purple-400">Registrar Despacho</button>
+                                <button type="submit" class="btn flex-1 bg-purple-500 text-white hover:bg-purple-400">Registrar Venta</button>
                                 <button type="button" data-cancelar hidden class="btn-cancelar">Cancelar</button>
                             </div>
                         </form>
                     </div>
 
                     <div class="glass-panel col-span-1 flex flex-col overflow-hidden rounded-2xl p-6 lg:col-span-2">
-                        <h3 class="mb-4 font-semibold text-slate-200">Últimos Despachos de Aceite</h3>
+                        <h3 class="mb-4 font-semibold text-slate-200">Últimas Ventas de Aceite</h3>
                         <div class="flex-1 overflow-x-auto">
                             <table class="data-table">
                                 <thead>
                                     <tr>
                                         <th scope="col">Fecha/Hora</th>
-                                        <th scope="col">Cliente</th>
-                                        <th scope="col">Conductor</th>
+                                        <th scope="col">Comprador</th>
+                                        <th scope="col">Chofer</th>
                                         <th scope="col" class="num text-purple-400">Neto (kg)</th>
                                         <th scope="col" class="num text-slate-500">(≈ litros)</th>
                                         <th scope="col" class="w-px"><span class="sr-only">Acciones</span></th>
@@ -376,6 +377,13 @@
 
             <!-- 2.5 PRODUCCIÓN POR TURNOS ------------------------------------------ -->
             <section id="view-produccion" class="view" aria-label="Producción por turnos" hidden>
+                <div id="prod-faltan" class="glass-panel mb-6 rounded-2xl p-5 ring-1 ring-amber-400/40" aria-labelledby="prod-faltan-titulo" hidden>
+                    <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                        <h3 class="flex items-center gap-2 font-semibold text-amber-300"><i data-lucide="circle-alert" class="h-4 w-4"></i> <span id="prod-faltan-titulo">Turnos sin cargar</span></h3>
+                        <p class="text-[11px] text-slate-500">De los últimos 30 días. Cada cierre se guarda en el día de su turno, aunque se cargue después.</p>
+                    </div>
+                    <ul id="prod-faltan-lista" class="mt-3 divide-y divide-slate-800/60 text-sm"></ul>
+                </div>
                 <div class="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
                     <div class="glass-panel rounded-2xl p-6">
                         <h3 class="mb-4 flex items-center gap-2 font-semibold text-brand-400"><i data-lucide="clock" class="h-4 w-4"></i> <span data-form-titulo>Registro de Turno (Extracción)</span></h3>
@@ -390,6 +398,7 @@
                                     <select id="prod-turno" required class="field"></select>
                                 </div>
                             </div>
+                            <p id="prod-atrasado" class="flex items-center gap-1.5 rounded-lg border border-amber-400/40 bg-amber-400/10 px-3 py-2 text-xs text-amber-200" hidden></p>
                             <div>
                                 <label for="prod-operador" class="field-label">Operador del turno</label>
                                 <input type="text" id="prod-operador" required maxlength="60" list="lista-operadores" placeholder="Nombre y apellido" class="field">
@@ -397,8 +406,8 @@
                             </div>
                             <fieldset class="rounded-xl border border-brand-500/30 bg-brand-500/5 p-4">
                                 <legend class="px-1 text-xs font-bold tracking-wide text-brand-300 uppercase">Aceite que pasó en el turno</legend>
-                                <p class="mb-2 text-[11px] text-slate-400">Tocá cuántos tanques pasaron (1 tanque = <span id="prod-litros-tanque">1.525</span> L). Si no fue un tanque entero, escribí los litros.</p>
-                                <div id="prod-tanques" class="mb-3 grid grid-cols-4 gap-2" role="group" aria-label="Tanques que pasaron"></div>
+                                <p class="mb-2 text-[11px] text-slate-400">Tocá cuántos tanques pasaron (1 tanque = <span id="prod-litros-tanque">1.525</span> L; en un turno se pasan hasta <span id="prod-max-tanques">2</span>). Si no fue un tanque entero, escribí los litros.</p>
+                                <div id="prod-tanques" class="mb-3 grid grid-cols-2 gap-2" role="group" aria-label="Tanques que pasaron"></div>
                                 <div class="flex items-end gap-3">
                                     <div class="flex-1">
                                         <label for="prod-aceite" class="field-label">Litros</label>
@@ -629,7 +638,7 @@
                                         <th scope="col">Día</th>
                                         <th scope="col" class="num">Soja (kg)</th>
                                         <th scope="col" class="num">Aceite prod. (L)</th>
-                                        <th scope="col" class="num">Aceite desp. (kg)</th>
+                                        <th scope="col" class="num">Aceite vendido (kg)</th>
                                         <th scope="col" class="num">Expeller prod. (kg)</th>
                                         <th scope="col" class="num">Expeller desp. (kg)</th>
                                         <th scope="col" class="num">Hum. inicial prom.</th>
