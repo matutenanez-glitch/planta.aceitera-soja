@@ -1,7 +1,7 @@
-# SoyaCore OS — Sistema de planta aceitera de soja
+# Gestión Aceitera — Gestión de plantas aceiteras de soja
 
 App de escritorio para registrar la operación diaria de una planta aceitera:
-recepción de camiones, despacho de expeller, venta de aceite, secadora, producción por turnos,
+recepción de camiones, despacho de expeller, retiro de aceite, secadora, producción por turnos,
 aceite por día y turno, estado de equipos, mantenimiento y resumen por día y por mes.
 Todos los registros se pueden editar y borrar.
 
@@ -59,7 +59,7 @@ Sale de los cierres de turno:
 
 Se produce de **lunes a viernes**. La semana arranca el lunes a las 00:00 con el Turno 1, y el viernes la producción corta a las 22:00. En esos días, un turno terminado sin cierre aparece como *Falta cargar*, desde el primer cierre cargado en la app. Sábados y domingos quedan en gris, salvo que se cargue algún turno: en ese caso, ese día también se controla.
 
-## Venta de aceite
+## Retiro de aceite
 
 El aceite no lo despacha la planta: lo retira con su camión la empresa que lo compra. El camión se pesa en la balanza: **bruto − tara = neto**, y se guarda y se muestra **en kg**. Solo como referencia aparece entre paréntesis a cuántos litros equivale (densidad 0,92 kg/L, en `config.js` → `densidadAceite`); no se guarda ninguna conversión.
 
@@ -130,6 +130,7 @@ npm test             # prueba el cálculo del circuito de tanques (archivado)
 
 ## Reglas del código
 
+- **Nombres internos.** La app se llama **Gestión Aceitera** (hasta la 2.16 se llamaba SoyaCore OS). En el código siguen el espacio de nombres `SoyaCore` y las claves `soya_*` del navegador: así no se pierden los datos ya cargados ni los backups anteriores.
 - **Nada de internet, salvo la nube.** No se cargan scripts, fuentes ni estilos externos. La política de seguridad (CSP) de `index.html` solo permite conectarse a los tres dominios de Firebase.
 - **Nada de `innerHTML` con datos del usuario.** Usar `SoyaCore.ui.el(...)` o `textContent`. Así, un texto como `Pérez <Hnos> & Cía` se muestra tal cual y no se puede inyectar código.
 - **Nada de `onclick=` en el HTML.** Los eventos se conectan en el `init()` de cada vista.
@@ -144,6 +145,10 @@ npm test             # prueba el cálculo del circuito de tanques (archivado)
 
 ## Historial
 
+- **2.17.0**:
+  - La app pasa a llamarse **Gestión Aceitera**.
+  - "Venta de aceite" pasa a llamarse **Retiro de aceite**.
+  - Los backups nuevos se llaman `gestion_aceitera_backup_….json`. Los anteriores se siguen importando.
 - **2.16.1**: cerrar la sesión pide la contraseña del dueño. Los textos aclaran que los operarios no necesitan cuenta.
 - **2.16.0**:
   - **Cuenta del dueño** (correo y contraseña) y **copia en la nube** con Firebase, opcional. Las PCs de la planta comparten los datos y cada una sigue funcionando sin internet.

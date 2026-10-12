@@ -121,10 +121,10 @@
     $('#res-mes-kpis').replaceChildren(
       kpi({ titulo: 'Soja ingresada', valor: fmt.toneladas(t.sojaKg), delta: variacion(t.sojaKg, prev.sojaKg), sub: `${t.camionesSoja} camión${t.camionesSoja === 1 ? '' : 'es'}`, nombreMesPrevio: nPrev }),
       kpi({ titulo: 'Aceite producido', valor: fmt.litros(t.aceiteProd), delta: variacion(t.aceiteProd, prev.aceiteProd), nombreMesPrevio: nPrev, color: 'var(--color-viz-producido)' }),
-      kpi({ titulo: 'Aceite vendido', valor: fmt.kg(t.aceiteDespKg), delta: variacion(t.aceiteDespKg, prev.aceiteDespKg), sub: `${t.despAce.length} camión${t.despAce.length === 1 ? '' : 'es'}`, nombreMesPrevio: nPrev, color: 'var(--color-viz-despachado)' }),
+      kpi({ titulo: 'Aceite retirado', valor: fmt.kg(t.aceiteDespKg), delta: variacion(t.aceiteDespKg, prev.aceiteDespKg), sub: `${t.despAce.length} camión${t.despAce.length === 1 ? '' : 'es'}`, nombreMesPrevio: nPrev, color: 'var(--color-viz-despachado)' }),
       kpi({ titulo: 'Expeller producido', valor: fmt.toneladas(t.expProd), delta: variacion(t.expProd, prev.expProd), nombreMesPrevio: nPrev, color: 'var(--color-viz-producido)' }),
       kpi({ titulo: 'Expeller despachado', valor: fmt.toneladas(t.expDesp), delta: variacion(t.expDesp, prev.expDesp), sub: `${t.despExp.length} camión${t.despExp.length === 1 ? '' : 'es'}`, nombreMesPrevio: nPrev, color: 'var(--color-viz-despachado)' }),
-      kpi({ titulo: 'Camiones entrada / salida', valor: `${t.camionesIn} / ${t.camionesOut}`, sub: 'ingresos / expeller despachado y aceite vendido' }),
+      kpi({ titulo: 'Camiones entrada / salida', valor: `${t.camionesIn} / ${t.camionesOut}`, sub: 'ingresos / expeller despachado y aceite retirado' }),
     );
     icons.render($('#res-mes-kpis'));
 
@@ -136,7 +136,7 @@
       titulo: 'Soja ingresada por día', categorias, unidad: 'kg', alSeleccionar: abrirDia,
       series: [{ nombre: 'Soja ingresada', color: 'var(--color-viz-soja)', valores: porDia.map((x) => x.sojaKg) }],
     });
-    // El aceite producido va en litros y el vendido en kg de balanza: no se mezclan en un mismo gráfico.
+    // El aceite producido va en litros y el retirado en kg de balanza: no se mezclan en un mismo gráfico.
     SoyaCore.graficos.columnas($('#res-graf-aceite'), {
       titulo: 'Aceite producido por día', categorias, unidad: 'L', alSeleccionar: abrirDia,
       series: [{ nombre: 'Aceite producido', color: 'var(--color-viz-producido)', valores: porDia.map((x) => x.aceiteProd) }],
@@ -187,7 +187,7 @@
       kpi({ titulo: 'Soja ingresada', valor: fmt.kg(t.sojaKg), sub: `${t.camionesSoja} camión${t.camionesSoja === 1 ? '' : 'es'} de soja` }),
       kpi({ titulo: 'Humedad inicial prom.', valor: fmt.porcentaje(t.humedad), sub: `${t.secadora.length} muestra${t.secadora.length === 1 ? '' : 's'} de secadora` }),
       kpi({ titulo: 'Aceite producido', valor: fmt.litros(t.aceiteProd), sub: `${t.produccion.length} cierre${t.produccion.length === 1 ? '' : 's'} de turno`, color: 'var(--color-viz-producido)' }),
-      kpi({ titulo: 'Aceite vendido', valor: fmt.kg(t.aceiteDespKg), sub: `${t.despAce.length} camión${t.despAce.length === 1 ? '' : 'es'}`, color: 'var(--color-viz-despachado)' }),
+      kpi({ titulo: 'Aceite retirado', valor: fmt.kg(t.aceiteDespKg), sub: `${t.despAce.length} camión${t.despAce.length === 1 ? '' : 'es'}`, color: 'var(--color-viz-despachado)' }),
       kpi({ titulo: 'Expeller producido', valor: fmt.kg(t.expProd), sub: 'según cierres de turno', color: 'var(--color-viz-producido)' }),
       kpi({ titulo: 'Expeller despachado', valor: fmt.kg(t.expDesp), sub: `${t.despExp.length} camión${t.despExp.length === 1 ? '' : 'es'}`, color: 'var(--color-viz-despachado)' }),
     );
@@ -217,7 +217,7 @@
     const camiones = [
       ...t.ingresos.map((r) => ({ fecha: r.fecha, tipo: `Ingreso (${r.carga || 'Soja'})`, empresa: r.empresa, cantidad: fmt.kg(r.neto) })),
       ...t.despExp.map((r) => ({ fecha: r.fecha, tipo: 'Despacho expeller', empresa: r.empresa, cantidad: fmt.kg(r.neto) })),
-      ...t.despAce.map((r) => ({ fecha: r.fecha, tipo: 'Venta de aceite', empresa: r.empresa, cantidad: fmt.kg(SoyaCore.views.despachoAceite.kgDe(r)) })),
+      ...t.despAce.map((r) => ({ fecha: r.fecha, tipo: 'Retiro de aceite', empresa: r.empresa, cantidad: fmt.kg(SoyaCore.views.despachoAceite.kgDe(r)) })),
     ].sort(porHora);
     filasTabla('#res-dia-camiones', camiones, [
       { valor: horaDe }, { valor: (r) => r.tipo }, { valor: (r) => r.empresa, className: 'max-w-48 truncate' }, { valor: (r) => r.cantidad, className: 'num' },

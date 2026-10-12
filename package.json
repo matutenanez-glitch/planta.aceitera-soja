@@ -1,8 +1,8 @@
 {
-  "name": "soyacore-os",
-  "version": "2.16.1",
+  "name": "gestion-aceitera",
+  "version": "2.17.0",
   "private": true,
-  "description": "Sistema operativo de planta aceitera de soja (app de escritorio, datos locales).",
+  "description": "Gestión Aceitera: gestión de plantas aceiteras de soja (app de escritorio, funciona sin internet, copia en la nube opcional).",
   "type": "module",
   "scripts": {
     "build:css": "node scripts/build-css.mjs",

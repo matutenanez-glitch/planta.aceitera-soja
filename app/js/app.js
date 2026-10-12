@@ -23,7 +23,7 @@
 
     $('#page-name').textContent = config.vistas[vista].titulo;
     icons.swap($('#page-icon'), config.vistas[vista].icono);
-    document.title = `${config.vistas[vista].titulo} · SoyaCore OS`;
+    document.title = `${config.vistas[vista].titulo} · Gestión Aceitera`;
 
     views[vista].refresh();
     if (foco) $('#page-title').focus();
@@ -36,7 +36,7 @@
     if (boton) mostrar(boton.dataset.view, { foco: true });
   });
 
-  // Enlaces internos entre vistas (por ejemplo, "Registrar venta de aceite")
+  // Enlaces internos entre vistas (por ejemplo, "Registrar retiro de aceite")
   document.addEventListener('click', (e) => {
     const enlace = e.target.closest('[data-ir]');
     if (enlace) mostrar(enlace.dataset.ir, { foco: true });
@@ -62,7 +62,7 @@
   $('#btn-backup-exportar').addEventListener('click', () => {
     const contenido = store.exportarBackup();
     const sello = SoyaCore.ui.ahora().replace(' ', '_').replace(':', '-');
-    descargar(`soyacore_backup_${sello}.json`, contenido, 'application/json');
+    descargar(`gestion_aceitera_backup_${sello}.json`, contenido, 'application/json');
     toast('Backup exportado. Guardalo fuera de esta PC (pendrive, nube).', 'ok');
   });
 

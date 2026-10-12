@@ -36,7 +36,7 @@ Cada documento de Firestore tiene:
 
 ## Poner en marcha el proyecto (una sola vez)
 
-1. **Crear el proyecto.** Entrá a <https://console.firebase.google.com> con la cuenta de Google de la empresa, tocá **Agregar proyecto** y ponele un nombre (por ejemplo `soyacore`). Google Analytics no hace falta.
+1. **Crear el proyecto.** Entrá a <https://console.firebase.google.com> con la cuenta de Google de la empresa, tocá **Agregar proyecto** y ponele un nombre (por ejemplo `gestion-aceitera`). Google Analytics no hace falta.
 2. **Activar el ingreso con correo.** Andá a **Authentication → Comenzar → Método de acceso → Correo electrónico/contraseña → Habilitar**.
     - En **Authentication → Plantillas**, poné el idioma en **Español**: así el correo de "restablecer contraseña" llega en castellano.
 3. **Crear la base de datos.** Andá a **Firestore Database → Crear base de datos**.

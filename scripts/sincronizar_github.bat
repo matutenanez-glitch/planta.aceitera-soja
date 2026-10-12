@@ -1,6 +1,6 @@
 @echo off
 chcp 65001 >nul
-title Sincronizador SoyaCore OS - GitHub
+title Sincronizador Gestion Aceitera - GitHub
 color 0A
 setlocal
 
@@ -8,7 +8,7 @@ rem Ejecutar siempre desde la raíz del proyecto (este archivo vive en scripts\)
 cd /d "%~dp0.."
 
 echo ================================================================
-echo    CONTROL DE VERSIONES - SOYACORE OS (PLANTA ACEITERA)
+echo    CONTROL DE VERSIONES - GESTION ACEITERA (PLANTA DE SOJA)
 echo ================================================================
 echo.
 
@@ -54,7 +54,7 @@ echo.
 
 set "COMMIT_MSG="
 set /p "COMMIT_MSG=[3/4] Resumen de los cambios (Enter = mensaje automático): "
-if not defined COMMIT_MSG set "COMMIT_MSG=Actualización SoyaCore OS - %DATE% %TIME:~0,5%"
+if not defined COMMIT_MSG set "COMMIT_MSG=Actualización Gestión Aceitera - %DATE% %TIME:~0,5%"
 
 git commit -m "%COMMIT_MSG%"
 if errorlevel 1 (

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firestore.googleapis.com; object-src 'none'; base-uri 'none'; form-action 'none'">
-    <title>SoyaCore OS · Planta Aceitera</title>
+    <title>Gestión Aceitera · Planta de soja</title>
 
     <!-- Todo es local: la app funciona sin internet. Solo se conecta a Firebase
          para la copia en la nube, si el dueño ingresa con su cuenta (js/nube.js). -->
@@ -40,8 +40,8 @@
                 <i data-lucide="droplet" class="h-6 w-6 text-slate-900"></i>
             </div>
             <div>
-                <h1 class="glow-text text-lg font-bold tracking-tight text-white">SoyaCore <span class="font-black text-brand-400">OS</span></h1>
-                <p class="text-[10px] tracking-widest text-slate-400 uppercase">Planta Aceitera</p>
+                <h1 class="glow-text text-lg font-bold tracking-tight text-white">Gestión <span class="font-black text-brand-400">Aceitera</span></h1>
+                <p class="text-[10px] tracking-widest text-slate-400 uppercase">Planta de soja</p>
             </div>
         </div>
 
@@ -54,7 +54,7 @@
                 <i data-lucide="package-open" class="h-4 w-4"></i> Despacho Expeller
             </button>
             <button type="button" class="nav-item" data-view="despachoAceite">
-                <i data-lucide="fuel" class="h-4 w-4"></i> Venta de Aceite
+                <i data-lucide="fuel" class="h-4 w-4"></i> Retiro de Aceite
             </button>
 
             <p class="nav-group">Proceso Operativo</p>
@@ -256,10 +256,10 @@
             </section>
 
             <!-- 2.3 DESPACHO DE ACEITE (camiones pesados en balanza) ------------------ -->
-            <section id="view-despachoAceite" class="view" aria-label="Venta de aceite" hidden>
+            <section id="view-despachoAceite" class="view" aria-label="Retiro de aceite" hidden>
                 <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
                     <div class="glass-panel col-span-1 rounded-2xl p-6">
-                        <h3 class="mb-4 flex items-center gap-2 font-semibold text-purple-400"><i data-lucide="fuel" class="h-4 w-4"></i> <span data-form-titulo>Nueva Venta de Aceite</span></h3>
+                        <h3 class="mb-4 flex items-center gap-2 font-semibold text-purple-400"><i data-lucide="fuel" class="h-4 w-4"></i> <span data-form-titulo>Nuevo Retiro de Aceite</span></h3>
                         <p class="-mt-2 mb-4 text-[11px] text-slate-500">La empresa compradora retira el aceite con su camión. Se pesa en la balanza al entrar vacío y al salir cargado.</p>
                         <form id="form-despacho-aceite" class="space-y-4 text-sm" autocomplete="off">
                             <div>
@@ -281,7 +281,7 @@
                                 </div>
                             </div>
                             <div class="flex items-center justify-between rounded-xl border border-purple-500/30 bg-purple-900/20 p-3 shadow-inner">
-                                <span class="text-xs font-medium tracking-wider text-purple-300 uppercase">Aceite vendido:</span>
+                                <span class="text-xs font-medium tracking-wider text-purple-300 uppercase">Aceite retirado:</span>
                                 <span class="text-right">
                                     <output id="da-neto" for="da-bruto da-tara" class="block text-xl font-bold text-white">0 kg</output>
                                     <output id="da-litros" for="da-bruto da-tara" class="block text-[11px] text-purple-200">(≈ 0 L)</output>
@@ -292,14 +292,14 @@
                                 <input type="datetime-local" id="da-fecha" class="field focus:border-purple-500">
                             </div>
                             <div class="mt-2 flex gap-2">
-                                <button type="submit" class="btn flex-1 bg-purple-500 text-white hover:bg-purple-400">Registrar Venta</button>
+                                <button type="submit" class="btn flex-1 bg-purple-500 text-white hover:bg-purple-400">Registrar Retiro</button>
                                 <button type="button" data-cancelar hidden class="btn-cancelar">Cancelar</button>
                             </div>
                         </form>
                     </div>
 
                     <div class="glass-panel col-span-1 flex flex-col overflow-hidden rounded-2xl p-6 lg:col-span-2">
-                        <h3 class="mb-4 font-semibold text-slate-200">Últimas Ventas de Aceite</h3>
+                        <h3 class="mb-4 font-semibold text-slate-200">Últimos Retiros de Aceite</h3>
                         <div class="flex-1 overflow-x-auto">
                             <table class="data-table">
                                 <thead>
@@ -648,7 +648,7 @@
                                         <th scope="col">Día</th>
                                         <th scope="col" class="num">Soja (kg)</th>
                                         <th scope="col" class="num">Aceite prod. (L)</th>
-                                        <th scope="col" class="num">Aceite vendido (kg)</th>
+                                        <th scope="col" class="num">Aceite retirado (kg)</th>
                                         <th scope="col" class="num">Expeller prod. (kg)</th>
                                         <th scope="col" class="num">Expeller desp. (kg)</th>
                                         <th scope="col" class="num">Hum. inicial prom.</th>

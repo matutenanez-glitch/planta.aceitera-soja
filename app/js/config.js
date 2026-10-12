@@ -7,7 +7,7 @@
   'use strict';
 
   SoyaCore.config = Object.freeze({
-    version: '2.16.1',
+    version: '2.17.0',
     locale: 'es-AR',
 
     /** Cuántas filas muestran las tablas de "últimos registros". */
@@ -22,7 +22,7 @@
       secadora:      { titulo: 'Secadora y Tomas de Laboratorio',   icono: 'thermometer-sun' },
       produccion:    { titulo: 'Producción Operativa (Extracción)', icono: 'factory' },
       aceite:        { titulo: 'Aceite por día y turno',            icono: 'droplet' },
-      despachoAceite:{ titulo: 'Venta de Aceite',                   icono: 'fuel' },
+      despachoAceite:{ titulo: 'Retiro de Aceite',                  icono: 'fuel' },
       equipos:       { titulo: 'Estado de Equipos',                 icono: 'gauge' },
       mantenimiento: { titulo: 'Registro de Mantenimiento',         icono: 'wrench' },
       resumen:       { titulo: 'Resumen por día y por mes',         icono: 'chart-column' },

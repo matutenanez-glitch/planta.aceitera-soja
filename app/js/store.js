@@ -24,7 +24,7 @@
     secadora:      { clave: 'secadora',      etiqueta: 'Secadora',              numeros: ['hCamion', 'hCaliente', 'hFrio'] },
     produccion:    { clave: 'produccion',    etiqueta: 'Producción',            numeros: ['expeller', 'aceite'] },
     mantenimiento: { clave: 'mantenimiento', etiqueta: 'Mantenimiento',         numeros: [] },
-    despachosAceite: { clave: 'aceite_despachos', etiqueta: 'Venta de aceite', numeros: ['bruto', 'tara', 'neto', 'litros'] },
+    despachosAceite: { clave: 'aceite_despachos', etiqueta: 'Retiro de aceite', numeros: ['bruto', 'tara', 'neto', 'litros'] },
   };
 
   const datos = {};
@@ -279,7 +279,7 @@
 
   function exportarBackup() {
     const contenido = {
-      app: 'SoyaCore OS',
+      app: 'Gestión Aceitera',
       version: SoyaCore.config.version,
       schema: SCHEMA,
       exportado: new Date().toISOString(),
@@ -300,7 +300,7 @@
       throw new Error('el archivo no es un JSON válido.');
     }
     if (!obj || typeof obj !== 'object' || !obj.datos || typeof obj.datos !== 'object') {
-      throw new Error('El archivo no es un backup de SoyaCore OS.');
+      throw new Error('El archivo no es un backup de Gestión Aceitera.');
     }
     const resumen = {};
     Object.keys(COLECCIONES).forEach((nombre) => {

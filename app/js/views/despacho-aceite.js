@@ -1,5 +1,5 @@
 /*
- * Vista: Venta de aceite.
+ * Vista: Retiro de aceite.
  *
  * El aceite lo retira la empresa que lo compra, con su propio camión.
  *
@@ -72,7 +72,7 @@
           bruto: num($('#da-bruto')),
           tara: num($('#da-tara')),
           neto: kg,
-        }, { nuevo: 'Venta de aceite registrada.' })) $('#da-empresa').focus();
+        }, { nuevo: 'Retiro de aceite registrado.' })) $('#da-empresa').focus();
       });
 
       SoyaCore.store.alCambiar((c) => (c === 'despachosAceite' || c === '*') && tabla.dibujar());
