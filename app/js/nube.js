@@ -203,6 +203,17 @@
     ponerEstado('sinCuenta');
   }
 
+  /**
+   * Cierra la sesión solo si se confirma la contraseña del dueño, para que un
+   * operario no pueda desvincular la PC. Necesita internet para confirmarla.
+   */
+  async function salirConClave(password) {
+    if (!sesion) return;
+    const prueba = await autenticar('signInWithPassword', sesion.email, password);
+    if (prueba.uid !== sesion.uid) throw new ErrorNube('OTRA_CUENTA', 'Esa contraseña no es de esta cuenta.');
+    salir();
+  }
+
   async function token() {
     if (!sesion) throw new ErrorNube('SIN_SESION', 'Ingresá con la cuenta del dueño.');
     if (sesion.idToken && sesion.expira - 60000 > Date.now()) return sesion.idToken;
@@ -436,6 +447,7 @@
     crearCuenta,
     recuperar,
     salir,
+    salirConClave,
     sincronizar,
     bajarTodo,
   };

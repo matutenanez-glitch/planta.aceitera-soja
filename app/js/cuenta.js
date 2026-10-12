@@ -148,14 +148,37 @@
 
       $('#cuenta-sincronizar').addEventListener('click', () => nube.sincronizar());
       $('#cuenta-bajar-todo').addEventListener('click', () => nube.bajarTodo());
+      // Cerrar sesión pide la contraseña del dueño: los operarios no pueden desvincular la PC.
+      const formSalir = $('#cuenta-salir-form');
+      const errorSalir = (texto) => { $('#cuenta-salir-error').hidden = !texto; $('#cuenta-salir-error').textContent = texto || ''; };
       $('#cuenta-salir').addEventListener('click', () => {
         const i = nube.info();
-        const aviso = i.pendientes
-          ? `Hay ${plural(i.pendientes, 'cambio', 'cambios')} sin subir. Van a quedar en esta PC y se suben cuando vuelvas a ingresar.\n\n¿Cerrar la sesión en esta PC?`
-          : '¿Cerrar la sesión en esta PC? Los datos siguen en la PC y en la nube.';
-        if (!window.confirm(aviso)) return;
-        nube.salir();
-        toast('Sesión cerrada en esta PC.', 'info');
+        $('#cuenta-salir-aviso').textContent = i.pendientes
+          ? `Hay ${plural(i.pendientes, 'cambio', 'cambios')} sin subir: van a quedar en esta PC y se suben cuando vuelvas a ingresar. Para cerrar la sesión, escribí la contraseña del dueño.`
+          : 'Los datos siguen en esta PC y en la nube. Para cerrar la sesión, escribí la contraseña del dueño.';
+        errorSalir('');
+        formSalir.reset();
+        formSalir.hidden = false;
+        $('#cuenta-salir-pass').focus();
+      });
+      $('#cuenta-salir-cancelar').addEventListener('click', () => { formSalir.hidden = true; });
+      dialogo.addEventListener('close', () => { formSalir.hidden = true; formSalir.reset(); });
+      formSalir.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        errorSalir('');
+        try {
+          await ocupado($('#cuenta-salir-confirmar'), 'Confirmando…', () => nube.salirConClave($('#cuenta-salir-pass').value));
+          formSalir.hidden = true;
+          formSalir.reset();
+          toast('Sesión cerrada en esta PC.', 'info');
+          pintar();
+        } catch (err) {
+          errorSalir(['INVALID_LOGIN_CREDENTIALS', 'INVALID_PASSWORD', 'OTRA_CUENTA'].includes(err.codigo)
+            ? 'La contraseña no es correcta.'
+            : err.codigo === 'SIN_CONEXION'
+              ? 'Para cerrar la sesión hace falta internet: se confirma la contraseña del dueño.'
+              : err.message);
+        }
       });
 
       nube.alCambiar(pintar);

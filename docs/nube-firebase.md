@@ -9,7 +9,11 @@ La cuenta del dueño es **opcional**:
   - Si el mismo registro se cambió en dos PCs, queda el cambio más nuevo. Las reglas de Firestore no dejan pisar una versión con otra más vieja.
   - En la nube **no se borra nada**: lo que se borra en la app queda guardado como "borrado", con su contenido.
 
-Hay **una sola cuenta por planta**, la del dueño. Se ingresa con esa cuenta en cada PC de la planta.
+Hay **una sola cuenta por planta**, la del dueño:
+
+- El dueño ingresa con esa cuenta una vez en cada PC de la planta.
+- Los operarios no necesitan cuenta: cargan como siempre y todo se guarda en la cuenta del dueño.
+- Para cerrar la sesión en una PC hay que escribir la contraseña del dueño, así nadie más puede desvincularla. Para confirmarla hace falta internet.
 
 ## Cómo está armado
 

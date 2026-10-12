@@ -81,9 +81,10 @@ El aceite no lo despacha la planta: lo retira con su camión la empresa que lo c
 
 ## Copia en la nube (cuenta del dueño)
 
-Es **opcional** y hay **una sola cuenta por planta**, la del dueño. Se usa desde **Copia en la nube**, abajo a la izquierda:
+Es **opcional** y hay **una sola cuenta por planta**, la del dueño. La pone solo el dueño, una vez en cada PC, desde **Copia en la nube** (abajo a la izquierda). Los operarios no necesitan cuenta: cargan como siempre y todo se guarda en la cuenta del dueño.
 
 - **Crear cuenta** o **Ingresar** con correo y contraseña. También hay **Olvidé mi contraseña**.
+- **Cerrar sesión** pide la contraseña del dueño, así un operario no puede desvincular la PC. Para confirmarla hace falta internet.
 - Con la cuenta, cada PC de la planta sigue guardando todo en la PC y **funciona sin internet**. Cuando hay conexión, sube lo que se cargó y baja lo que cargaron las otras PCs. Lo hace sola: a los 3 segundos de cada cambio, cada 2 minutos y cuando vuelve internet.
 - Si el mismo registro se cambió en dos PCs, queda el cambio más nuevo.
 - En la nube **no se borra nada**: lo borrado queda guardado como borrado.
@@ -143,6 +144,7 @@ npm test             # prueba el cálculo del circuito de tanques (archivado)
 
 ## Historial
 
+- **2.16.1**: cerrar la sesión pide la contraseña del dueño. Los textos aclaran que los operarios no necesitan cuenta.
 - **2.16.0**:
   - **Cuenta del dueño** (correo y contraseña) y **copia en la nube** con Firebase, opcional. Las PCs de la planta comparten los datos y cada una sigue funcionando sin internet.
   - Reglas de Firestore: cada cuenta ve solo lo suyo, nada se borra y no se puede pisar una versión con otra más vieja.
