@@ -108,7 +108,7 @@
   /**
    * Tabla de registros con botones Editar y Borrar en cada fila.
    *   coleccion  nombre en el store
-   *   columnas   [{ key, format?, className? }] (como renderRows)
+   *   columnas   [{ key, format?, className? }] o [{ render(row) → nodo, className? }]
    *   onEditar   fn(registro) → normalmente editor.editar
    * Borrar pide confirmación con un segundo clic y ofrece "Deshacer".
    * Devuelve { dibujar(), marcar(id|null) }.
@@ -135,6 +135,7 @@
       }
       visibles.forEach((row) => {
         const celdas = columnas.map((col) => {
+          if (col.render) return el('td', { className: col.className || '' }, [col.render(row)]);
           const raw = row[col.key];
           const value = col.format ? col.format(raw, row) : raw;
           const td = el('td', { className: col.className || '', text: value == null || value === '' ? '-' : value });
@@ -206,10 +207,11 @@
    *   rellenar(registro)  carga los valores en los campos (propio de cada vista)
    *   alTerminar()        se llama al guardar o cancelar (para limpiar extras)
    *   tabla               la tablaRegistros, para resaltar la fila
+   *   tituloEdicion(r)    (opcional) texto del título mientras se edita
    * El formulario necesita: [data-form-titulo], [data-campo-fecha] con un
    * <input type="datetime-local">, el botón submit y un botón [data-cancelar].
    */
-  function editorFormulario(form, { rellenar, alTerminar, tabla }) {
+  function editorFormulario(form, { rellenar, alTerminar, tabla, tituloEdicion }) {
     const panel = form.closest('.glass-panel');
     const titulo = panel.querySelector('[data-form-titulo]');
     const tituloNuevo = titulo ? titulo.textContent : '';
@@ -243,7 +245,7 @@
       }
       submit.textContent = 'Guardar cambios';
       cancelar.hidden = false;
-      if (titulo) titulo.textContent = `Editando el registro del ${registro.fecha}`;
+      if (titulo) titulo.textContent = tituloEdicion ? tituloEdicion(registro) : `Editando el registro del ${registro.fecha}`;
       panel.classList.add('editando');
       if (tabla) tabla.marcar(id);
       panel.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
@@ -269,8 +271,9 @@
   function guardarRegistro(coleccion, editor, datos, mensajes) {
     const store = SoyaCore.store;
     const editando = editor.id;
+    const fechaEditada = editando ? editor.fecha() : null;
     const guardado = editando
-      ? store.actualizar(coleccion, editando, Object.assign({}, datos, { fecha: editor.fecha() }))
+      ? store.actualizar(coleccion, editando, Object.assign({}, datos, fechaEditada ? { fecha: fechaEditada } : {}))
       : store.agregar(coleccion, Object.assign({ fecha: ahora() }, datos));
     if (!guardado) return null;
     editor.terminar();

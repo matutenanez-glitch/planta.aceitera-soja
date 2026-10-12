@@ -40,10 +40,12 @@
     return chip;
   }
 
+  /** Días de calendario entre la fecha y hoy (algo de ayer a las 23:00 es "ayer", no "hoy"). */
   function haceDias(ms) {
-    const dias = Math.floor((Date.now() - ms) / 86400000);
+    const medianoche = (t) => { const d = new Date(t); return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime(); };
+    const dias = Math.round((medianoche(Date.now()) - medianoche(ms)) / 86400000);
     if (dias <= 0) return 'hoy';
-    if (dias === 1) return 'hace 1 día';
+    if (dias === 1) return 'ayer';
     return `hace ${dias} días`;
   }
   const fechaCorta = (f) => `${f.slice(8, 10)}/${f.slice(5, 7)}/${f.slice(2, 4)}`;

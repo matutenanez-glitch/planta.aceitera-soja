@@ -12,6 +12,7 @@
   const { $, $$, el, fmt, fillSelect } = SoyaCore.ui;
   const store = SoyaCore.store;
   const icons = SoyaCore.icons;
+  const T = SoyaCore.turnos;
 
   const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
   const DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
@@ -31,7 +32,9 @@
 
   /** Totales de un conjunto de registros filtrados por un prefijo de fecha ("2026-10" o "2026-10-08"). */
   function totales(prefijo) {
-    const de = (col) => store.todos(col).filter((r) => String(r.fecha).startsWith(prefijo));
+    // Los cierres de turno cuentan en el día del turno (el Turno 3 que se carga pasada la medianoche es del día anterior).
+    const fechaDe = (col, r) => (col === 'produccion' ? T.diaDe(r) : String(r.fecha));
+    const de = (col) => store.todos(col).filter((r) => fechaDe(col, r).startsWith(prefijo));
     const ingresos = de('ingresos');
     const soja = ingresos.filter(esSoja);
     const produccion = de('produccion');
@@ -84,7 +87,8 @@
   // ---------- Por mes ----------
   function mesesDisponibles() {
     const meses = new Set([isoDia(new Date()).slice(0, 7)]);
-    ['ingresos', 'produccion', 'despachos', 'despachosAceite', 'secadora'].forEach((c) => store.todos(c).forEach((r) => meses.add(mesDe(r))));
+    ['ingresos', 'despachos', 'despachosAceite', 'secadora'].forEach((c) => store.todos(c).forEach((r) => meses.add(mesDe(r))));
+    store.todos('produccion').forEach((r) => meses.add(T.diaDe(r).slice(0, 7)));
     return [...meses].filter((m) => /^\d{4}-\d{2}$/.test(m)).sort().reverse();
   }
 
@@ -189,10 +193,24 @@
     );
 
     const porHora = (a, b) => String(a.fecha).localeCompare(String(b.fecha));
-    filasTabla('#res-dia-turnos', t.produccion.slice().sort(porHora), [
-      { valor: horaDe }, { valor: (r) => r.turno }, { valor: (r) => r.operador || 'Sin operador' },
-      { valor: (r) => fmt.entero(r.expeller), className: 'num' }, { valor: (r) => fmt.entero(r.aceite), className: 'num' },
-    ], 'No se cerraron turnos este día.');
+    // Los 3 turnos del día en orden; si se cargó alguno, los que faltan quedan marcados.
+    const turnosDia = [];
+    if (t.produccion.length) {
+      T.lista.forEach((tu) => {
+        const regs = t.produccion.filter((r) => T.normalizarEtiqueta(r.turno) === tu.etiqueta).sort(porHora);
+        if (regs.length) regs.forEach((r) => turnosDia.push(r));
+        else turnosDia.push({ turno: tu.etiqueta, falta: T.estado(tu.etiqueta, dia) === 'terminado' ? 'Falta cargar' : 'Todavía no terminó' });
+      });
+    }
+    const filasTurnos = turnosDia.map((r) => el('tr', { className: r.falta ? 'text-amber-300' : '' }, [
+      el('td', { text: T.corto(r.turno) }),
+      el('td', { className: r.falta ? 'font-semibold' : '', text: r.falta || r.operador || 'Sin operador' }),
+      el('td', { className: 'num', text: r.falta ? '-' : `${fmt.entero(r.aceite)}${T.textoTanques(r.aceite) ? ' (' + T.textoTanques(r.aceite) + ')' : ''}` }),
+      el('td', { className: 'num', text: r.falta ? '-' : fmt.entero(r.expeller) }),
+      el('td', { className: 'text-slate-500', text: r.falta ? '' : horaDe(r) }),
+    ]));
+    if (!filasTurnos.length) filasTurnos.push(el('tr', null, [el('td', { className: 'empty', text: 'No se cerraron turnos este día.', attrs: { colspan: '5' } })]));
+    $('#res-dia-turnos').replaceChildren(...filasTurnos);
 
     const camiones = [
       ...t.ingresos.map((r) => ({ fecha: r.fecha, tipo: `Ingreso (${r.carga || 'Soja'})`, empresa: r.empresa, cantidad: fmt.kg(r.neto) })),

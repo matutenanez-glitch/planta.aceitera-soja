@@ -1,160 +1,262 @@
 /*
- * Vista: Aceite por operador y turno.
+ * Vista: Aceite por día y turno.
  *
- * Sale de los cierres de turno (Producción): quién estuvo en cada turno y
- * cuánto aceite pasó. Los despachos de aceite se muestran en kg de balanza.
+ * Sale de los cierres de turno (Producción). Muestra, para hoy y para cada día
+ * del período, el aceite que pasó cada turno y quién lo cargó, y avisa qué
+ * turnos faltan cargar. El día va de 00:00 a 24:00 (Turno 1, 2 y 3).
  */
 (function (SoyaCore) {
   'use strict';
 
   const { $, $$, el, fmt } = SoyaCore.ui;
   const store = SoyaCore.store;
+  const T = SoyaCore.turnos;
 
-  const DIA = 86400000;
   const pad = (n) => String(n).padStart(2, '0');
   const DIAS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
-  const SIN_OPERADOR = 'Sin operador';
-
-  const ms = SoyaCore.ui.fechaMs;
-  const ddmm = (t) => { const d = new Date(t); return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}`; };
+  const DIAS_LARGOS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+  const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+  const ddmm = (iso) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
+  const hhmm = (ms) => { const d = new Date(ms); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+  const plural = (n, uno, varios) => `${fmt.entero(n)} ${n === 1 ? uno : varios}`;
+  const sumaAceite = (lista) => lista.reduce((s, r) => s + (Number(r.aceite) || 0), 0);
 
   let periodo = '7d';
 
+  /** Primer y último día (AAAA-MM-DD) del período elegido. */
   function rango(clave) {
-    const ahora = Date.now();
-    const hoy = new Date(ahora);
-    const inicioHoy = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate()).getTime();
-    let inicio = inicioHoy - 6 * DIA;
-    let fin = ahora + 1;
-    if (clave === '30d') inicio = inicioHoy - 29 * DIA;
-    if (clave === 'mes') inicio = new Date(hoy.getFullYear(), hoy.getMonth(), 1).getTime();
+    const hoy = new Date();
+    const hoyIso = T.isoDia(hoy);
+    if (clave === '30d') return { desde: T.sumarDias(hoyIso, -29), hasta: hoyIso };
+    if (clave === 'mes') return { desde: T.isoDia(new Date(hoy.getFullYear(), hoy.getMonth(), 1)), hasta: hoyIso };
     if (clave === 'mesAnterior') {
-      inicio = new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1).getTime();
-      fin = new Date(hoy.getFullYear(), hoy.getMonth(), 1).getTime();
+      return {
+        desde: T.isoDia(new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1)),
+        hasta: T.isoDia(new Date(hoy.getFullYear(), hoy.getMonth(), 0)),
+      };
     }
-    return { inicio, fin, hastaHoy: fin > ahora };
+    return { desde: T.sumarDias(hoyIso, -6), hasta: hoyIso };
   }
 
-  /** Hora de inicio de un turno a partir de su nombre: "Turno 3 (00:00 - 08:00)" → 0. */
-  const horaInicio = (turno) => { const m = /\((\d{1,2}):/.exec(turno); return m ? Number(m[1]) : 99; };
-  const nombreCorto = (turno) => String(turno).replace(/\s*\(.*\)/, '');
-  const franja = (turno) => { const m = /\(([^)]*)\)/.exec(turno); return m ? m[1] : ''; };
+  /** Cierres de turno agrupados por día y por turno: Map(dia → Map(etiqueta → [registros])). */
+  function agrupar() {
+    const porDia = new Map();
+    store.todos('produccion').forEach((r) => {
+      const dia = T.diaDe(r);
+      const etiqueta = T.normalizarEtiqueta(r.turno);
+      if (!porDia.has(dia)) porDia.set(dia, new Map());
+      const turnos = porDia.get(dia);
+      if (!turnos.has(etiqueta)) turnos.set(etiqueta, []);
+      turnos.get(etiqueta).push(r);
+    });
+    return porDia;
+  }
 
-  function kpi(titulo, valor, sub) {
-    return el('div', { className: 'glass-panel rounded-xl p-5' }, [
-      el('p', { className: 'text-[11px] font-bold tracking-wide text-slate-400 uppercase', text: titulo }),
-      el('p', { className: 'mt-1 text-2xl font-black text-white', text: valor }),
+  /** Estado de un día: cuántos turnos se cargaron, cuáles faltan y cuáles todavía no terminaron. */
+  function estadoDia(dia, turnos, ahora) {
+    const cargados = T.lista.filter((t) => turnos && turnos.has(t.etiqueta));
+    const faltan = T.lista.filter((t) => !(turnos && turnos.has(t.etiqueta)) && T.estado(t.etiqueta, dia, ahora) === 'terminado');
+    const porVenir = T.lista.filter((t) => !(turnos && turnos.has(t.etiqueta)) && T.estado(t.etiqueta, dia, ahora) !== 'terminado');
+    const registros = turnos ? [...turnos.values()].flat() : [];
+    return { cargados, faltan, porVenir, registros, total: sumaAceite(registros) };
+  }
+
+  function botonCargar(t, dia, texto, neutro) {
+    const b = el('button', { className: neutro ? 'btn-falta btn-falta-neutro' : 'btn-falta', attrs: { type: 'button', title: `Cargar el ${T.corto(t.etiqueta)} del ${ddmm(dia)}` } }, [
+      el('i', { attrs: { 'data-lucide': neutro ? 'clock' : 'circle-alert' }, className: 'h-3.5 w-3.5' }),
+      el('span', { text: texto }),
+    ]);
+    b.addEventListener('click', () => {
+      SoyaCore.navegar('produccion');
+      SoyaCore.views.produccion.nuevoPara(t.etiqueta, dia);
+    });
+    return b;
+  }
+
+  function chip(clase, texto) {
+    return el('span', { className: 'chip ' + clase, text: texto });
+  }
+
+  // ---------- Hoy ----------
+  function dibujarHoy(grupos, ahora) {
+    const hoy = T.isoDia(new Date(ahora));
+    const f = T.fechaDia(hoy);
+    $('#ac-hoy-fecha').textContent = `${DIAS_LARGOS[f.getDay()]} ${f.getDate()} de ${MESES[f.getMonth()]}`;
+    const turnos = grupos.get(hoy);
+    const e = estadoDia(hoy, turnos, ahora);
+
+    $('#ac-hoy').replaceChildren(...T.lista.map((t) => {
+      const registros = (turnos && turnos.get(t.etiqueta)) || [];
+      const est = T.estado(t.etiqueta, hoy, ahora);
+      const cabecera = (estadoChip) => el('div', { className: 'flex items-start justify-between gap-2' }, [
+        el('div', null, [
+          el('p', { className: 'font-semibold text-slate-200', text: t.nombre }),
+          el('p', { className: 'text-[11px] text-slate-500', text: `${t.desde}:00 a ${t.hasta}:00` }),
+        ]),
+        estadoChip,
+      ]);
+
+      if (registros.length) {
+        const litros = sumaAceite(registros);
+        const ultimo = registros[registros.length - 1];
+        const hijos = [
+          cabecera(chip('chip-operativo', 'Cargado')),
+          el('p', { className: 'mt-2 text-2xl font-black text-white tabular-nums', text: fmt.litros(litros) }),
+          el('p', { className: 'text-sm font-semibold text-brand-300', text: T.textoTanques(litros) || '—' }),
+          el('p', { className: 'mt-1 truncate text-xs text-slate-400', text: registros.map((r) => r.operador || 'Sin operador').join(' · ') }),
+        ];
+        if (registros.length > 1) hijos.push(el('p', { className: 'text-[11px] font-semibold text-amber-300', text: `Cargado ${registros.length} veces: revisalo en Producción.` }));
+        else hijos.push(el('p', { className: 'text-[11px] text-slate-500', text: `Cargado ${String(ultimo.fecha).slice(0, 10) === hoy ? 'a las ' + String(ultimo.fecha).slice(11, 16) : 'el ' + ddmm(String(ultimo.fecha)) + ' a las ' + String(ultimo.fecha).slice(11, 16)}` }));
+        return el('div', { className: 'turno-card estado-operativo', attrs: { 'data-turno': t.etiqueta, 'data-estado': 'cargado' } }, hijos);
+      }
+
+      if (est === 'terminado') {
+        // Si hoy ya se cargó algún turno, es día de producción y el que falta se marca en ámbar.
+        // Si no se cargó ninguno (fin de semana, parada), queda en gris.
+        const produce = e.cargados.length > 0;
+        return el('div', { className: 'turno-card ' + (produce ? 'estado-observaciones' : 'estado-sin'), attrs: { 'data-turno': t.etiqueta, 'data-estado': produce ? 'falta' : 'sinCarga' } }, [
+          cabecera(produce ? chip('chip-observaciones', 'Falta cargar') : chip('chip-sin', 'Sin cargar')),
+          el('p', { className: 'mt-2 text-sm text-slate-300', text: `Terminó a las ${hhmm(T.finMs(t, hoy))} y no tiene cierre.` }),
+          el('div', { className: 'mt-2' }, [botonCargar(t, hoy, 'Cargar ahora', !produce)]),
+        ]);
+      }
+
+      const enCurso = est === 'enCurso';
+      return el('div', { className: 'turno-card estado-sin', attrs: { 'data-turno': t.etiqueta, 'data-estado': enCurso ? 'enCurso' : 'pendiente' } }, [
+        cabecera(chip('chip-sin', enCurso ? 'En curso' : 'Más tarde')),
+        el('p', { className: 'mt-2 text-sm text-slate-400', text: enCurso ? `Termina a las ${hhmm(T.finMs(t, hoy))}.` : `Empieza a las ${hhmm(T.inicioMs(t, hoy))}.` }),
+      ]);
+    }));
+    SoyaCore.icons.render($('#ac-hoy'));
+
+    const partes = [`${e.cargados.length} de ${T.lista.length} turnos cargados`];
+    if (e.total > 0) partes.unshift(`Total: ${fmt.litros(e.total)} (${T.textoTanques(e.total)})`);
+    $('#ac-hoy-total').textContent = partes.join(' · ');
+  }
+
+  // ---------- Período ----------
+  function kpi(titulo, valor, sub, alerta) {
+    return el('div', { className: 'glass-panel rounded-xl p-5' + (alerta ? ' ring-1 ring-amber-400/40' : '') }, [
+      el('p', { className: 'text-[11px] font-bold tracking-wide uppercase ' + (alerta ? 'text-amber-300' : 'text-slate-400'), text: titulo }),
+      el('p', { className: 'mt-1 text-2xl font-black ' + (alerta ? 'text-amber-200' : 'text-white'), text: valor }),
       el('p', { className: 'mt-1 text-[11px] text-slate-500', text: sub }),
     ]);
   }
 
-  function vacio(tbody, columnas, texto) {
-    tbody.replaceChildren(el('tr', null, [el('td', { className: 'empty', text: texto, attrs: { colspan: String(columnas) } })]));
+  function celdaTurno(t, dia, registros, est) {
+    if (registros && registros.length) {
+      const hijos = registros.map((r) => el('div', { className: 'py-0.5' }, [
+        el('span', { className: 'block font-semibold ' + (r.operador ? 'text-slate-200' : 'text-slate-500 italic'), text: r.operador || 'Sin operador' }),
+        el('span', { className: 'block text-sm text-brand-300 tabular-nums', text: fmt.litros(r.aceite) }),
+        el('span', { className: 'block text-[11px] text-slate-500', text: T.textoTanques(r.aceite) }),
+      ]));
+      if (registros.length > 1) hijos.push(el('span', { className: 'block text-[11px] font-semibold text-amber-300', text: `Cargado ${registros.length} veces` }));
+      return el('td', { className: 'align-top', attrs: { 'data-turno': t.etiqueta, 'data-estado': 'cargado' } }, hijos);
+    }
+    if (est === 'falta') return el('td', { className: 'align-top', attrs: { 'data-turno': t.etiqueta, 'data-estado': 'falta' } }, [botonCargar(t, dia, 'Falta cargar')]);
+    if (est === 'porVenir') return el('td', { className: 'align-top text-xs text-slate-500', text: 'Todavía no terminó', attrs: { 'data-turno': t.etiqueta, 'data-estado': 'porVenir' } });
+    return el('td', { className: 'align-top text-slate-600', text: '—', attrs: { 'data-turno': t.etiqueta, 'data-estado': 'vacio' } });
+  }
+
+  function dibujarPeriodo(grupos, ahora) {
+    const { desde, hasta } = rango(periodo);
+    const hoy = T.isoDia(new Date(ahora));
+    $('#ac-periodo-rango').textContent = `${ddmm(desde)} al ${hasta === hoy ? 'hoy' : ddmm(hasta)}`;
+
+    const dias = [];
+    for (let d = hasta; d >= desde; d = T.sumarDias(d, -1)) dias.push(d);
+
+    let total = 0;
+    let turnosCargados = 0;
+    let faltantes = 0;
+    let diasConProduccion = 0;
+    let diasSinCarga = 0;
+    let diasIncompletos = 0;
+    const totalPorTurno = new Map(T.lista.map((t) => [t.etiqueta, 0]));
+
+    const filas = dias.map((dia) => {
+      const turnos = grupos.get(dia);
+      const e = estadoDia(dia, turnos, ahora);
+      const hayCarga = e.cargados.length > 0;
+      total += e.total;
+      turnosCargados += e.cargados.length;
+      if (hayCarga) {
+        diasConProduccion++;
+        faltantes += e.faltan.length;
+        if (e.faltan.length) diasIncompletos++;
+      } else if (dia !== hoy) {
+        diasSinCarga++;
+      }
+      T.lista.forEach((t) => totalPorTurno.set(t.etiqueta, totalPorTurno.get(t.etiqueta) + sumaAceite((turnos && turnos.get(t.etiqueta)) || [])));
+
+      let estadoChip;
+      if (e.cargados.length === T.lista.length) estadoChip = chip('chip-operativo', 'Completo');
+      else if (hayCarga && e.faltan.length) estadoChip = chip('chip-observaciones', e.faltan.length === 1 ? 'Falta 1 turno' : `Faltan ${e.faltan.length} turnos`);
+      else if (hayCarga) estadoChip = chip('chip-sin', `${e.cargados.length} de ${T.lista.length}`);
+      else estadoChip = chip('chip-sin', dia === hoy ? `0 de ${T.lista.length}` : 'Sin carga');
+
+      const f = T.fechaDia(dia);
+      const celdas = T.lista.map((t) => {
+        const registros = turnos && turnos.get(t.etiqueta);
+        let est = 'vacio';
+        if (!registros) {
+          if (e.porVenir.includes(t)) est = 'porVenir';
+          else if (hayCarga) est = 'falta';
+        }
+        return celdaTurno(t, dia, registros, est);
+      });
+
+      return el('tr', { className: hayCarga || dia === hoy ? '' : 'opacity-60', attrs: { 'data-dia': dia } }, [
+        el('td', { className: 'align-top' }, [
+          el('span', { className: 'block font-semibold text-slate-200', text: `${DIAS[f.getDay()]} ${ddmm(dia)}` }),
+          dia === hoy ? el('span', { className: 'block text-[11px] text-brand-300', text: 'Hoy' }) : null,
+        ]),
+        ...celdas,
+        el('td', { className: 'num align-top' }, [
+          el('span', { className: 'block font-bold text-white', text: e.total ? fmt.litros(e.total) : '—' }),
+          el('span', { className: 'block text-[11px] text-slate-500', text: e.total ? T.textoTanques(e.total) : '' }),
+        ]),
+        el('td', { className: 'align-top' }, [estadoChip]),
+      ]);
+    });
+
+    $('#ac-grilla-cabecera').replaceChildren(el('tr', null, [
+      el('th', { text: 'Día', attrs: { scope: 'col' } }),
+      ...T.lista.map((t) => el('th', { attrs: { scope: 'col' } }, [
+        el('span', { className: 'block', text: t.nombre }),
+        el('span', { className: 'block text-[10px] font-normal text-slate-500', text: `${t.desde} a ${t.hasta} h` }),
+      ])),
+      el('th', { className: 'num', text: 'Total del día', attrs: { scope: 'col' } }),
+      el('th', { text: 'Estado', attrs: { scope: 'col' } }),
+    ]));
+    $('#ac-grilla').replaceChildren(...filas);
+    $('#ac-grilla-pie').replaceChildren(el('tr', null, [
+      el('td', { text: 'Total del período' }),
+      ...T.lista.map((t) => el('td', { className: 'tabular-nums text-brand-300', text: fmt.litros(totalPorTurno.get(t.etiqueta)), attrs: { 'data-total-turno': t.etiqueta } })),
+      el('td', { className: 'num text-white', text: fmt.litros(total), attrs: { 'data-total-periodo': '' } }),
+      el('td'),
+    ]));
+    SoyaCore.icons.render($('#ac-grilla'));
+
+    const tanquesTotal = T.textoTanques(total);
+    $('#ac-kpis').replaceChildren(
+      kpi('Aceite del período', fmt.litros(total), `${tanquesTotal ? tanquesTotal + ' · ' : ''}${plural(turnosCargados, 'turno cargado', 'turnos cargados')}`),
+      kpi('Promedio por día', diasConProduccion ? fmt.litros(total / diasConProduccion) : '—', plural(diasConProduccion, 'día con producción', 'días con producción')),
+      kpi('Promedio por turno', turnosCargados ? fmt.litros(total / turnosCargados) : '—', turnosCargados ? T.textoTanques(total / turnosCargados) : 'sin turnos cargados'),
+      kpi('Turnos sin cargar', fmt.entero(faltantes),
+        faltantes ? `en ${plural(diasIncompletos, 'día', 'días')} con producción` : diasSinCarga ? `${plural(diasSinCarga, 'día', 'días')} sin ninguna carga` : 'todos los días están completos',
+        faltantes > 0),
+    );
   }
 
   function dibujar() {
-    const { inicio, fin, hastaHoy } = rango(periodo);
-    $('#ac-periodo-rango').textContent = `${ddmm(inicio)} al ${hastaHoy ? 'hoy' : ddmm(fin - 1)}`;
-
-    const enPeriodo = (r) => { const t = ms(r.fecha); return t >= inicio && t < fin; };
-    const turnos = store.todos('produccion').filter(enPeriodo);
-    const despachos = store.todos('despachosAceite').filter(enPeriodo);
-    const kgDe = SoyaCore.views.despachoAceite.kgDe;
-
-    const aceite = turnos.reduce((s, r) => s + (Number(r.aceite) || 0), 0);
-    const expeller = turnos.reduce((s, r) => s + (Number(r.expeller) || 0), 0);
-    const despKg = despachos.reduce((s, r) => s + kgDe(r), 0);
-    const operadoresDistintos = new Set(turnos.map((r) => String(r.operador || SIN_OPERADOR).trim().toLowerCase())).size;
-
-    $('#ac-kpis').replaceChildren(
-      kpi('Aceite producido', fmt.litros(aceite), `${turnos.length} cierre${turnos.length === 1 ? '' : 's'} de turno`),
-      kpi('Promedio por turno', turnos.length ? fmt.litros(aceite / turnos.length) : '—', `${operadoresDistintos} operador${operadoresDistintos === 1 ? '' : 'es'}`),
-      kpi('Expeller producido', fmt.kg(expeller), 'según los cierres de turno'),
-      kpi('Aceite despachado', fmt.kg(despKg), `${despachos.length} camión${despachos.length === 1 ? '' : 'es'} (≈ ${fmt.entero(despKg / SoyaCore.config.densidadAceite)} L)`),
-    );
-
-    // ---- Por operador ----
-    const porOperador = new Map();
-    turnos.forEach((r) => {
-      const nombre = String(r.operador || '').trim() || SIN_OPERADOR;
-      const clave = nombre.toLowerCase();
-      const o = porOperador.get(clave) || { nombre, turnos: 0, aceite: 0, expeller: 0 };
-      o.turnos++;
-      o.aceite += Number(r.aceite) || 0;
-      o.expeller += Number(r.expeller) || 0;
-      porOperador.set(clave, o);
-    });
-    const operadores = [...porOperador.values()].sort((a, b) => b.aceite - a.aceite);
-    const maximo = Math.max(1, ...operadores.map((o) => o.aceite));
-    if (!operadores.length) vacio($('#ac-operadores'), 5, 'No hay cierres de turno en este período.');
-    else $('#ac-operadores').replaceChildren(...operadores.map((o) => {
-      const barra = el('span', { className: 'block h-1.5 rounded-full bg-brand-500' });
-      barra.style.width = Math.max((o.aceite / maximo) * 100, 2) + '%';
-      return el('tr', null, [
-        el('td', { className: 'font-semibold ' + (o.nombre === SIN_OPERADOR ? 'text-slate-500 italic' : 'text-slate-200'), text: o.nombre }),
-        el('td', { className: 'num', text: fmt.entero(o.turnos) }),
-        el('td', null, [
-          el('div', { className: 'flex items-center gap-3' }, [
-            el('span', { className: 'w-16 shrink-0 text-right tabular-nums', text: fmt.entero(o.aceite) }),
-            el('span', { className: 'block h-1.5 flex-1 rounded-full bg-slate-800' }, [barra]),
-          ]),
-        ]),
-        el('td', { className: 'num', text: fmt.entero(o.aceite / o.turnos) }),
-        el('td', { className: 'num', text: fmt.entero(o.expeller) }),
-      ]);
-    }));
-
-    // ---- Por turno (franja horaria) ----
-    const nombresTurno = [...new Set([...SoyaCore.config.turnos, ...turnos.map((r) => r.turno)])].sort((a, b) => horaInicio(a) - horaInicio(b));
-    $('#ac-turnos').replaceChildren(...nombresTurno.map((nt) => {
-      const deEse = turnos.filter((r) => r.turno === nt);
-      const total = deEse.reduce((s, r) => s + (Number(r.aceite) || 0), 0);
-      return el('tr', null, [
-        el('td', null, [el('span', { className: 'font-semibold text-slate-200', text: nombreCorto(nt) }), el('span', { className: 'ml-2 text-[11px] text-slate-500', text: franja(nt) })]),
-        el('td', { className: 'num', text: fmt.entero(deEse.length) }),
-        el('td', { className: 'num', text: fmt.entero(total) }),
-        el('td', { className: 'num', text: deEse.length ? fmt.entero(total / deEse.length) : '-' }),
-      ]);
-    }));
-
-    // ---- Turno por turno (día × turno) ----
-    $('#ac-grilla-cabecera').replaceChildren(el('tr', null, [
-      el('th', { text: 'Día', attrs: { scope: 'col' } }),
-      ...nombresTurno.map((nt) => el('th', { attrs: { scope: 'col' } }, [
-        el('span', { className: 'block', text: nombreCorto(nt) }),
-        el('span', { className: 'block text-[10px] font-normal text-slate-500', text: franja(nt) }),
-      ])),
-      el('th', { className: 'num', text: 'Total del día (L)', attrs: { scope: 'col' } }),
-    ]));
-
-    const porDia = new Map();
-    turnos.forEach((r) => {
-      const d = String(r.fecha).slice(0, 10);
-      if (!porDia.has(d)) porDia.set(d, []);
-      porDia.get(d).push(r);
-    });
-    const dias = [...porDia.keys()].sort().reverse();
-    if (!dias.length) { vacio($('#ac-grilla'), nombresTurno.length + 2, 'No hay cierres de turno en este período.'); return; }
-    $('#ac-grilla').replaceChildren(...dias.map((d) => {
-      const registros = porDia.get(d);
-      const f = new Date(ms(d + ' 00:00'));
-      const celdas = nombresTurno.map((nt) => {
-        const enTurno = registros.filter((r) => r.turno === nt);
-        if (!enTurno.length) return el('td', { className: 'text-slate-600', text: '—' });
-        return el('td', { className: 'align-top' }, enTurno.map((r) => el('div', { className: 'py-0.5' }, [
-          el('span', { className: 'block font-semibold ' + (r.operador ? 'text-slate-200' : 'text-slate-500 italic'), text: r.operador || SIN_OPERADOR }),
-          el('span', { className: 'block text-xs text-brand-300 tabular-nums', text: `${fmt.entero(r.aceite)} L` }),
-          el('span', { className: 'block text-[10px] text-slate-500 tabular-nums', text: `expeller ${fmt.kg(r.expeller)}` }),
-        ])));
-      });
-      const total = registros.reduce((s, r) => s + (Number(r.aceite) || 0), 0);
-      return el('tr', null, [
-        el('td', { className: 'align-top font-semibold text-slate-300', text: `${DIAS[f.getDay()]} ${ddmm(f.getTime())}` }),
-        ...celdas,
-        el('td', { className: 'num align-top font-semibold text-brand-300', text: fmt.entero(total) }),
-      ]);
-    }));
+    const ahora = Date.now();
+    const grupos = agrupar();
+    dibujarHoy(grupos, ahora);
+    dibujarPeriodo(grupos, ahora);
   }
+
+  const visible = () => !$('#view-aceite').hidden;
 
   SoyaCore.views = SoyaCore.views || {};
   SoyaCore.views.aceite = {
@@ -164,7 +266,9 @@
         $$('#view-aceite [data-periodo]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
         dibujar();
       }));
-      store.alCambiar((c) => ['produccion', 'despachosAceite', '*'].includes(c) && !$('#view-aceite').hidden && dibujar());
+      store.alCambiar((c) => ['produccion', '*'].includes(c) && visible() && dibujar());
+      // Los estados "en curso" / "falta cargar" dependen de la hora: se actualizan solos.
+      setInterval(() => visible() && dibujar(), 60000);
     },
     refresh: dibujar,
   };

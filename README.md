@@ -2,7 +2,7 @@
 
 App de escritorio para registrar la operación diaria de una planta aceitera:
 recepción de camiones, despacho de expeller y de aceite, secadora, producción por turnos,
-aceite por operador y turno, estado de equipos, mantenimiento y resumen por día y por mes.
+aceite por día y turno, estado de equipos, mantenimiento y resumen por día y por mes.
 Todos los registros se pueden editar y borrar.
 
 Funciona **sin internet** y guarda los datos **en la PC donde se usa**.
@@ -24,6 +24,7 @@ app/                     ← la aplicación (esto es lo que se instala en la pla
   js/config.js           ← datos de la planta: equipos, turnos, versión
   js/icons.js            íconos (Lucide) incluidos localmente
   js/ui.js               utilidades de pantalla: formato, tablas, avisos
+  js/turnos.js           turnos y día de producción (a qué día pertenece cada cierre)
   js/store.js            guardado de datos, edición, migración y backup
   js/graficos.js         gráficos de columnas y de línea en SVG (sin librerías)
   js/views/*.js          una vista por archivo (recepción, secadora, aceite…)
@@ -34,16 +35,22 @@ scripts/sincronizar_github.bat   sube los cambios a GitHub (Windows)
 archivo/                 versiones anteriores y el circuito de tanques (en pausa), solo como referencia
 ```
 
-## Aceite por operador y turno
+## Cierre de turno
 
-Sale de los **cierres de turno** (Producción → Turnos), que ahora piden el **operador**. Para el período elegido (7 días, 30 días, este mes o el anterior) muestra:
+- El día va de **00:00 a 24:00** y se completa con 3 turnos: **Turno 1** (00 a 08), **Turno 2** (08 a 16) y **Turno 3** (16 a 00).
+- Cada turno tiene **un solo cierre** con su operador. La app no deja cargar dos veces el mismo turno del mismo día y ofrece **Editarlo**.
+- El formulario propone automáticamente el **día y el turno** que corresponde cargar según la hora. Por ejemplo, el Turno 3 que se carga a las 00:05 queda en el día anterior.
+- El aceite se carga con los botones **1, 2, 3 o 4 tanques** (1 tanque = 1.525 L). Si no fue un tanque entero, se escriben los litros a mano.
 
-- **Totales:** aceite producido, promedio por turno, expeller y aceite despachado.
-- **Por operador:** cuántos turnos hizo, cuánto aceite pasó en total y en promedio, y cuánto expeller.
-- **Por turno:** cuánto rinde cada franja horaria (T1, T2, T3).
-- **Turno por turno:** una grilla día × turno con quién estuvo y cuánto pasó.
+## Aceite por día y turno
 
-Para corregir un dato se edita el cierre de turno en Producción.
+Sale de los cierres de turno:
+
+- **Hoy:** los 3 turnos del día. Cada uno aparece como *Cargado* (con litros, tanques y operador), *En curso*, *Más tarde* o *Falta cargar*.
+- **Totales del período** (7 días, 30 días, este mes o el anterior): aceite total, promedio por día y por turno, y cuántos turnos faltan cargar.
+- **Día por día:** una fila por día con los 3 turnos, el total del día y su estado (*Completo*, *Falta 1 turno*, *Sin carga*). Al tocar **Falta cargar** se abre el formulario con ese día y ese turno ya puestos.
+
+Un día sin ningún cierre (fin de semana o parada) queda en gris y no se cuenta como faltante.
 
 ## Despacho de aceite
 
@@ -78,6 +85,7 @@ Cada fila tiene un lápiz (editar) y un tacho (borrar).
 |--------------------------------------------|-----------------------------------------------------------------|
 | Agregar una prensa, reductor o extrusor    | `app/js/config.js` → `equipos`                                  |
 | Cambiar turnos                             | `app/js/config.js` → `turnos`                                   |
+| Cambiar los litros de un tanque            | `app/js/config.js` → `litrosPorTanque`                          |
 | Cambiar el color de marca                  | `src/styles.css` → `@theme` y después `npm run build:css`        |
 | Agregar un ícono                           | `app/js/icons.js` (ver instrucciones al principio del archivo)  |
 | Subir la versión                           | `app/js/config.js` → `version` (y `package.json`)               |
@@ -108,11 +116,17 @@ npm test             # prueba el cálculo del circuito de tanques (archivado)
 ## Limitaciones conocidas (decisiones pendientes)
 
 1. **Circuito de tanques en pausa:** falta la capacidad de los tanques grandes (se miden con manguera de nivel).
-2. **Fecha del turno:** un registro nuevo toma la fecha y hora del momento en que se guarda. Si hace falta, se corrige con **Editar**.
+2. **Días de producción:** un día sin ningún cierre no se marca como faltante, porque la app no sabe si se produjo. Falta confirmar si el lunes arranca con el Turno 1 a las 00:00.
 3. **Datos en el navegador:** si se borran los datos de navegación, se pierde todo lo que no esté en un backup.
 
 ## Historial
 
+- **2.14.0**:
+  - Los turnos pasan a ser 1 (00–08), 2 (08–16) y 3 (16–00), y el día va de 00:00 a 24:00. Los registros anteriores se renombran solos según su horario.
+  - El cierre de turno guarda el día del turno, tiene botones de tanques (1.525 L) y no deja cargar dos veces el mismo turno.
+  - La pantalla de aceite pasa a ser **Aceite por día y turno**: hoy, totales y día por día, con los turnos que faltan cargar.
+  - En el resumen, los cierres cuentan en el día del turno.
+  - Estado de equipos: "hace N días" cuenta días de calendario.
 - **2.13.0**:
   - Pantalla nueva **Aceite por operador y turno**. El cierre de turno pide el operador.
   - El despacho de aceite se guarda y se muestra solo en kg de balanza (litros aproximados entre paréntesis).

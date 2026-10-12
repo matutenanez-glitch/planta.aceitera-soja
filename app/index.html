@@ -13,6 +13,7 @@
     <script src="js/config.js" defer></script>
     <script src="js/icons.js" defer></script>
     <script src="js/ui.js" defer></script>
+    <script src="js/turnos.js" defer></script>
     <script src="js/store.js" defer></script>
     <script src="js/graficos.js" defer></script>
     <script src="js/views/recepcion.js" defer></script>
@@ -61,7 +62,7 @@
                 <i data-lucide="factory" class="h-4 w-4"></i> Producción (Turnos)
             </button>
             <button type="button" class="nav-item" data-view="aceite">
-                <i data-lucide="droplet" class="h-4 w-4"></i> Aceite por Operador
+                <i data-lucide="droplet" class="h-4 w-4"></i> Aceite por Turno
             </button>
 
             <p class="nav-group">Mantenimiento</p>
@@ -375,38 +376,44 @@
 
             <!-- 2.5 PRODUCCIÓN POR TURNOS ------------------------------------------ -->
             <section id="view-produccion" class="view" aria-label="Producción por turnos" hidden>
-                <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                <div class="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
                     <div class="glass-panel rounded-2xl p-6">
                         <h3 class="mb-4 flex items-center gap-2 font-semibold text-brand-400"><i data-lucide="clock" class="h-4 w-4"></i> <span data-form-titulo>Registro de Turno (Extracción)</span></h3>
                         <form id="form-produccion" class="space-y-4 text-sm" autocomplete="off">
                             <div class="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label for="prod-turno" class="field-label">Turno Operativo</label>
+                                    <label for="prod-dia" class="field-label">Día</label>
+                                    <input type="date" id="prod-dia" required class="field">
+                                </div>
+                                <div>
+                                    <label for="prod-turno" class="field-label">Turno</label>
                                     <select id="prod-turno" required class="field"></select>
                                 </div>
-                                <div>
-                                    <label for="prod-operador" class="field-label">Operador</label>
-                                    <input type="text" id="prod-operador" required maxlength="60" list="lista-operadores" placeholder="Nombre y apellido" class="field">
-                                    <datalist id="lista-operadores"></datalist>
-                                </div>
                             </div>
-                            <div class="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label for="prod-expeller" class="field-label">Expeller Producido (kg)</label>
-                                    <input type="number" id="prod-expeller" required min="0" step="1" inputmode="numeric" class="field focus:border-emerald-500">
+                            <div>
+                                <label for="prod-operador" class="field-label">Operador del turno</label>
+                                <input type="text" id="prod-operador" required maxlength="60" list="lista-operadores" placeholder="Nombre y apellido" class="field">
+                                <datalist id="lista-operadores"></datalist>
+                            </div>
+                            <fieldset class="rounded-xl border border-brand-500/30 bg-brand-500/5 p-4">
+                                <legend class="px-1 text-xs font-bold tracking-wide text-brand-300 uppercase">Aceite que pasó en el turno</legend>
+                                <p class="mb-2 text-[11px] text-slate-400">Tocá cuántos tanques pasaron (1 tanque = <span id="prod-litros-tanque">1.525</span> L). Si no fue un tanque entero, escribí los litros.</p>
+                                <div id="prod-tanques" class="mb-3 grid grid-cols-4 gap-2" role="group" aria-label="Tanques que pasaron"></div>
+                                <div class="flex items-end gap-3">
+                                    <div class="flex-1">
+                                        <label for="prod-aceite" class="field-label">Litros</label>
+                                        <input type="number" id="prod-aceite" required min="1" step="1" inputmode="numeric" class="field text-lg font-bold">
+                                    </div>
+                                    <output id="prod-aceite-tanques" for="prod-aceite" class="mb-2.5 min-w-28 text-right text-sm font-semibold text-brand-300" aria-live="polite"></output>
                                 </div>
-                                <div>
-                                    <label for="prod-aceite" class="field-label">Aceite Extraído (Lts)</label>
-                                    <input type="number" id="prod-aceite" required min="0" step="1" inputmode="numeric" class="field">
-                                </div>
+                            </fieldset>
+                            <div>
+                                <label for="prod-expeller" class="field-label">Expeller producido (kg)</label>
+                                <input type="number" id="prod-expeller" required min="0" step="1" inputmode="numeric" class="field focus:border-emerald-500">
                             </div>
                             <p class="mt-2 flex items-center gap-1.5 rounded-lg border border-slate-700/50 bg-slate-800/50 p-3 text-xs text-slate-400">
-                                <i data-lucide="info" class="h-3 w-3 text-blue-400"></i> Lo que cargues acá se ve en "Aceite por Operador" y en el Resumen.
+                                <i data-lucide="info" class="h-3 w-3 shrink-0 text-blue-400"></i> Un solo cierre por turno. Lo que cargues acá se ve en "Aceite por Turno" y en el Resumen.
                             </p>
-                            <div data-campo-fecha hidden>
-                                <label for="prod-fecha" class="field-label">Fecha y hora del cierre</label>
-                                <input type="datetime-local" id="prod-fecha" class="field">
-                            </div>
                             <div class="mt-4 flex gap-2">
                                 <button type="submit" class="btn flex-1 bg-brand-500 text-slate-900 hover:bg-brand-400">Guardar Cierre de Turno</button>
                                 <button type="button" data-cancelar hidden class="btn-cancelar">Cancelar</button>
@@ -420,11 +427,11 @@
                             <table class="data-table">
                                 <thead>
                                     <tr>
-                                        <th scope="col">Fecha</th>
+                                        <th scope="col">Día</th>
                                         <th scope="col">Turno</th>
                                         <th scope="col">Operador</th>
+                                        <th scope="col" class="num text-brand-400">Aceite (L)</th>
                                         <th scope="col" class="num text-emerald-400">Expeller (kg)</th>
-                                        <th scope="col" class="num text-brand-400">Aceite (Lts)</th>
                                         <th scope="col" class="w-px"><span class="sr-only">Acciones</span></th>
                                     </tr>
                                 </thead>
@@ -436,8 +443,16 @@
                 </div>
             </section>
 
-            <!-- 2.6 ACEITE POR OPERADOR Y TURNO ----------------------------------- -->
-            <section id="view-aceite" class="view" aria-label="Aceite por operador y turno" hidden>
+            <!-- 2.6 ACEITE POR DÍA Y TURNO --------------------------------------- -->
+            <section id="view-aceite" class="view" aria-label="Aceite por día y turno" hidden>
+                <div class="glass-panel mb-6 rounded-2xl p-6" aria-labelledby="ac-hoy-titulo">
+                    <div class="mb-4 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                        <h3 id="ac-hoy-titulo" class="font-semibold text-slate-200">Hoy, <span id="ac-hoy-fecha"></span></h3>
+                        <p id="ac-hoy-total" class="text-sm text-slate-400"></p>
+                    </div>
+                    <div id="ac-hoy" class="grid grid-cols-1 gap-4 md:grid-cols-3"></div>
+                </div>
+
                 <div class="mb-6 flex flex-wrap items-center gap-2" role="group" aria-label="Período">
                     <span class="mr-1 text-[11px] font-bold tracking-wider text-slate-500 uppercase">Período</span>
                     <button type="button" class="seg" data-periodo="7d" aria-pressed="true">Últimos 7 días</button>
@@ -449,51 +464,14 @@
 
                 <div id="ac-kpis" class="mb-6 grid grid-cols-2 gap-4 xl:grid-cols-4"></div>
 
-                <div class="mb-6 grid grid-cols-1 gap-6 2xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-                    <div class="glass-panel min-w-0 rounded-2xl p-6">
-                        <h3 class="font-semibold text-slate-200">Por operador</h3>
-                        <p class="mb-4 mt-1 text-[11px] text-slate-500">Ordenado por el aceite total que pasó en el período.</p>
-                        <div class="overflow-x-auto">
-                            <table class="data-table">
-                                <thead>
-                                    <tr>
-                                        <th scope="col">Operador</th>
-                                        <th scope="col" class="num">Turnos</th>
-                                        <th scope="col" class="min-w-44">Aceite total (L)</th>
-                                        <th scope="col" class="num">Prom. por turno (L)</th>
-                                        <th scope="col" class="num">Expeller (kg)</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="ac-operadores"></tbody>
-                            </table>
-                        </div>
-                    </div>
-                    <div class="glass-panel min-w-0 rounded-2xl p-6">
-                        <h3 class="font-semibold text-slate-200">Por turno</h3>
-                        <p class="mb-4 mt-1 text-[11px] text-slate-500">Cuánto rinde cada franja horaria.</p>
-                        <div class="overflow-x-auto">
-                            <table class="data-table">
-                                <thead>
-                                    <tr>
-                                        <th scope="col">Turno</th>
-                                        <th scope="col" class="num">Cierres</th>
-                                        <th scope="col" class="num">Aceite total (L)</th>
-                                        <th scope="col" class="num">Promedio (L)</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="ac-turnos"></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
                 <div class="glass-panel rounded-2xl p-6">
-                    <h3 class="font-semibold text-slate-200">Turno por turno</h3>
-                    <p class="mb-4 mt-1 text-[11px] text-slate-500">Quién estuvo en cada turno y cuánto aceite pasó. Para corregir un dato, editalo en Producción (Turnos).</p>
+                    <h3 class="font-semibold text-slate-200">Día por día</h3>
+                    <p class="mb-4 mt-1 text-[11px] text-slate-500">Cada día se completa con los 3 turnos. Si falta uno, tocá "Falta cargar" para cargarlo. Para corregir un dato, editalo en Producción (Turnos).</p>
                     <div class="overflow-x-auto">
                         <table class="data-table">
                             <thead id="ac-grilla-cabecera"></thead>
                             <tbody id="ac-grilla"></tbody>
+                            <tfoot id="ac-grilla-pie"></tfoot>
                         </table>
                     </div>
                 </div>
@@ -670,7 +648,7 @@
                     <div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
                         <div class="glass-panel min-w-0 rounded-2xl p-6">
                             <h4 class="mb-4 font-semibold text-slate-200">Turnos</h4>
-                            <div class="overflow-x-auto"><table class="data-table"><thead><tr><th scope="col">Cierre</th><th scope="col">Turno</th><th scope="col">Operador</th><th scope="col" class="num">Expeller (kg)</th><th scope="col" class="num">Aceite (L)</th></tr></thead><tbody id="res-dia-turnos"></tbody></table></div>
+                            <div class="overflow-x-auto"><table class="data-table"><thead><tr><th scope="col">Turno</th><th scope="col">Operador</th><th scope="col" class="num">Aceite (L)</th><th scope="col" class="num">Expeller (kg)</th><th scope="col">Cargado</th></tr></thead><tbody id="res-dia-turnos"></tbody></table></div>
                         </div>
                         <div class="glass-panel min-w-0 rounded-2xl p-6">
                             <h4 class="mb-4 font-semibold text-slate-200">Camiones</h4>

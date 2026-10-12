@@ -7,7 +7,7 @@
   'use strict';
 
   SoyaCore.config = Object.freeze({
-    version: '2.13.0',
+    version: '2.14.0',
     locale: 'es-AR',
 
     /** Cuántas filas muestran las tablas de "últimos registros". */
@@ -21,18 +21,28 @@
       despacho:      { titulo: 'Despacho de Expeller',              icono: 'package-open' },
       secadora:      { titulo: 'Secadora y Tomas de Laboratorio',   icono: 'thermometer-sun' },
       produccion:    { titulo: 'Producción Operativa (Extracción)', icono: 'factory' },
-      aceite:        { titulo: 'Aceite por operador y turno',       icono: 'droplet' },
+      aceite:        { titulo: 'Aceite por día y turno',            icono: 'droplet' },
       despachoAceite:{ titulo: 'Despacho de Aceite',                icono: 'fuel' },
       equipos:       { titulo: 'Estado de Equipos',                 icono: 'gauge' },
       mantenimiento: { titulo: 'Registro de Mantenimiento',         icono: 'wrench' },
       resumen:       { titulo: 'Resumen por día y por mes',         icono: 'chart-column' },
     },
 
+    /**
+     * Turnos en el orden del día: el día arranca a las 00:00 con el Turno 1 y se
+     * completa con el Turno 3, que termina a las 00:00. Cada cierre de turno es
+     * de un solo operador. (Los registros con los nombres viejos se pasan solos
+     * a estos nombres según su horario.)
+     */
     turnos: [
-      'Turno 1 (08:00 - 16:00)',
-      'Turno 2 (16:00 - 00:00)',
-      'Turno 3 (00:00 - 08:00)',
+      'Turno 1 (00:00 - 08:00)',
+      'Turno 2 (08:00 - 16:00)',
+      'Turno 3 (16:00 - 00:00)',
     ],
+
+    /** Litros de un tanque interior. Los botones del cierre de turno cargan de a un tanque. */
+    litrosPorTanque: 1525,
+    botonesTanques: [1, 2, 3, 4],
 
     /** Equipos por sector, para el formulario de mantenimiento. */
     equipos: {

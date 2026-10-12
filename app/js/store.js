@@ -44,6 +44,18 @@
         if (estado) estado.cambio = true;
       }
     });
+    // v2.14: los turnos pasan a 1 (00–08), 2 (08–16) y 3 (16–00), y cada cierre guarda su día.
+    if (nombre === 'produccion' && SoyaCore.turnos) {
+      const etiqueta = SoyaCore.turnos.normalizarEtiqueta(r.turno);
+      if (etiqueta !== r.turno) {
+        r.turno = etiqueta;
+        if (estado) estado.cambio = true;
+      }
+      if (!SoyaCore.turnos.esDia(r.dia)) {
+        r.dia = SoyaCore.turnos.diaDe(r);
+        if (estado) estado.cambio = true;
+      }
+    }
     return r;
   }
 
