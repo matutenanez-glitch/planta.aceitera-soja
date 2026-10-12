@@ -39,6 +39,12 @@ docs/nube-firebase.md            cómo poner en marcha la copia en la nube
 archivo/                 versiones anteriores y el circuito de tanques (en pausa), solo como referencia
 ```
 
+## Recepción y secadora
+
+- **Recepción:** cada camión se pesa en la balanza. Si la carga es soja, se anota también su **humedad** (muestra de laboratorio al llegar). Arriba se ve la soja ingresada en el día: cantidad de camiones, kg y humedad promedio, ponderada por los kg de cada camión.
+- **Secadora:** la soja que pasa por la secadora ya está mezclada en el silo, así que las tomas no son de ningún camión. Cada toma registra la humedad **en caliente** y **en frío**. Arriba se ven las tomas del día, sus promedios y la hora de la última.
+- **Datos anteriores a la 2.18:** las tomas viejas de la secadora conservan la empresa y la humedad del camión que tenían. En el resumen de esos días, la humedad de ingreso sale de esos datos.
+
 ## Cierre de turno
 
 - El día va de **00:00 a 24:00** y se completa con 3 turnos: **Turno 1** (00 a 08), **Turno 2** (08 a 16) y **Turno 3** (16 a 00).
@@ -145,6 +151,10 @@ npm test             # prueba el cálculo del circuito de tanques (archivado)
 
 ## Historial
 
+- **2.18.0**:
+  - La **humedad de cada camión** pasa a **Recepción**, donde se ve el total y la humedad promedio del día.
+  - La **secadora** queda solo con las tomas de la soja ya mezclada: humedad en caliente y en frío, sin empresa ni camión.
+  - El resumen toma la humedad de ingreso de los camiones.
 - **2.17.0**:
   - La app pasa a llamarse **Gestión Aceitera**.
   - "Venta de aceite" pasa a llamarse **Retiro de aceite**.

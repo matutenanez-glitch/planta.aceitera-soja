@@ -27,6 +27,7 @@
   const isoDia = (date) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
   const tituloDia = (d) => { const f = fechaDia(d); return `${DIAS[f.getDay()]} ${f.getDate()} de ${MESES[f.getMonth()]} de ${f.getFullYear()}`; };
   const capitalizar = (t) => t.charAt(0).toUpperCase() + t.slice(1);
+  const camiones = (n) => `${n} ${n === 1 ? 'camión' : 'camiones'}`;
 
   let modo = 'mes';
 
@@ -41,7 +42,11 @@
     const despExp = de('despachos');
     const despAce = de('despachosAceite');
     const secadora = de('secadora');
-    const humedades = secadora.map((s) => Number(s.hCamion)).filter((v) => !isNaN(v));
+    // Humedad de ingreso: la de cada camión de soja (Recepción), ponderada por kg.
+    // Para días anteriores a la v2.18 se usa la que se anotaba en la secadora.
+    const recepcion = SoyaCore.views.recepcion;
+    const conHumedad = soja.filter(recepcion.tieneHumedad);
+    const humedadesViejas = secadora.map((r) => r.hCamion).filter((v) => v != null && v !== '' && !isNaN(Number(v))).map(Number);
     const sum = (lista, campo) => lista.reduce((t, r) => t + (Number(r[campo]) || 0), 0);
     return {
       ingresos, produccion, despExp, despAce, secadora,
@@ -54,7 +59,10 @@
       expDesp: sum(despExp, 'neto'),
       camionesIn: ingresos.length,
       camionesOut: despExp.length + despAce.length,
-      humedad: humedades.length ? humedades.reduce((a, b) => a + b, 0) / humedades.length : null,
+      camionesConHumedad: conHumedad.length,
+      humedad: conHumedad.length
+        ? recepcion.humedadPonderada(conHumedad)
+        : humedadesViejas.length ? humedadesViejas.reduce((a, b) => a + b, 0) / humedadesViejas.length : null,
     };
   }
 
@@ -119,11 +127,11 @@
     const nPrev = MESES[Number(mesAnterior(mes).slice(5, 7)) - 1];
 
     $('#res-mes-kpis').replaceChildren(
-      kpi({ titulo: 'Soja ingresada', valor: fmt.toneladas(t.sojaKg), delta: variacion(t.sojaKg, prev.sojaKg), sub: `${t.camionesSoja} camión${t.camionesSoja === 1 ? '' : 'es'}`, nombreMesPrevio: nPrev }),
+      kpi({ titulo: 'Soja ingresada', valor: fmt.toneladas(t.sojaKg), delta: variacion(t.sojaKg, prev.sojaKg), sub: `${camiones(t.camionesSoja)}`, nombreMesPrevio: nPrev }),
       kpi({ titulo: 'Aceite producido', valor: fmt.litros(t.aceiteProd), delta: variacion(t.aceiteProd, prev.aceiteProd), nombreMesPrevio: nPrev, color: 'var(--color-viz-producido)' }),
-      kpi({ titulo: 'Aceite retirado', valor: fmt.kg(t.aceiteDespKg), delta: variacion(t.aceiteDespKg, prev.aceiteDespKg), sub: `${t.despAce.length} camión${t.despAce.length === 1 ? '' : 'es'}`, nombreMesPrevio: nPrev, color: 'var(--color-viz-despachado)' }),
+      kpi({ titulo: 'Aceite retirado', valor: fmt.kg(t.aceiteDespKg), delta: variacion(t.aceiteDespKg, prev.aceiteDespKg), sub: `${camiones(t.despAce.length)}`, nombreMesPrevio: nPrev, color: 'var(--color-viz-despachado)' }),
       kpi({ titulo: 'Expeller producido', valor: fmt.toneladas(t.expProd), delta: variacion(t.expProd, prev.expProd), nombreMesPrevio: nPrev, color: 'var(--color-viz-producido)' }),
-      kpi({ titulo: 'Expeller despachado', valor: fmt.toneladas(t.expDesp), delta: variacion(t.expDesp, prev.expDesp), sub: `${t.despExp.length} camión${t.despExp.length === 1 ? '' : 'es'}`, nombreMesPrevio: nPrev, color: 'var(--color-viz-despachado)' }),
+      kpi({ titulo: 'Expeller despachado', valor: fmt.toneladas(t.expDesp), delta: variacion(t.expDesp, prev.expDesp), sub: `${camiones(t.despExp.length)}`, nombreMesPrevio: nPrev, color: 'var(--color-viz-despachado)' }),
       kpi({ titulo: 'Camiones entrada / salida', valor: `${t.camionesIn} / ${t.camionesOut}`, sub: 'ingresos / expeller despachado y aceite retirado' }),
     );
     icons.render($('#res-mes-kpis'));
@@ -184,12 +192,12 @@
     $('#res-dia-titulo').textContent = capitalizar(tituloDia(dia));
 
     $('#res-dia-kpis').replaceChildren(
-      kpi({ titulo: 'Soja ingresada', valor: fmt.kg(t.sojaKg), sub: `${t.camionesSoja} camión${t.camionesSoja === 1 ? '' : 'es'} de soja` }),
-      kpi({ titulo: 'Humedad inicial prom.', valor: fmt.porcentaje(t.humedad), sub: `${t.secadora.length} muestra${t.secadora.length === 1 ? '' : 's'} de secadora` }),
+      kpi({ titulo: 'Soja ingresada', valor: fmt.kg(t.sojaKg), sub: `${camiones(t.camionesSoja)} de soja` }),
+      kpi({ titulo: 'Humedad de ingreso', valor: fmt.porcentaje(t.humedad), sub: t.camionesConHumedad ? `promedio de ${camiones(t.camionesConHumedad)} de soja` : t.humedad != null ? 'anotada en la secadora (datos anteriores)' : 'sin humedad cargada en Recepción' }),
       kpi({ titulo: 'Aceite producido', valor: fmt.litros(t.aceiteProd), sub: `${t.produccion.length} cierre${t.produccion.length === 1 ? '' : 's'} de turno`, color: 'var(--color-viz-producido)' }),
-      kpi({ titulo: 'Aceite retirado', valor: fmt.kg(t.aceiteDespKg), sub: `${t.despAce.length} camión${t.despAce.length === 1 ? '' : 'es'}`, color: 'var(--color-viz-despachado)' }),
+      kpi({ titulo: 'Aceite retirado', valor: fmt.kg(t.aceiteDespKg), sub: `${camiones(t.despAce.length)}`, color: 'var(--color-viz-despachado)' }),
       kpi({ titulo: 'Expeller producido', valor: fmt.kg(t.expProd), sub: 'según cierres de turno', color: 'var(--color-viz-producido)' }),
-      kpi({ titulo: 'Expeller despachado', valor: fmt.kg(t.expDesp), sub: `${t.despExp.length} camión${t.despExp.length === 1 ? '' : 'es'}`, color: 'var(--color-viz-despachado)' }),
+      kpi({ titulo: 'Expeller despachado', valor: fmt.kg(t.expDesp), sub: `${camiones(t.despExp.length)}`, color: 'var(--color-viz-despachado)' }),
     );
 
     const porHora = (a, b) => String(a.fecha).localeCompare(String(b.fecha));
@@ -214,19 +222,19 @@
     if (!filasTurnos.length) filasTurnos.push(el('tr', null, [el('td', { className: 'empty', text: 'No hubo producción este día.', attrs: { colspan: '5' } })]));
     $('#res-dia-turnos').replaceChildren(...filasTurnos);
 
-    const camiones = [
-      ...t.ingresos.map((r) => ({ fecha: r.fecha, tipo: `Ingreso (${r.carga || 'Soja'})`, empresa: r.empresa, cantidad: fmt.kg(r.neto) })),
+    const movimientos = [
+      ...t.ingresos.map((r) => ({ fecha: r.fecha, tipo: `Ingreso (${r.carga || 'Soja'})`, empresa: r.empresa, cantidad: fmt.kg(r.neto), humedad: SoyaCore.views.recepcion.tieneHumedad(r) ? fmt.porcentaje(r.humedad) : '' })),
       ...t.despExp.map((r) => ({ fecha: r.fecha, tipo: 'Despacho expeller', empresa: r.empresa, cantidad: fmt.kg(r.neto) })),
       ...t.despAce.map((r) => ({ fecha: r.fecha, tipo: 'Retiro de aceite', empresa: r.empresa, cantidad: fmt.kg(SoyaCore.views.despachoAceite.kgDe(r)) })),
     ].sort(porHora);
-    filasTabla('#res-dia-camiones', camiones, [
+    filasTabla('#res-dia-camiones', movimientos, [
       { valor: horaDe }, { valor: (r) => r.tipo }, { valor: (r) => r.empresa, className: 'max-w-48 truncate' }, { valor: (r) => r.cantidad, className: 'num' },
+      { valor: (r) => r.humedad || '', className: 'num' },
     ], 'No hubo camiones este día.');
 
     filasTabla('#res-dia-secadora', t.secadora.slice().sort(porHora), [
-      { valor: horaDe }, { valor: (r) => r.empresa, className: 'max-w-48 truncate' },
-      { valor: (r) => fmt.porcentaje(r.hCamion), className: 'num' }, { valor: (r) => fmt.porcentaje(r.hCaliente), className: 'num' }, { valor: (r) => fmt.porcentaje(r.hFrio), className: 'num' },
-    ], 'Sin muestras este día.');
+      { valor: horaDe }, { valor: (r) => fmt.porcentaje(r.hCaliente), className: 'num' }, { valor: (r) => fmt.porcentaje(r.hFrio), className: 'num' },
+    ], 'Sin tomas de la secadora este día.');
 
     const estados = SoyaCore.config.estadosEquipo;
     filasTabla('#res-dia-mant', t.mantenimiento.slice().sort(porHora), [

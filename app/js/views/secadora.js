@@ -1,39 +1,42 @@
 /*
  * Vista: Secadora y tomas de laboratorio.
+ *
+ * La soja que pasa por la secadora ya está mezclada en el silo (todos los
+ * camiones descargaron), así que cada toma no es de un camión: solo se anota
+ * la humedad en caliente y en frío. La humedad de cada camión se carga en
+ * Recepción. Los registros anteriores a la v2.18 pueden tener "empresa" y
+ * "hCamion": se conservan, pero ya no se muestran acá.
  */
 (function (SoyaCore) {
   'use strict';
 
-  const { $, el, fmt, hoy, num, fillSelect, tablaRegistros, editorFormulario, guardarRegistro } = SoyaCore.ui;
+  const { $, fmt, hoy, num, tablaRegistros, editorFormulario, guardarRegistro } = SoyaCore.ui;
   const store = SoyaCore.store;
 
   const COLUMNAS = [
     { key: 'fecha' },
-    { key: 'empresa' },
-    { key: 'hCamion', format: fmt.porcentaje, className: 'num' },
     { key: 'hCaliente', format: fmt.porcentaje, className: 'num' },
     { key: 'hFrio', format: fmt.porcentaje, className: 'num' },
   ];
 
-  /** Un ingreso cuenta para la secadora si su carga dice "soja" (o no tiene carga: datos viejos). */
-  const esSoja = (c) => (c.carga || 'Soja').toLowerCase().includes('soja');
+  const promedio = (lista, campo) => {
+    const v = lista.map((r) => r[campo]).filter((x) => x != null && x !== '' && !isNaN(Number(x))).map(Number);
+    return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
+  };
 
-  let editor;
-
-  function actualizarTotal() {
-    const camionesHoy = store.todos('ingresos').filter((c) => String(c.fecha).startsWith(hoy()) && esSoja(c));
-    $('#secadora-total-kg').textContent = fmt.kg(camionesHoy.reduce((s, c) => s + (Number(c.neto) || 0), 0));
-    if (editor && editor.id) return; // no tocar el select mientras se edita
-
-    const select = $('#sec-empresa');
-    const empresas = [...new Set(camionesHoy.map((c) => c.empresa))];
-    if (empresas.length === 0) fillSelect(select, [{ value: 'S/D', label: 'Sin camiones de soja hoy' }]);
-    else fillSelect(select, empresas, select.value);
+  function actualizarHoy() {
+    const tomas = store.todos('secadora').filter((r) => String(r.fecha).startsWith(hoy()));
+    $('#sec-hoy-tomas').textContent = fmt.entero(tomas.length);
+    $('#sec-hoy-caliente').textContent = fmt.porcentaje(promedio(tomas, 'hCaliente'));
+    $('#sec-hoy-frio').textContent = fmt.porcentaje(promedio(tomas, 'hFrio'));
+    const ultima = tomas.map((r) => String(r.fecha)).sort().pop();
+    $('#sec-hoy-ultima').textContent = ultima ? ultima.slice(11, 16) : '-';
   }
 
   SoyaCore.views = SoyaCore.views || {};
   SoyaCore.views.secadora = {
     init() {
+      let editor;
       const tabla = tablaRegistros({
         tbody: $('#tbody-secadora'),
         caption: $('#caption-secadora'),
@@ -44,36 +47,25 @@
       editor = editorFormulario($('#form-secadora'), {
         tabla,
         rellenar(r) {
-          const select = $('#sec-empresa');
-          // La empresa de una muestra vieja puede no estar entre los camiones de hoy.
-          if (![...select.options].some((o) => o.value === r.empresa)) {
-            select.appendChild(el('option', { text: r.empresa, attrs: { value: r.empresa } }));
-          }
-          select.value = r.empresa;
-          $('#sec-humedad-camion').value = r.hCamion ?? '';
           $('#sec-humedad-caliente').value = r.hCaliente ?? '';
           $('#sec-humedad-frio').value = r.hFrio ?? '';
         },
-        alTerminar: () => setTimeout(actualizarTotal), // después de que termine el modo edición
       });
 
       $('#form-secadora').addEventListener('submit', (e) => {
         e.preventDefault();
-        guardarRegistro('secadora', editor, {
-          empresa: $('#sec-empresa').value,
-          hCamion: num($('#sec-humedad-camion')),
+        if (guardarRegistro('secadora', editor, {
           hCaliente: num($('#sec-humedad-caliente')),
           hFrio: num($('#sec-humedad-frio')),
-        }, { nuevo: 'Muestra de laboratorio guardada.' });
+        }, { nuevo: 'Toma de la secadora guardada.' })) $('#sec-humedad-caliente').focus();
       });
 
       store.alCambiar((c) => {
-        if (c === 'secadora' || c === '*') tabla.dibujar();
-        if (c === 'ingresos' || c === '*') actualizarTotal();
+        if (c === 'secadora' || c === '*') { tabla.dibujar(); actualizarHoy(); }
       });
       tabla.dibujar();
-      actualizarTotal();
+      actualizarHoy();
     },
-    refresh: actualizarTotal, // al entrar a la vista se recalcula "hoy"
+    refresh: actualizarHoy, // al entrar a la vista se recalcula "hoy"
   };
 })(window.SoyaCore = window.SoyaCore || {});

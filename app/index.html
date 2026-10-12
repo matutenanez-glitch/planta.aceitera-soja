@@ -132,6 +132,24 @@
             <!-- 2.1 RECEPCIÓN DE CAMIONES ------------------------------------------ -->
             <section id="view-recepcion" class="view" aria-label="Recepción de camiones">
                 <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                    <div class="glass-panel col-span-1 flex flex-wrap items-center justify-between gap-6 rounded-2xl border-brand-500/20 bg-linear-to-r from-brand-900/20 to-transparent p-6 lg:col-span-3">
+                        <div>
+                            <h3 class="text-lg font-bold text-slate-200">Soja ingresada hoy</h3>
+                            <p class="mt-1 text-xs text-slate-400">Camiones de hoy con carga "Soja" y su humedad promedio, ponderada por los kg de cada camión.</p>
+                        </div>
+                        <div class="flex flex-wrap items-end gap-8 text-right">
+                            <div>
+                                <p class="text-[11px] font-bold tracking-wide text-slate-400 uppercase">Camiones</p>
+                                <output id="rec-hoy-camiones" class="block text-2xl font-black text-white">0</output>
+                            </div>
+                            <div>
+                                <p class="text-[11px] font-bold tracking-wide text-slate-400 uppercase">Humedad promedio</p>
+                                <output id="rec-hoy-humedad" class="block text-2xl font-black text-white">-</output>
+                            </div>
+                            <output id="rec-hoy-kg" class="glow-text text-4xl font-black text-brand-400">0 kg</output>
+                        </div>
+                    </div>
+
                     <div class="glass-panel col-span-1 rounded-2xl p-6">
                         <h3 class="mb-4 flex items-center gap-2 font-semibold text-brand-400"><i data-lucide="clipboard-list" class="h-4 w-4"></i> <span data-form-titulo>Nuevo Ingreso</span></h3>
                         <form id="form-ingreso" class="space-y-4 text-sm" autocomplete="off">
@@ -146,7 +164,12 @@
                             <div>
                                 <label for="in-carga" class="field-label font-semibold text-brand-400">Carga / Qué transporta</label>
                                 <input type="text" id="in-carga" value="Soja" required maxlength="60" placeholder="Ej: Soja, Girasol, Insumos..." aria-describedby="in-carga-ayuda" class="field border-brand-500/50 bg-slate-900 text-slate-100 shadow-inner focus:border-brand-400">
-                                <p id="in-carga-ayuda" class="field-hint">Solo la carga marcada como "Soja" irá a los totales de la secadora.</p>
+                                <p id="in-carga-ayuda" class="field-hint">Solo la carga "Soja" cuenta como soja ingresada (total del día y humedad).</p>
+                            </div>
+                            <div>
+                                <label for="in-humedad" class="field-label">Humedad del camión (%)</label>
+                                <input type="number" id="in-humedad" min="0" max="100" step="0.1" inputmode="decimal" aria-describedby="in-humedad-ayuda" class="field">
+                                <p id="in-humedad-ayuda" class="field-hint">Muestra de laboratorio al recibir el camión. Obligatoria si la carga es soja.</p>
                             </div>
                             <div class="grid grid-cols-2 gap-4">
                                 <div>
@@ -184,6 +207,7 @@
                                         <th scope="col" class="text-brand-300">Carga</th>
                                         <th scope="col">Conductor</th>
                                         <th scope="col" class="num text-brand-400">Neto (kg)</th>
+                                        <th scope="col" class="num">Humedad</th>
                                         <th scope="col" class="w-px"><span class="sr-only">Acciones</span></th>
                                     </tr>
                                 </thead>
@@ -323,26 +347,36 @@
             <!-- 2.4 SECADORA ------------------------------------------------------- -->
             <section id="view-secadora" class="view" aria-label="Secadora y tomas de laboratorio" hidden>
                 <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
-                    <div class="glass-panel col-span-1 flex items-center justify-between rounded-2xl border-brand-500/20 bg-linear-to-r from-brand-900/20 to-transparent p-6 lg:col-span-3">
+                    <div class="glass-panel col-span-1 flex flex-wrap items-center justify-between gap-6 rounded-2xl border-orange-500/20 bg-linear-to-r from-orange-900/20 to-transparent p-6 lg:col-span-3">
                         <div>
-                            <h3 class="text-lg font-bold text-slate-200">Soja Acumulada para Secado (Hoy)</h3>
-                            <p class="mt-1 text-xs text-slate-400">Suma automática de los camiones ingresados hoy con carga etiquetada como "Soja".</p>
+                            <h3 class="text-lg font-bold text-slate-200">Tomas de hoy</h3>
+                            <p class="mt-1 text-xs text-slate-400">Humedad de la soja que pasa por la secadora (ya mezclada en el silo).</p>
                         </div>
-                        <output id="secadora-total-kg" class="glow-text text-right text-4xl font-black text-brand-400">0 kg</output>
+                        <div class="flex flex-wrap items-end gap-8 text-right">
+                            <div>
+                                <p class="text-[11px] font-bold tracking-wide text-slate-400 uppercase">Tomas</p>
+                                <output id="sec-hoy-tomas" class="block text-2xl font-black text-white">0</output>
+                            </div>
+                            <div>
+                                <p class="text-[11px] font-bold tracking-wide text-orange-300 uppercase">Caliente prom.</p>
+                                <output id="sec-hoy-caliente" class="block text-2xl font-black text-white">-</output>
+                            </div>
+                            <div>
+                                <p class="text-[11px] font-bold tracking-wide text-blue-300 uppercase">Frío prom.</p>
+                                <output id="sec-hoy-frio" class="block text-2xl font-black text-white">-</output>
+                            </div>
+                            <div>
+                                <p class="text-[11px] font-bold tracking-wide text-slate-400 uppercase">Última toma</p>
+                                <output id="sec-hoy-ultima" class="block text-2xl font-black text-white">-</output>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="glass-panel col-span-1 rounded-2xl p-6">
                         <h3 class="mb-4 flex items-center gap-2 font-semibold text-orange-400"><i data-lucide="flame" class="h-4 w-4"></i> <span data-form-titulo>Toma de Muestras (Lab)</span></h3>
                         <form id="form-secadora" class="space-y-4 text-sm" autocomplete="off">
-                            <div>
-                                <label for="sec-empresa" class="field-label">Empresa Proveedora (Soja)</label>
-                                <select id="sec-empresa" class="field focus:border-orange-500"></select>
-                            </div>
-                            <div>
-                                <label for="sec-humedad-camion" class="field-label">Humedad Inicial de Camión (%)</label>
-                                <input type="number" id="sec-humedad-camion" required min="0" max="100" step="0.1" inputmode="decimal" class="field focus:border-orange-500">
-                            </div>
-                            <div class="space-y-3 border-t border-slate-800/60 pt-4">
+                            <p class="text-xs text-slate-400">La soja de la secadora ya está mezclada en el silo, así que la toma no es de un camión. La humedad de cada camión se carga en Recepción.</p>
+                            <div class="space-y-3">
                                 <div>
                                     <label for="sec-humedad-caliente" class="field-label flex items-center gap-1 text-xs font-semibold tracking-wider text-orange-300 uppercase"><i data-lucide="sun" class="h-3 w-3"></i> Humedad en Caliente (%)</label>
                                     <input type="number" id="sec-humedad-caliente" required min="0" max="100" step="0.1" inputmode="decimal" placeholder="Toma actual" class="field focus:border-orange-500">
@@ -357,7 +391,7 @@
                                 <input type="datetime-local" id="sec-fecha" class="field focus:border-orange-500">
                             </div>
                             <div class="mt-2 flex gap-2">
-                                <button type="submit" class="btn flex-1 bg-orange-600 text-white hover:bg-orange-500">Registrar Muestras</button>
+                                <button type="submit" class="btn flex-1 bg-orange-600 text-white hover:bg-orange-500">Registrar Toma</button>
                                 <button type="button" data-cancelar hidden class="btn-cancelar">Cancelar</button>
                             </div>
                         </form>
@@ -369,9 +403,7 @@
                             <table class="data-table">
                                 <thead>
                                     <tr>
-                                        <th scope="col">Hora</th>
-                                        <th scope="col">Empresa</th>
-                                        <th scope="col" class="num">H. Inicial</th>
+                                        <th scope="col">Fecha/Hora</th>
                                         <th scope="col" class="num text-orange-400">H. Caliente</th>
                                         <th scope="col" class="num text-blue-400">H. Frío</th>
                                         <th scope="col" class="w-px"><span class="sr-only">Acciones</span></th>
@@ -651,7 +683,7 @@
                                         <th scope="col" class="num">Aceite retirado (kg)</th>
                                         <th scope="col" class="num">Expeller prod. (kg)</th>
                                         <th scope="col" class="num">Expeller desp. (kg)</th>
-                                        <th scope="col" class="num">Hum. inicial prom.</th>
+                                        <th scope="col" class="num">Hum. ingreso</th>
                                     </tr>
                                 </thead>
                                 <tbody id="tbody-resumen"></tbody>
@@ -671,11 +703,11 @@
                         </div>
                         <div class="glass-panel min-w-0 rounded-2xl p-6">
                             <h4 class="mb-4 font-semibold text-slate-200">Camiones</h4>
-                            <div class="overflow-x-auto"><table class="data-table"><thead><tr><th scope="col">Hora</th><th scope="col">Movimiento</th><th scope="col">Empresa</th><th scope="col" class="num">Cantidad</th></tr></thead><tbody id="res-dia-camiones"></tbody></table></div>
+                            <div class="overflow-x-auto"><table class="data-table"><thead><tr><th scope="col">Hora</th><th scope="col">Movimiento</th><th scope="col">Empresa</th><th scope="col" class="num">Cantidad</th><th scope="col" class="num">Humedad</th></tr></thead><tbody id="res-dia-camiones"></tbody></table></div>
                         </div>
                         <div class="glass-panel min-w-0 rounded-2xl p-6">
                             <h4 class="mb-4 font-semibold text-slate-200">Secadora</h4>
-                            <div class="overflow-x-auto"><table class="data-table"><thead><tr><th scope="col">Hora</th><th scope="col">Empresa</th><th scope="col" class="num">H. Inicial</th><th scope="col" class="num">H. Caliente</th><th scope="col" class="num">H. Frío</th></tr></thead><tbody id="res-dia-secadora"></tbody></table></div>
+                            <div class="overflow-x-auto"><table class="data-table"><thead><tr><th scope="col">Hora</th><th scope="col" class="num">H. Caliente</th><th scope="col" class="num">H. Frío</th></tr></thead><tbody id="res-dia-secadora"></tbody></table></div>
                         </div>
                         <div class="glass-panel min-w-0 rounded-2xl p-6">
                             <h4 class="mb-4 font-semibold text-slate-200">Mantenimiento</h4>
