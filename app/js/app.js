@@ -74,8 +74,14 @@
     if (!archivo) return;
     try {
       const { obj, resumen } = store.validarBackup(await archivo.text());
+      const nube = SoyaCore.nube.info();
+      // Con la nube, primero se baja lo último para que el backup reemplace todo.
+      if (nube.email) await SoyaCore.nube.sincronizar();
       const detalle = Object.entries(resumen).map(([k, n]) => `• ${store.etiqueta(k)}: ${n}`).join('\n');
-      const mensaje = `Se van a REEMPLAZAR todos los datos actuales (${store.totalRegistros()} registros) por los del backup:\n\n${detalle}\n\n¿Continuar?`;
+      const alcance = nube.email
+        ? `Esta PC está conectada a la nube de ${nube.email}: el backup va a reemplazar los datos en TODAS las PCs de la planta`
+        : `Se van a REEMPLAZAR todos los datos de esta PC`;
+      const mensaje = `${alcance} (${store.totalRegistros()} registros) por los del backup:\n\n${detalle}\n\n¿Continuar?`;
       if (!window.confirm(mensaje)) return;
       if (store.importarBackup(obj)) {
         toast('Backup importado correctamente', 'ok');
@@ -92,6 +98,7 @@
   $('#app-version').textContent = 'v' + config.version;
   icons.render();
   Object.values(views).forEach((v) => v.init());
+  SoyaCore.cuenta.init();
 
   store.errores().forEach((err) => {
     alerta(

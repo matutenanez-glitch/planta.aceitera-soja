@@ -5,7 +5,7 @@ recepción de camiones, despacho de expeller, venta de aceite, secadora, producc
 aceite por día y turno, estado de equipos, mantenimiento y resumen por día y por mes.
 Todos los registros se pueden editar y borrar.
 
-Funciona **sin internet** y guarda los datos **en la PC donde se usa**.
+Funciona **sin internet** y guarda los datos **en la PC donde se usa**. Si el dueño ingresa con su cuenta (opcional), todas las PCs de la planta guardan además una **copia en la nube** y comparten los datos (ver [docs/nube-firebase.md](docs/nube-firebase.md)).
 
 ## Cómo usarla
 
@@ -26,12 +26,16 @@ app/                     ← la aplicación (esto es lo que se instala en la pla
   js/ui.js               utilidades de pantalla: formato, tablas, avisos
   js/turnos.js           turnos y día de producción (a qué día pertenece cada cierre)
   js/store.js            guardado de datos, edición, migración y backup
+  js/nube.js             copia en la nube con Firebase (opcional, sin librerías)
+  js/cuenta.js           pantalla de la cuenta del dueño y estado de la nube
   js/graficos.js         gráficos de columnas y de línea en SVG (sin librerías)
   js/views/*.js          una vista por archivo (recepción, secadora, aceite…)
   js/app.js              arranque y navegación
 src/styles.css           ← fuente de los estilos (Tailwind CSS v4)
 scripts/build-css.mjs    compila src/styles.css → app/css/styles.css
 scripts/sincronizar_github.bat   sube los cambios a GitHub (Windows)
+firebase/firestore.rules         reglas de la base en la nube (cada dueño ve solo lo suyo)
+docs/nube-firebase.md            cómo poner en marcha la copia en la nube
 archivo/                 versiones anteriores y el circuito de tanques (en pausa), solo como referencia
 ```
 
@@ -75,6 +79,18 @@ El aceite no lo despacha la planta: lo retira con su camión la empresa que lo c
 - **Por día:** turnos (con su operador), camiones, secadora y mantenimientos de ese día.
 - Al tocar un día, en la tabla o en un gráfico, se abre su detalle.
 
+## Copia en la nube (cuenta del dueño)
+
+Es **opcional** y hay **una sola cuenta por planta**, la del dueño. Se usa desde **Copia en la nube**, abajo a la izquierda:
+
+- **Crear cuenta** o **Ingresar** con correo y contraseña. También hay **Olvidé mi contraseña**.
+- Con la cuenta, cada PC de la planta sigue guardando todo en la PC y **funciona sin internet**. Cuando hay conexión, sube lo que se cargó y baja lo que cargaron las otras PCs. Lo hace sola: a los 3 segundos de cada cambio, cada 2 minutos y cuando vuelve internet.
+- Si el mismo registro se cambió en dos PCs, queda el cambio más nuevo.
+- En la nube **no se borra nada**: lo borrado queda guardado como borrado.
+- El panel muestra si está **al día**, si hay **cambios sin subir** o si está **sin conexión**.
+
+Para activarla, hay que crear el proyecto de Firebase y completar `firebase` en `app/js/config.js`. Los pasos están en [docs/nube-firebase.md](docs/nube-firebase.md). Mientras esté vacío, la app funciona solo en la PC.
+
 ## Editar y borrar registros
 
 Cada fila tiene un lápiz (editar) y un tacho (borrar).
@@ -113,7 +129,7 @@ npm test             # prueba el cálculo del circuito de tanques (archivado)
 
 ## Reglas del código
 
-- **Nada de internet.** No se cargan scripts, fuentes ni estilos externos. La política de seguridad (CSP) de `index.html` lo bloquea.
+- **Nada de internet, salvo la nube.** No se cargan scripts, fuentes ni estilos externos. La política de seguridad (CSP) de `index.html` solo permite conectarse a los tres dominios de Firebase.
 - **Nada de `innerHTML` con datos del usuario.** Usar `SoyaCore.ui.el(...)` o `textContent`. Así, un texto como `Pérez <Hnos> & Cía` se muestra tal cual y no se puede inyectar código.
 - **Nada de `onclick=` en el HTML.** Los eventos se conectan en el `init()` de cada vista.
 - **Versiones con git, no con copias.** Nada de `archivo (1).html`: cada cambio va en un commit, y cada versión entregada lleva un tag (`git tag v2.9.0`).
@@ -122,10 +138,15 @@ npm test             # prueba el cálculo del circuito de tanques (archivado)
 
 1. **Circuito de tanques en pausa:** falta la capacidad de los tanques grandes (se miden con manguera de nivel).
 2. **Feriados y paradas:** la app no los conoce. Un día hábil sin producción aparece con turnos faltantes hasta que se marca **No se trabajó**.
-3. **Datos en el navegador:** si se borran los datos de navegación, se pierde todo lo que no esté en un backup.
+3. **Datos en el navegador:** sin la cuenta, si se borran los datos de navegación se pierde todo lo que no esté en un backup. Con la cuenta, se recupera de la nube al volver a ingresar.
+4. **Copia en la nube sin probar con un proyecto real:** las pruebas automáticas usan un Firebase simulado.
 
 ## Historial
 
+- **2.16.0**:
+  - **Cuenta del dueño** (correo y contraseña) y **copia en la nube** con Firebase, opcional. Las PCs de la planta comparten los datos y cada una sigue funcionando sin internet.
+  - Reglas de Firestore: cada cuenta ve solo lo suyo, nada se borra y no se puede pisar una versión con otra más vieja.
+  - Importar un backup con la nube activa reemplaza los datos en todas las PCs, y la app lo avisa antes.
 - **2.15.0**:
   - "Despacho de aceite" pasa a llamarse **Venta de aceite**: la empresa compradora lo retira con su camión.
   - Cierre de turno con botones de 1 y 2 tanques. No acepta más de 2 tanques por turno.

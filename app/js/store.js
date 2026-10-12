@@ -7,6 +7,9 @@
  *   (soya_<clave>_dañado_<fecha>) y sigue funcionando con el resto.
  * - Normaliza números guardados como texto por versiones anteriores.
  * - Exporta e importa un backup completo en JSON.
+ * - Para la copia en la nube (nube.js): cada registro guarda cuándo se
+ *   modificó y, mientras la PC está vinculada a la cuenta del dueño, anota
+ *   los cambios que faltan subir (también los borrados).
  */
 (function (SoyaCore) {
   'use strict';
@@ -30,6 +33,12 @@
   const listeners = [];
 
   const nuevoId = () => Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+  /**
+   * Marca de modificación de un cambio sobre un registro: la hora actual, pero siempre
+   * mayor que la versión que se tenía. Así un cambio hecho después de ver una versión
+   * le gana a esa versión aunque el reloj de otra PC esté adelantado.
+   */
+  const siguienteMarca = (anterior) => Math.max(Date.now(), ((anterior && anterior.modificado) || 0) + 1);
 
   /** Completa id y convierte a número los campos numéricos. Marca `cambio` si tocó algo. */
   function normalizar(nombre, registro, estado) {
@@ -111,16 +120,111 @@
 
   const notificar = (nombre) => listeners.forEach((fn) => fn(nombre));
 
+  // ---------- Cambios pendientes de subir a la nube ----------
+  // pendientes["coleccion/id"] = { coleccion, id, borrado, modificado, registro? }
+  // Un borrado guarda el registro, para que en la nube quede como "borrado" con su contenido.
+  const CLAVE_PENDIENTES = PREFIX + 'sync_pendientes';
+  let seguir = false;
+  let pendientes = {};
+  try { pendientes = JSON.parse(localStorage.getItem(CLAVE_PENDIENTES)) || {}; } catch (_) { pendientes = {}; }
+  const clavePendiente = (nombre, id) => `${nombre}/${id}`;
+
+  function guardarPendientes() {
+    try { localStorage.setItem(CLAVE_PENDIENTES, JSON.stringify(pendientes)); } catch (_) { /* se reintenta en el próximo cambio */ }
+  }
+
+  function marcar(nombre, registro, borrado) {
+    if (!seguir) return;
+    pendientes[clavePendiente(nombre, registro.id)] = borrado
+      ? { coleccion: nombre, id: registro.id, borrado: true, modificado: siguienteMarca(registro), registro }
+      : { coleccion: nombre, id: registro.id, borrado: false, modificado: registro.modificado || 0 };
+    guardarPendientes();
+  }
+
+  /** Todos los registros locales pasan a pendientes (al vincular la PC con la cuenta). */
+  function marcarTodo() {
+    Object.keys(COLECCIONES).forEach((nombre) => datos[nombre].forEach((r) => {
+      const k = clavePendiente(nombre, r.id);
+      if (!pendientes[k]) pendientes[k] = { coleccion: nombre, id: r.id, borrado: false, modificado: r.modificado || 0 };
+    }));
+    guardarPendientes();
+  }
+
+  /** Saca de pendientes lo que ya se subió, si no volvió a cambiar mientras tanto. */
+  function limpiarPendientes(subidos) {
+    subidos.forEach((p) => {
+      const k = clavePendiente(p.coleccion, p.id);
+      if (pendientes[k] && pendientes[k].modificado === p.modificado && pendientes[k].borrado === p.borrado) delete pendientes[k];
+    });
+    guardarPendientes();
+  }
+
+  /** Inserta respetando el orden por fecha, para que las tablas sigan en orden. */
+  function insertarOrdenado(lista, r) {
+    const i = lista.findIndex((x) => String(x.fecha) > String(r.fecha));
+    if (i < 0) lista.push(r);
+    else lista.splice(i, 0, r);
+  }
+
+  /**
+   * Aplica cambios que vienen de la nube: [{ coleccion, registro, borrado, modificado }].
+   * Gana el cambio más nuevo: si lo que hay en esta PC es más reciente, se deja el
+   * local y se vuelve a anotar para subirlo. Devuelve false si no se pudo guardar.
+   */
+  function aplicarRemotos(cambios) {
+    const tocadas = new Set();
+    cambios.forEach(({ coleccion, registro, borrado, modificado }) => {
+      if (!COLECCIONES[coleccion] || !registro || registro.id == null) return;
+      const k = clavePendiente(coleccion, registro.id);
+      const p = pendientes[k];
+      if (p && p.modificado > modificado) return;
+      if (p) delete pendientes[k];
+      const lista = datos[coleccion];
+      const i = lista.findIndex((r) => r.id === registro.id);
+      if (i >= 0 && (lista[i].modificado || 0) > modificado) {
+        marcar(coleccion, lista[i]);
+        return;
+      }
+      if (borrado) {
+        if (i >= 0) { lista.splice(i, 1); tocadas.add(coleccion); }
+        return;
+      }
+      const r = normalizar(coleccion, registro);
+      r.modificado = modificado;
+      if (i >= 0) {
+        if (JSON.stringify(lista[i]) === JSON.stringify(r)) return;
+        lista[i] = r;
+      } else {
+        insertarOrdenado(lista, r);
+      }
+      tocadas.add(coleccion);
+    });
+    guardarPendientes();
+    const ok = [...tocadas].every((c) => persistir(c));
+    tocadas.forEach(notificar);
+    return ok;
+  }
+
+  /** Deja esta PC sin datos (al pasarla a otra cuenta, cuyos datos se bajan de la nube). */
+  function vaciar() {
+    Object.keys(COLECCIONES).forEach((nombre) => { datos[nombre] = []; persistir(nombre); });
+    pendientes = {};
+    guardarPendientes();
+    notificar('*');
+  }
+
   /** Devuelve una copia de la colección (para que nadie la modifique por accidente). */
   const todos = (nombre) => datos[nombre].slice();
 
   function agregar(nombre, registro) {
     const r = normalizar(nombre, registro);
+    r.modificado = Date.now();
     datos[nombre].push(r);
     if (!persistir(nombre)) {
       datos[nombre].pop();
       return null;
     }
+    marcar(nombre, r);
     notificar(nombre);
     return r;
   }
@@ -132,12 +236,13 @@
     const i = datos[nombre].findIndex((r) => r.id === id);
     if (i < 0) return null;
     const anterior = datos[nombre][i];
-    const nuevo = normalizar(nombre, Object.assign({}, anterior, cambios, { id, editado: SoyaCore.ui.ahora() }));
+    const nuevo = normalizar(nombre, Object.assign({}, anterior, cambios, { id, editado: SoyaCore.ui.ahora(), modificado: siguienteMarca(anterior) }));
     datos[nombre][i] = nuevo;
     if (!persistir(nombre)) {
       datos[nombre][i] = anterior;
       return null;
     }
+    marcar(nombre, nuevo);
     notificar(nombre);
     return nuevo;
   }
@@ -151,6 +256,7 @@
       datos[nombre].splice(i, 0, registro);
       return null;
     }
+    marcar(nombre, registro, true);
     notificar(nombre);
     return { registro, indice: i };
   }
@@ -158,11 +264,13 @@
   /** Vuelve a poner un registro borrado en su lugar (botón "Deshacer"). */
   function restaurar(nombre, { registro, indice }) {
     if (buscar(nombre, registro.id)) return false;
-    datos[nombre].splice(Math.min(indice, datos[nombre].length), 0, registro);
+    const r = Object.assign({}, registro, { modificado: siguienteMarca(registro) });
+    datos[nombre].splice(Math.min(indice, datos[nombre].length), 0, r);
     if (!persistir(nombre)) {
-      datos[nombre].splice(datos[nombre].indexOf(registro), 1);
+      datos[nombre].splice(datos[nombre].indexOf(r), 1);
       return false;
     }
+    marcar(nombre, r);
     notificar(nombre);
     return true;
   }
@@ -203,12 +311,22 @@
     return { obj, resumen };
   }
 
-  /** Reemplaza TODOS los datos por los del backup. */
+  /**
+   * Reemplaza TODOS los datos por los del backup. Si la PC está vinculada a la
+   * nube, el backup manda en todas las PCs: sus registros quedan como los más
+   * nuevos y se borran los que no trae. Si no está vinculada, cada registro
+   * conserva la fecha en que se modificó.
+   */
   function importarBackup(obj) {
     const anteriores = {};
     Object.keys(COLECCIONES).forEach((nombre) => {
       anteriores[nombre] = datos[nombre];
-      datos[nombre] = (obj.datos[nombre] || []).filter((r) => r && typeof r === 'object').map((r) => normalizar(nombre, r));
+      const previos = new Map(datos[nombre].map((r) => [r.id, r]));
+      datos[nombre] = (obj.datos[nombre] || []).filter((r) => r && typeof r === 'object').map((r) => {
+        const n = normalizar(nombre, r);
+        n.modificado = seguir ? siguienteMarca(previos.get(n.id)) : Number(r.modificado) || 0;
+        return n;
+      });
     });
     const ok = Object.keys(COLECCIONES).every(persistir);
     if (!ok) {
@@ -216,6 +334,11 @@
       Object.keys(COLECCIONES).forEach(persistir);
       return false;
     }
+    Object.keys(COLECCIONES).forEach((nombre) => {
+      const nuevos = new Set(datos[nombre].map((r) => r.id));
+      anteriores[nombre].filter((r) => !nuevos.has(r.id)).forEach((r) => marcar(nombre, r, true));
+      datos[nombre].forEach((r) => marcar(nombre, r));
+    });
     notificar('*');
     return true;
   }
@@ -237,5 +360,15 @@
     etiqueta: (nombre) => (COLECCIONES[nombre] ? COLECCIONES[nombre].etiqueta : nombre),
     meta: () => Object.assign({}, meta),
     alCambiar: (fn) => listeners.push(fn),
+    // Para la copia en la nube (nube.js)
+    colecciones: () => Object.keys(COLECCIONES),
+    seguirCambios: (activo) => { seguir = !!activo; },
+    marcarTodo,
+    pendientes: () => Object.values(pendientes).map((p) => Object.assign({}, p)),
+    limpiarPendientes,
+    descartarPendientes: () => { pendientes = {}; guardarPendientes(); },
+    aplicarRemotos,
+    vaciar,
+    siguiendo: () => seguir,
   };
 })(window.SoyaCore = window.SoyaCore || {});

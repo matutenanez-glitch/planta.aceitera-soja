@@ -7,7 +7,7 @@
   'use strict';
 
   SoyaCore.config = Object.freeze({
-    version: '2.15.0',
+    version: '2.16.0',
     locale: 'es-AR',
 
     /** Cuántas filas muestran las tablas de "últimos registros". */
@@ -95,5 +95,16 @@
      * (El circuito de tanques quedó guardado en archivo/circuito-aceite/.)
      */
     densidadAceite: 0.92,
+
+    /**
+     * Copia en la nube (opcional). Con estos dos datos vacíos la app funciona
+     * solo en la PC, como siempre. Se completan con los del proyecto de Firebase
+     * (ver docs/nube-firebase.md). La apiKey de Firebase no es secreta: lo que
+     * protege los datos son las reglas de Firestore (firebase/firestore.rules).
+     */
+    firebase: {
+      apiKey: '',
+      projectId: '',
+    },
   });
 })(window.SoyaCore = window.SoyaCore || {});
