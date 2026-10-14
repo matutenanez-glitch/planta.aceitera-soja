@@ -43,6 +43,8 @@ Cada documento de Firestore tiene:
     - Elegí el **modo de producción**.
     - Elegí la ubicación `southamerica-east1` (San Pablo), que es la más cercana a Argentina. Después no se puede cambiar.
 4. **Publicar las reglas.** En **Firestore → Reglas**, pegá el contenido de `firebase/firestore.rules` y tocá **Publicar**. También se pueden publicar con `firebase deploy --only firestore:rules`, usando `firebase.json`.
+
+   > **Al actualizar la app, volvé a publicar las reglas** si cambiaron. La 2.20 agrega el stock de repuestos. Con las reglas anteriores, el panel de la nube lo avisa y el stock queda guardado en cada PC hasta que se publiquen las nuevas; lo demás se sigue copiando. Al publicarlas, el stock se sube solo.
 5. **Registrar la app.** Andá a **Configuración del proyecto → Tus apps → Web (`</>`)**, ponele un nombre y copiá estos dos datos:
     - `apiKey`;
     - `projectId`.

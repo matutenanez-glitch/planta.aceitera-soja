@@ -1,31 +1,182 @@
 /*
- * Vista: Mantenimiento de prensas, extrusores y reductores.
+ * Vista: Mantenimiento de prensas, extrusores, reductores y bombas.
+ *
+ * Los repuestos del stock que se usaron se guardan en el registro
+ * (usados: [{ itemId, nombre, unidad, cantidad }]) y se descuentan solos del
+ * stock (ver views/stock.js). Los que no están en el stock van como texto
+ * en "Otros repuestos".
  */
 (function (SoyaCore) {
   'use strict';
 
-  const { $, el, fillSelect, tablaRegistros, editorFormulario, guardarRegistro } = SoyaCore.ui;
+  const { $, el, fillSelect, num, tablaRegistros, editorFormulario, guardarRegistro } = SoyaCore.ui;
+  const { store } = SoyaCore;
   const equipos = SoyaCore.config.equipos;
   const estados = SoyaCore.config.estadosEquipo;
+  const stock = SoyaCore.views.stock;
   /** Los registros anteriores a la v2.11 no tenían estado: se toman como operativos. */
   const estadoDe = (r) => (r && estados[r.estado] ? r.estado : 'operativo');
+
+  /** Repuestos de un registro como texto: los del stock con su cantidad y los otros. */
+  function textoRepuestos(r) {
+    const partes = stock.usosDe(r).map((u) => {
+      const item = store.buscar('stock', u.itemId);
+      return `${item ? item.nombre : u.nombre} (${stock.cantidadTexto(u.cantidad, item ? item.unidad : u.unidad)})`;
+    });
+    const otros = r.repuestos && r.repuestos !== 'Ninguno' ? r.repuestos : '';
+    if (otros) partes.push(otros);
+    return partes.join(' · ') || 'Ninguno';
+  }
 
   const COLUMNAS = [
     { key: 'fecha' },
     { key: 'equipo' },
     { key: 'tarea', className: 'max-w-56 truncate' },
-    { key: 'repuestos', className: 'max-w-44 truncate' },
+    { key: 'repuestos', className: 'max-w-56 truncate', format: (_, r) => textoRepuestos(r) },
     { key: 'estado', format: (_, r) => estados[estadoDe(r)].etiqueta },
     { key: 'observaciones', className: 'max-w-56 truncate' },
   ];
 
+  /** Registros viejos no guardaban el tipo: se deduce buscando el equipo en las listas. */
+  const tipoDe = (r) => r.tipo || Object.keys(equipos).find((t) => equipos[t].lista.includes(r.equipo)) || Object.keys(equipos)[0];
+
+  // ---------- Repuestos del stock que se usaron ----------
+  /**
+   * Al editar un registro, lo que ya usaba está descontado del stock: para mostrar
+   * cuánto hay "antes" de este registro se le vuelve a sumar.
+   */
+  let usadosAntes = new Map();
+
+  function disponibleAntes(itemId, hay) {
+    return stock.redondear((hay.get(itemId) || 0) + (usadosAntes.get(itemId) || 0));
+  }
+
+  /** Opciones del selector de repuestos: primero los del sector elegido, después los generales y el resto. */
+  function llenarOpciones(select, elegido, hay) {
+    const tipo = $('#mant-tipo').value;
+    const items = store.todos('stock').slice().sort((a, b) => String(a.nombre).localeCompare(String(b.nombre), 'es'));
+    const grupos = [
+      { etiqueta: `Para ${stock.categoriaCorta(tipo)}`, items: items.filter((i) => i.categoria === tipo) },
+      { etiqueta: 'Generales', items: items.filter((i) => i.categoria === 'General') },
+      { etiqueta: 'De otros sectores', items: items.filter((i) => i.categoria !== tipo && i.categoria !== 'General') },
+    ];
+    const frag = document.createDocumentFragment();
+    frag.appendChild(el('option', { text: 'Elegí un repuesto…', attrs: { value: '' } }));
+    grupos.filter((g) => g.items.length).forEach((g) => {
+      const og = el('optgroup', { attrs: { label: g.etiqueta } });
+      g.items.forEach((i) => og.appendChild(el('option', {
+        text: `${i.nombre} · hay ${stock.cantidadTexto(disponibleAntes(i.id, hay), i.unidad)}`,
+        attrs: { value: i.id },
+      })));
+      frag.appendChild(og);
+    });
+    // Un repuesto que se sacó del stock después de usarlo: se sigue mostrando.
+    if (elegido && !store.buscar('stock', elegido.itemId)) {
+      frag.appendChild(el('option', { text: `${elegido.nombre} (ya no está en el stock)`, attrs: { value: elegido.itemId, 'data-nombre': elegido.nombre, 'data-unidad': elegido.unidad || 'unidades' } }));
+    }
+    select.replaceChildren(frag);
+    select.value = elegido ? elegido.itemId : '';
+  }
+
+  const filas = () => Array.from($('#mant-usados').children);
+
+  /** Lee una fila: { itemId, nombre, unidad, cantidad } o null si está incompleta. */
+  function leerFila(li) {
+    const select = li.querySelector('select');
+    const itemId = select.value;
+    if (!itemId) return null;
+    const item = store.buscar('stock', itemId);
+    const opcion = select.selectedOptions[0];
+    return {
+      itemId,
+      nombre: item ? item.nombre : opcion.dataset.nombre || opcion.textContent,
+      unidad: item ? item.unidad || 'unidades' : opcion.dataset.unidad || 'unidades',
+      cantidad: stock.redondear(num(li.querySelector('input'))),
+    };
+  }
+
+  /** Debajo de cada fila: cuánto va a quedar en stock. */
+  function actualizarAvisos() {
+    const hay = stock.existencias();
+    const usados = filas().map(leerFila);
+    filas().forEach((li, i) => {
+      const u = usados[i];
+      const aviso = li.querySelector('[data-aviso]');
+      const input = li.querySelector('input');
+      const item = u && store.buscar('stock', u.itemId);
+      input.step = stock.paso(u ? u.unidad : 'unidades');
+      input.min = stock.minimoPositivo(u ? u.unidad : 'unidades');
+      li.querySelector('[data-unidad]').textContent = u ? u.unidad : '';
+      if (!item || !(u.cantidad > 0)) { aviso.textContent = ''; return; }
+      const enEsteRegistro = usados.reduce((s, x) => s + (x && x.itemId === u.itemId && x.cantidad > 0 ? x.cantidad : 0), 0);
+      const queda = stock.redondear(disponibleAntes(u.itemId, hay) - enEsteRegistro);
+      const e = stock.estado(item, queda);
+      aviso.className = 'min-w-0 flex-1 text-[11px] leading-snug ' + (queda < 0 ? 'text-red-300' : e === 'ok' ? 'text-slate-400' : 'text-amber-300');
+      aviso.textContent = queda < 0
+        ? `En el stock figuran ${stock.cantidadTexto(disponibleAntes(u.itemId, hay), item.unidad)}: va a quedar en negativo. Después revisá el conteo en Stock.`
+        : `Va a quedar ${stock.cantidadTexto(queda, item.unidad)} en stock${e === 'ok' ? '.' : ': hay que reponer.'}`;
+    });
+  }
+
+  function agregarFila(uso) {
+    const select = el('select', { className: 'field min-w-0 flex-1', attrs: { required: '', 'aria-label': 'Repuesto del stock' } });
+    const input = el('input', { className: 'field w-20 shrink-0 py-1.5', attrs: { type: 'number', required: '', min: '1', step: '1', inputmode: 'decimal', 'aria-label': 'Cantidad usada', placeholder: 'Cant.' } });
+    const quitar = el('button', { className: 'btn-icon shrink-0', attrs: { type: 'button', 'aria-label': 'Quitar este repuesto', title: 'Quitar' } }, [el('i', { attrs: { 'data-lucide': 'x' }, className: 'h-3.5 w-3.5' })]);
+    const li = el('li', { className: 'uso-fila' }, [
+      el('div', { className: 'flex items-center gap-1' }, [select, quitar]),
+      el('div', { className: 'flex items-center gap-2' }, [
+        input,
+        el('span', { className: 'shrink-0 text-xs text-slate-400', attrs: { 'data-unidad': '' } }),
+        el('p', { attrs: { 'data-aviso': '', 'aria-live': 'polite' } }),
+      ]),
+    ]);
+    llenarOpciones(select, uso || null, stock.existencias());
+    input.value = uso ? uso.cantidad : '1';
+    select.addEventListener('change', actualizarAvisos);
+    input.addEventListener('input', actualizarAvisos);
+    quitar.addEventListener('click', () => { li.remove(); actualizarUsados(); });
+    $('#mant-usados').appendChild(li);
+    SoyaCore.icons.render(li);
+    actualizarAvisos();
+    return li;
+  }
+
+  /** Rehace las opciones (cambió el sector o el stock) sin perder lo elegido. */
+  function actualizarUsados() {
+    const hay = stock.existencias();
+    filas().forEach((li) => {
+      const select = li.querySelector('select');
+      const elegido = select.value ? leerFila(li) : null;
+      llenarOpciones(select, elegido, hay);
+    });
+    const sinStock = !store.todos('stock').length;
+    $('#mant-usados-vacio').hidden = !sinStock;
+    $('#mant-agregar-uso').hidden = sinStock;
+    actualizarAvisos();
+  }
+
+  /** Lo usado en el formulario, juntando el mismo repuesto si se eligió dos veces. */
+  function usadosDelFormulario() {
+    const porItem = new Map();
+    filas().map(leerFila).filter((u) => u && u.cantidad > 0).forEach((u) => {
+      const previo = porItem.get(u.itemId);
+      if (previo) previo.cantidad = stock.redondear(previo.cantidad + u.cantidad);
+      else porItem.set(u.itemId, u);
+    });
+    return [...porItem.values()];
+  }
+
+  function limpiarUsados(usados) {
+    $('#mant-usados').replaceChildren();
+    (usados || []).forEach((u) => agregarFila(u));
+    actualizarUsados();
+  }
+
   function actualizarEquipos() {
     const tipo = $('#mant-tipo').value;
     fillSelect($('#mant-equipo'), (equipos[tipo] || { lista: [] }).lista);
+    actualizarUsados();
   }
-
-  /** Registros viejos no guardaban el tipo: se deduce buscando el equipo en las listas. */
-  const tipoDe = (r) => r.tipo || Object.keys(equipos).find((t) => equipos[t].lista.includes(r.equipo)) || Object.keys(equipos)[0];
 
   SoyaCore.views = SoyaCore.views || {};
   SoyaCore.views.mantenimiento = {
@@ -33,6 +184,10 @@
       fillSelect($('#mant-tipo'), Object.entries(equipos).map(([value, def]) => ({ value, label: def.etiqueta })));
       fillSelect($('#mant-estado'), Object.entries(estados).map(([value, def]) => ({ value, label: def.etiqueta })), 'operativo');
       $('#mant-tipo').addEventListener('change', actualizarEquipos);
+      $('#mant-agregar-uso').addEventListener('click', () => {
+        const li = agregarFila(null);
+        li.querySelector('select').focus();
+      });
       actualizarEquipos();
 
       let editor;
@@ -42,11 +197,14 @@
         coleccion: 'mantenimiento',
         columnas: COLUMNAS,
         onEditar: (r) => editor.editar(r),
+        mensajeBorrado: (r) => (stock.usosDe(r).length ? 'Registro borrado. Sus repuestos volvieron al stock.' : 'Registro borrado.'),
       });
       editor = editorFormulario($('#form-mantenimiento'), {
         tabla,
         rellenar(r) {
           $('#mant-tipo').value = tipoDe(r);
+          usadosAntes = new Map();
+          stock.usosDe(r).forEach((u) => usadosAntes.set(u.itemId, (usadosAntes.get(u.itemId) || 0) + Number(u.cantidad)));
           actualizarEquipos();
           const select = $('#mant-equipo');
           if (![...select.options].some((o) => o.value === r.equipo)) {
@@ -57,23 +215,36 @@
           $('#mant-piezas').value = r.repuestos === 'Ninguno' ? '' : r.repuestos || '';
           $('#mant-obs').value = r.observaciones || '';
           $('#mant-estado').value = estadoDe(r);
+          limpiarUsados(stock.usosDe(r));
         },
-        alTerminar: actualizarEquipos,
+        alTerminar() {
+          usadosAntes = new Map();
+          limpiarUsados();
+          actualizarEquipos();
+        },
       });
 
       $('#form-mantenimiento').addEventListener('submit', (e) => {
         e.preventDefault();
-        guardarRegistro('mantenimiento', editor, {
+        const usados = usadosDelFormulario();
+        const otros = $('#mant-piezas').value.trim();
+        const guardado = guardarRegistro('mantenimiento', editor, {
           tipo: $('#mant-tipo').value,
           equipo: $('#mant-equipo').value,
           tarea: $('#mant-tarea').value.trim(),
-          repuestos: $('#mant-piezas').value.trim() || 'Ninguno',
+          usados,
+          repuestos: otros || (usados.length ? '' : 'Ninguno'),
           estado: $('#mant-estado').value,
           observaciones: $('#mant-obs').value.trim(),
-        }, { nuevo: 'Registro de mantenimiento guardado.' });
+        }, { nuevo: usados.length ? 'Mantenimiento guardado. Los repuestos se descontaron del stock.' : 'Registro de mantenimiento guardado.' });
+        if (guardado) stock.avisarSiFalta(usados.map((u) => u.itemId));
       });
 
-      SoyaCore.store.alCambiar((c) => (c === 'mantenimiento' || c === '*') && tabla.dibujar());
+      store.alCambiar((c) => {
+        if (c === 'mantenimiento' || c === '*') tabla.dibujar();
+        if (c === 'stock' || c === 'stockMovimientos' || c === 'mantenimiento' || c === '*') actualizarUsados();
+        if (c === 'stock') tabla.dibujar(); // los nombres de los repuestos
+      });
       tabla.dibujar();
     },
     refresh() {},
@@ -85,5 +256,6 @@
       $('#mant-tarea').focus();
     },
     estadoDe,
+    textoRepuestos,
   };
 })(window.SoyaCore = window.SoyaCore || {});

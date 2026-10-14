@@ -7,7 +7,7 @@
   'use strict';
 
   SoyaCore.config = Object.freeze({
-    version: '2.19.0',
+    version: '2.20.0',
     locale: 'es-AR',
 
     /** Cuántas filas muestran las tablas de "últimos registros". */
@@ -25,6 +25,7 @@
       despachoAceite:{ titulo: 'Retiro de Aceite',                  icono: 'fuel' },
       equipos:       { titulo: 'Estado de Equipos',                 icono: 'gauge' },
       mantenimiento: { titulo: 'Registro de Mantenimiento',         icono: 'wrench' },
+      stock:         { titulo: 'Stock de Repuestos',                icono: 'package' },
       resumen:       { titulo: 'Resumen por día y por mes',         icono: 'chart-column' },
     },
 
@@ -77,6 +78,18 @@
         etiqueta: 'Bombas',
         lista: ['Bomba 1', 'Bomba 2', 'Bomba 3', 'Bomba 4'],
       },
+    },
+
+    /**
+     * Stock de repuestos. Cada repuesto es "para" uno de los sectores de
+     * "equipos" (Prensa, Extrusor, …) o para una de estas categorías extra.
+     * La cantidad se cuenta en una de estas unidades: las dos primeras van de
+     * a una (enteras); las demás aceptan decimales.
+     */
+    stock: {
+      categoriasExtra: { General: 'General (lubricantes, herramientas, otros)' },
+      unidades: ['unidades', 'juegos', 'litros', 'kg', 'metros'],
+      unidadesEnteras: ['unidades', 'juegos'],
     },
 
     /** Día en que se hace el mantenimiento (0 = domingo … 6 = sábado). La producción suele cortar el viernes a las 22:00. */

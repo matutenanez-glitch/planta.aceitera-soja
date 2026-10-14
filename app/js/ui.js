@@ -66,12 +66,13 @@
   }
 
   /**
-   * Aviso flotante. type: 'info' | 'ok' | 'error'
+   * Aviso flotante. type: 'info' | 'ok' | 'aviso' | 'error'
    * accion (opcional): { texto, fn } → agrega un botón, por ejemplo "Deshacer".
    */
   function toast(msg, type, accion) {
     const container = $('#toast-container');
-    const node = el('div', { className: 'toast' + (type === 'error' ? ' toast-error' : type === 'ok' ? ' toast-ok' : '') }, [el('span', { text: msg })]);
+    const clase = { error: ' toast-error', ok: ' toast-ok', aviso: ' toast-aviso' }[type] || '';
+    const node = el('div', { className: 'toast' + clase }, [el('span', { text: msg })]);
     const cerrar = () => {
       node.style.opacity = '0';
       setTimeout(() => node.remove(), 300);
@@ -110,12 +111,18 @@
    *   coleccion  nombre en el store
    *   columnas   [{ key, format?, className? }] o [{ render(row) → nodo, className? }]
    *   onEditar   fn(registro) → normalmente editor.editar
+   *   vacio      (opcional) texto (o fn → texto) para cuando no hay filas
    *   acciones   (opcional) botones extra por fila: [{ accion, icono, etiqueta, mostrar?(r), fn(r) }]
    *   claseFila  (opcional) fn(registro) → clase CSS extra para la fila
+   *   ordenar    (opcional) fn(lista) → lista ordenada (y filtrada); se muestran
+   *              todas (si no, se muestran los últimos cargados, el más nuevo arriba)
+   *   describir  (opcional) fn(registro) → cómo nombrar la fila en los botones
+   *              (por defecto "registro del <fecha>")
+   *   mensajeBorrado (opcional) fn(registro) → texto del aviso al borrar
    * Borrar pide confirmación con un segundo clic y ofrece "Deshacer".
    * Devuelve { dibujar(), marcar(id|null) }.
    */
-  function tablaRegistros({ tbody, caption, coleccion, columnas, onEditar, vacio, acciones, claseFila }) {
+  function tablaRegistros({ tbody, caption, coleccion, columnas, onEditar, vacio, acciones, claseFila, ordenar, describir, mensajeBorrado }) {
     const extras = acciones || [];
     const store = SoyaCore.store;
     let verTodos = false;
@@ -129,12 +136,13 @@
     }
 
     function dibujar() {
-      const filas = store.todos(coleccion);
-      const limite = verTodos ? filas.length || 1 : SoyaCore.config.filasPorTabla;
-      const visibles = filas.slice(-limite).reverse();
+      const filas = ordenar ? ordenar(store.todos(coleccion)) : store.todos(coleccion);
+      const limite = verTodos || ordenar ? filas.length || 1 : SoyaCore.config.filasPorTabla;
+      const visibles = ordenar ? filas : filas.slice(-limite).reverse();
       const frag = document.createDocumentFragment();
       if (visibles.length === 0) {
-        frag.appendChild(el('tr', null, [el('td', { className: 'empty', text: vacio || 'Sin registros todavía.', attrs: { colspan: columnas.length + 1 } })]));
+        const texto = typeof vacio === 'function' ? vacio() : vacio;
+        frag.appendChild(el('tr', null, [el('td', { className: 'empty', text: texto || 'Sin registros todavía.', attrs: { colspan: columnas.length + 1 } })]));
       }
       visibles.forEach((row) => {
         const celdas = columnas.map((col) => {
@@ -145,7 +153,7 @@
           if (td.classList.contains('truncate')) td.title = td.textContent;
           return td;
         });
-        const quien = `registro del ${row.fecha}`;
+        const quien = describir ? describir(row) : `registro del ${row.fecha}`;
         celdas.push(el('td', { className: 'acciones' }, [
           ...extras.filter((a) => !a.mostrar || a.mostrar(row)).map((a) => botonAccion(a.accion, a.icono, `${a.etiqueta} (${quien})`, 'btn-icon-extra')),
           botonAccion('editar', 'pencil', 'Editar ' + quien),
@@ -199,7 +207,7 @@
       }
       const borrado = store.borrar(coleccion, id);
       if (!borrado) return;
-      toast('Registro borrado.', 'info', {
+      toast(mensajeBorrado ? mensajeBorrado(borrado.registro) : 'Registro borrado.', 'info', {
         texto: 'Deshacer',
         fn: () => store.restaurar(coleccion, borrado) && toast('Registro restaurado.', 'ok'),
       });

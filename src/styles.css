@@ -98,7 +98,8 @@
   }
 
   /* Tablas */
-  .data-table { @apply w-full text-left text-sm whitespace-nowrap; }
+  /* relative: así los textos solo para lectores de pantalla (sr-only) no agrandan la página */
+  .data-table { @apply relative w-full text-left text-sm whitespace-nowrap; }
   .data-table thead { @apply border-b border-slate-800 text-slate-400; }
   .data-table th { @apply pb-3 pr-4 font-medium; }
   .data-table tbody { @apply divide-y divide-slate-800/50 text-slate-300; }
@@ -190,4 +191,16 @@
   }
   .toast-error { @apply border-red-500; }
   .toast-ok { @apply border-emerald-400; }
+  .toast-aviso { @apply border-amber-400 bg-amber-950; }
+
+  /* Stock de repuestos */
+  .nav-badge {
+    @apply ml-auto min-w-5 rounded-full bg-amber-400 px-1.5 py-0.5 text-center text-[10px] leading-tight font-black text-slate-950 tabular-nums;
+  }
+  .nav-badge.nav-badge-sin { @apply bg-red-500 text-white; }
+  .stock-card { @apply flex min-w-0 items-center justify-between gap-3 rounded-xl border border-l-4 border-slate-800 bg-slate-900/60 p-3; }
+  .stock-card.stock-bajo { @apply border-l-amber-400; }
+  .stock-card.stock-sin { @apply border-l-red-500 bg-red-950/30; }
+  .data-table tr.fila-stock-sin { @apply bg-red-500/5; }
+  .uso-fila { @apply space-y-1.5 rounded-lg border border-slate-800 bg-slate-950/40 p-2; }
 }

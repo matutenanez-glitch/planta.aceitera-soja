@@ -25,6 +25,8 @@
     produccion:    { clave: 'produccion',    etiqueta: 'Producción',            numeros: ['expeller', 'aceite'] },
     mantenimiento: { clave: 'mantenimiento', etiqueta: 'Mantenimiento',         numeros: [] },
     despachosAceite: { clave: 'aceite_despachos', etiqueta: 'Retiro de aceite', numeros: ['bruto', 'tara', 'neto', 'litros'] },
+    stock:         { clave: 'stock_items',       etiqueta: 'Stock de repuestos',     numeros: ['minimo'] },
+    stockMovimientos: { clave: 'stock_movimientos', etiqueta: 'Movimientos de stock', numeros: ['cantidad'] },
   };
 
   const datos = {};

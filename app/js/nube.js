@@ -265,9 +265,11 @@
    * Sube lo pendiente con batchWrite: cada escritura se acepta o se rechaza sola.
    * Las reglas rechazan una versión más vieja que la que ya está en la nube; en ese
    * caso se deja de lado lo local y en la próxima bajada llega la versión más nueva.
+   * Lo de las colecciones que la nube no deja leer (reglas sin actualizar) no se
+   * manda: queda pendiente hasta que se publiquen las reglas nuevas.
    */
-  async function subir(uid) {
-    const lista = store.pendientes();
+  async function subir(uid, denegadas) {
+    const lista = store.pendientes().filter((p) => !denegadas.has(p.coleccion));
     let rechazados = 0;
     for (let i = 0; i < lista.length; i += LOTE_SUBIDA) {
       const lote = lista.slice(i, i + LOTE_SUBIDA);
@@ -314,66 +316,81 @@
     return rechazados;
   }
 
-  /** Baja lo que cambió en la nube desde la última vez, colección por colección. */
+  /**
+   * Baja lo que cambió en la nube desde la última vez, colección por colección.
+   * Devuelve las colecciones que la nube no deja leer: pasa si se actualizó la app
+   * (que trae una colección nueva) pero no se volvieron a publicar las reglas.
+   */
   async function bajar(uid) {
     const marcas = leerJSON(K_MARCAS) || {};
+    const denegadas = new Set();
     for (const col of store.colecciones()) {
-      const marca = marcas[col];
-      let cursor = null;
-      if (marca) {
-        // Un cambio de otra PC puede quedar visible unos segundos después de su hora de
-        // servidor. Si la última lectura fue poco después de la marca, se relee desde un
-        // poco antes (las dos horas son del servidor; no depende del reloj de la PC).
-        const margen = marca.lectura ? Date.parse(marca.lectura) - Date.parse(marca.servidor) : 0;
-        cursor = margen < 2 * 60000
-          ? { values: [{ timestampValue: new Date(Date.parse(marca.servidor) - 2 * 60000).toISOString() }], before: true }
-          : { values: [{ timestampValue: marca.servidor }, { referenceValue: marca.nombre }], before: false };
-      }
-      let lectura = null;
-      for (;;) {
-        const consulta = {
-          from: [{ collectionId: col }],
-          orderBy: [{ field: { fieldPath: 'servidor' }, direction: 'ASCENDING' }, { field: { fieldPath: '__name__' }, direction: 'ASCENDING' }],
-          limit: LOTE_BAJADA,
-        };
-        if (cursor) consulta.startAt = cursor;
-        const filas = (await firestore(`${URL_FS()}/usuarios/${uid}:runQuery`, { structuredQuery: consulta }, uid)) || [];
-        seguir(uid);
-        lectura = (filas[0] && filas[0].readTime) || lectura;
-        const docs = filas.map((f) => f.document).filter(Boolean);
-        const cambios = [];
-        docs.forEach((d) => {
-          const f = d.fields || {};
-          try {
-            cambios.push({
-              coleccion: col,
-              registro: JSON.parse(f.datos.stringValue),
-              borrado: !!(f.borrado && f.borrado.booleanValue),
-              modificado: Number(f.modificado && f.modificado.integerValue) || 0,
-            });
-          } catch (_) { /* documento dañado: se ignora */ }
-        });
-        if (cambios.length) {
-          aplicando = true;
-          let ok;
-          try { ok = store.aplicarRemotos(cambios); } finally { aplicando = false; }
-          if (!ok) throw new ErrorNube('SIN_ESPACIO', 'No hay espacio en esta PC para guardar lo que llegó de la nube. Exportá un backup y liberá espacio.');
-        }
-        if (docs.length) {
-          const ultimo = docs[docs.length - 1];
-          marcas[col] = { servidor: ultimo.fields.servidor.timestampValue, nombre: ultimo.name, lectura };
-          guardarJSON(K_MARCAS, marcas);
-          cursor = { values: [{ timestampValue: marcas[col].servidor }, { referenceValue: ultimo.name }], before: false };
-        }
-        if (docs.length < LOTE_BAJADA) break;
-      }
-      if (marcas[col] && lectura) {
-        marcas[col].lectura = lectura;
-        guardarJSON(K_MARCAS, marcas);
+      try {
+        await bajarColeccion(uid, col, marcas);
+      } catch (e) {
+        if (e.codigo !== 'PERMISSION_DENIED') throw e;
+        denegadas.add(col);
       }
     }
     marcas.ultima = Date.now();
     guardarJSON(K_MARCAS, marcas);
+    return denegadas;
+  }
+
+  async function bajarColeccion(uid, col, marcas) {
+    const marca = marcas[col];
+    let cursor = null;
+    if (marca) {
+      // Un cambio de otra PC puede quedar visible unos segundos después de su hora de
+      // servidor. Si la última lectura fue poco después de la marca, se relee desde un
+      // poco antes (las dos horas son del servidor; no depende del reloj de la PC).
+      const margen = marca.lectura ? Date.parse(marca.lectura) - Date.parse(marca.servidor) : 0;
+      cursor = margen < 2 * 60000
+        ? { values: [{ timestampValue: new Date(Date.parse(marca.servidor) - 2 * 60000).toISOString() }], before: true }
+        : { values: [{ timestampValue: marca.servidor }, { referenceValue: marca.nombre }], before: false };
+    }
+    let lectura = null;
+    for (;;) {
+      const consulta = {
+        from: [{ collectionId: col }],
+        orderBy: [{ field: { fieldPath: 'servidor' }, direction: 'ASCENDING' }, { field: { fieldPath: '__name__' }, direction: 'ASCENDING' }],
+        limit: LOTE_BAJADA,
+      };
+      if (cursor) consulta.startAt = cursor;
+      const filas = (await firestore(`${URL_FS()}/usuarios/${uid}:runQuery`, { structuredQuery: consulta }, uid)) || [];
+      seguir(uid);
+      lectura = (filas[0] && filas[0].readTime) || lectura;
+      const docs = filas.map((f) => f.document).filter(Boolean);
+      const cambios = [];
+      docs.forEach((d) => {
+        const f = d.fields || {};
+        try {
+          cambios.push({
+            coleccion: col,
+            registro: JSON.parse(f.datos.stringValue),
+            borrado: !!(f.borrado && f.borrado.booleanValue),
+            modificado: Number(f.modificado && f.modificado.integerValue) || 0,
+          });
+        } catch (_) { /* documento dañado: se ignora */ }
+      });
+      if (cambios.length) {
+        aplicando = true;
+        let ok;
+        try { ok = store.aplicarRemotos(cambios); } finally { aplicando = false; }
+        if (!ok) throw new ErrorNube('SIN_ESPACIO', 'No hay espacio en esta PC para guardar lo que llegó de la nube. Exportá un backup y liberá espacio.');
+      }
+      if (docs.length) {
+        const ultimo = docs[docs.length - 1];
+        marcas[col] = { servidor: ultimo.fields.servidor.timestampValue, nombre: ultimo.name, lectura };
+        guardarJSON(K_MARCAS, marcas);
+        cursor = { values: [{ timestampValue: marcas[col].servidor }, { referenceValue: ultimo.name }], before: false };
+      }
+      if (docs.length < LOTE_BAJADA) break;
+    }
+    if (marcas[col] && lectura) {
+      marcas[col].lectura = lectura;
+      guardarJSON(K_MARCAS, marcas);
+    }
   }
 
   function manejarError(e) {
@@ -398,9 +415,14 @@
     const uid = sesion.uid;
     enCurso = (async () => {
       try {
-        await bajar(uid);
-        const rechazados = await subir(uid);
-        if (rechazados) ponerEstado('error', `${rechazados} registro${rechazados === 1 ? '' : 's'} no se pudo subir. Los demás están al día.`);
+        const denegadas = await bajar(uid);
+        const rechazados = await subir(uid, denegadas);
+        if (denegadas.size === store.colecciones().length) {
+          ponerEstado('error', 'La nube no deja leer ni guardar los datos. Revisá que estén publicadas las reglas de Firestore (firebase/firestore.rules).');
+        } else if (denegadas.size) {
+          const cuales = [...denegadas].map((c) => `"${store.etiqueta(c)}"`).join(' y ');
+          ponerEstado('error', `Falta publicar en Firebase las reglas nuevas (firebase/firestore.rules). Hasta entonces, ${cuales} se guarda${denegadas.size === 1 ? '' : 'n'} solo en esta PC. Lo demás está al día.`);
+        } else if (rechazados) ponerEstado('error', `${rechazados} registro${rechazados === 1 ? '' : 's'} no se pudo subir. Los demás están al día.`);
         else ponerEstado(store.pendientes().length ? 'pendiente' : 'alDia');
       } catch (e) {
         manejarError(e);

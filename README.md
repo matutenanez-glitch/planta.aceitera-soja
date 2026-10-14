@@ -2,7 +2,7 @@
 
 App de escritorio para registrar la operación diaria de una planta aceitera:
 recepción de camiones, despacho de expeller, retiro de aceite, secadora, producción por turnos,
-aceite por día y turno, estado de equipos, mantenimiento y resumen por día y por mes.
+aceite por día y turno, estado de equipos, mantenimiento, stock de repuestos y resumen por día y por mes.
 Todos los registros se pueden editar y borrar.
 
 Funciona **sin internet** y guarda los datos **en la PC donde se usa**. Si el dueño ingresa con su cuenta (opcional), todas las PCs de la planta guardan además una **copia en la nube** y comparten los datos (ver [docs/nube-firebase.md](docs/nube-firebase.md)).
@@ -90,6 +90,26 @@ El aceite no lo despacha la planta: lo retira con su camión la empresa que lo c
 - Si un equipo deja de estar en la lista pero tiene mantenimientos cargados, aparece en el grupo **Otros** para no perder su historial.
 - El panel **Para el sábado** junta los equipos con observaciones o fuera de servicio, y los que llevan más tiempo sin mantenimiento. La producción suele cortar el viernes a las 22:00 y el mantenimiento se hace el sábado.
 
+## Stock de repuestos
+
+Piezas y repuestos para prensas, extrusores, reductores y bombas, y cosas generales (lubricantes, herramientas).
+
+- **Cada repuesto** tiene nombre, para qué sector es, código y ubicación (opcionales), en qué se cuenta (unidades, juegos, litros, kg o metros), la cantidad que hay y un **mínimo**.
+- **Aviso cuando se está por agotar.** Cuando la cantidad llega al mínimo, el repuesto pasa a **Reponer**. Si no queda ninguno, pasa a **Sin stock**. Se avisa así:
+    - en el menú, al lado de **Stock de Repuestos**, con la cantidad de repuestos para reponer (en rojo si alguno está sin stock);
+    - en el panel **Para reponer**, arriba del stock, con el botón **Cargar compra**;
+    - con un aviso al guardar un mantenimiento o una salida que deja un repuesto en el mínimo.
+- **Cambiar la cantidad.** Con el botón de flechas de cada fila:
+    - **Entró (compra)** suma;
+    - **Salió** resta, y no deja sacar más de lo que hay;
+    - **Contamos** pone lo que se contó en el depósito y anota la diferencia.
+
+  También se puede corregir desde **Editar**. Cada repuesto tiene su historial de movimientos, con los mantenimientos en que se usó.
+- **Descuento automático desde Mantenimientos.** En el registro de mantenimiento se eligen los **repuestos del stock que se usaron** y cuántos. Al guardar se descuentan solos. Primero aparecen los del sector del equipo, y cada uno dice cuánto hay y cuánto va a quedar. Si se corrige o se borra el mantenimiento, el stock se acomoda solo. Los repuestos que no están en el stock se escriben en **Otros repuestos**.
+- **Más de lo que figura.** Si se usó más de lo que figura en el stock, el mantenimiento se guarda igual (el repuesto se usó). El stock queda en negativo, con aviso, hasta que se corrija con **Contamos**.
+- **Cómo se calcula la cantidad.** No se guarda en el repuesto: se calcula con sus movimientos (cantidad inicial, compras, salidas y conteos) menos lo usado en los mantenimientos. Así, dos PCs que cargan a la vez no se pisan.
+- **Stock del sistema anterior.** Si la PC tiene el stock de la v2.5 (`soyacore_stock`) y el stock nuevo está vacío, se pasa solo, una vez.
+
 ## Resumen
 
 - **Por mes:** totales con la variación contra el mes anterior, gráficos por día (soja, aceite y expeller) y la tabla día por día.
@@ -125,6 +145,7 @@ Cada fila tiene un lápiz (editar) y un tacho (borrar).
 | Cambiar los litros de un tanque            | `app/js/config.js` → `litrosPorTanque`                          |
 | Cambiar el máximo de tanques por turno     | `app/js/config.js` → `maxTanquesPorTurno`                       |
 | Cambiar los días en que se produce         | `app/js/config.js` → `diasProduccion`                           |
+| Agregar una categoría o unidad de stock    | `app/js/config.js` → `stock`                                    |
 | Cambiar el color de marca                  | `src/styles.css` → `@theme` y después `npm run build:css`        |
 | Agregar un ícono                           | `app/js/icons.js` (ver instrucciones al principio del archivo)  |
 | Subir la versión                           | `app/js/config.js` → `version` (y `package.json`)               |
@@ -162,6 +183,10 @@ npm test             # prueba el cálculo del circuito de tanques (archivado)
 
 ## Historial
 
+- **2.20.0**:
+  - Nueva sección **Stock de Repuestos**, con alertas cuando un repuesto llega al mínimo o se termina, y entradas, salidas y conteos con historial.
+  - Los repuestos del stock que se usan en un **mantenimiento** se descuentan solos (y vuelven si se corrige o se borra el registro).
+  - Copia en la nube: si se actualiza la app pero falta publicar las reglas nuevas, el panel lo avisa y lo nuevo queda guardado en la PC hasta publicarlas. Lo demás se sigue copiando.
 - **2.19.0**:
   - Recepción en dos pasos: primero el bruto y después la tara, con la lista de camiones en planta esperando la tara. Se agrega la patente.
   - Comprobante de pesada e informe por empresa en PDF, para descargar o compartir por WhatsApp o correo.

@@ -181,7 +181,7 @@
             chipEstado(SoyaCore.views.mantenimiento.estadoDe(r)),
           ]),
           el('p', { className: 'mt-1.5 font-semibold text-slate-200', text: r.tarea }),
-          el('p', { className: 'mt-0.5 text-xs text-slate-400', text: `Repuestos: ${r.repuestos || 'Ninguno'}` }),
+          el('p', { className: 'mt-0.5 text-xs text-slate-400', text: `Repuestos: ${SoyaCore.views.mantenimiento.textoRepuestos(r)}` }),
           r.observaciones ? el('p', { className: 'mt-0.5 text-xs text-slate-400', text: `Observaciones: ${r.observaciones}` }) : null,
         ]))
       : [el('li', { className: 'text-sm text-slate-500 italic', text: 'Sin mantenimientos cargados para este equipo.' })]));

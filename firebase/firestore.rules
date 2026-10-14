@@ -14,7 +14,7 @@ service cloud.firestore {
       }
 
       function coleccionValida() {
-        return coleccion in ['ingresos', 'despachos', 'secadora', 'produccion', 'mantenimiento', 'despachosAceite'];
+        return coleccion in ['ingresos', 'despachos', 'secadora', 'produccion', 'mantenimiento', 'despachosAceite', 'stock', 'stockMovimientos'];
       }
 
       function registroValido() {
