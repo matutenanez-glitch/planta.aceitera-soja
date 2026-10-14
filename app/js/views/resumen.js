@@ -37,7 +37,8 @@
     const fechaDe = (col, r) => (col === 'produccion' ? T.diaDe(r) : String(r.fecha));
     const de = (col) => store.todos(col).filter((r) => fechaDe(col, r).startsWith(prefijo));
     const ingresos = de('ingresos');
-    const soja = ingresos.filter(esSoja);
+    // Los camiones que todavía esperan la tara no tienen neto: no cuentan hasta completarse.
+    const soja = ingresos.filter((r) => esSoja(r) && !SoyaCore.views.recepcion.enPlanta(r));
     const produccion = de('produccion');
     const despExp = de('despachos');
     const despAce = de('despachosAceite');
@@ -223,7 +224,7 @@
     $('#res-dia-turnos').replaceChildren(...filasTurnos);
 
     const movimientos = [
-      ...t.ingresos.map((r) => ({ fecha: r.fecha, tipo: `Ingreso (${r.carga || 'Soja'})`, empresa: r.empresa, cantidad: fmt.kg(r.neto), humedad: SoyaCore.views.recepcion.tieneHumedad(r) ? fmt.porcentaje(r.humedad) : '' })),
+      ...t.ingresos.map((r) => ({ fecha: r.fecha, tipo: `Ingreso (${r.carga || 'Soja'})`, empresa: r.empresa, cantidad: SoyaCore.views.recepcion.enPlanta(r) ? `bruto ${fmt.kg(r.bruto)} (falta tara)` : fmt.kg(r.neto), humedad: SoyaCore.views.recepcion.tieneHumedad(r) ? fmt.porcentaje(r.humedad) : '' })),
       ...t.despExp.map((r) => ({ fecha: r.fecha, tipo: 'Despacho expeller', empresa: r.empresa, cantidad: fmt.kg(r.neto) })),
       ...t.despAce.map((r) => ({ fecha: r.fecha, tipo: 'Retiro de aceite', empresa: r.empresa, cantidad: fmt.kg(SoyaCore.views.despachoAceite.kgDe(r)) })),
     ].sort(porHora);

@@ -27,6 +27,8 @@ app/                     ← la aplicación (esto es lo que se instala en la pla
   js/turnos.js           turnos y día de producción (a qué día pertenece cada cierre)
   js/store.js            guardado de datos, edición, migración y backup
   js/nube.js             copia en la nube con Firebase (opcional, sin librerías)
+  js/pdf.js              generador de PDF mínimo (sin librerías)
+  js/comprobantes.js     comprobante de pesada e informe por empresa (PDF, WhatsApp, correo)
   js/cuenta.js           pantalla de la cuenta del dueño y estado de la nube
   js/graficos.js         gráficos de columnas y de línea en SVG (sin librerías)
   js/views/*.js          una vista por archivo (recepción, secadora, aceite…)
@@ -41,7 +43,16 @@ archivo/                 versiones anteriores y el circuito de tanques (en pausa
 
 ## Recepción y secadora
 
-- **Recepción:** cada camión se pesa en la balanza. Si la carga es soja, se anota también su **humedad** (muestra de laboratorio al llegar). Arriba se ve la soja ingresada en el día: cantidad de camiones, kg y humedad promedio, ponderada por los kg de cada camión.
+- **Recepción en dos pasos.** Cuando llegan varios camiones juntos, primero se pesan llenos: se carga el **bruto** y se deja la tara vacía. El camión queda en **"En planta, esperando la tara"**. Cuando descarga y se pesa vacío, se toca **Cargar tara**: la app calcula el **neto** y ofrece el comprobante. Mientras falta la tara, el camión no suma a los totales.
+- **Humedad.** Si la carga es soja, se anota la humedad del camión (muestra de laboratorio). Es obligatoria cuando se completa la pesada.
+- **Soja ingresada en el día.** Arriba se ven la cantidad de camiones, los kg y la humedad promedio, ponderada por los kg de cada camión.
+- **Comprobante de pesada en PDF.** Está en el ícono de documento de cada fila, o en el aviso después de cargar la tara. Trae empresa, chofer, patente, carga, humedad, bruto y tara con fecha y hora, neto y lugar para las firmas. Se puede:
+    - **Descargar**;
+    - **Compartir**, si la PC lo permite;
+    - abrir **WhatsApp** o el **correo** con los datos escritos. En ese caso el PDF se descarga para adjuntarlo.
+- **Informe por empresa en PDF.** Está en el botón de la tabla. Lista los camiones de una empresa (o de todas) en un período, con el total de kg y la humedad promedio. Si son muchos, ocupa varias páginas.
+- **Datos de la planta.** El nombre, el CUIT, la dirección y el teléfono que salen en los PDF se completan una vez y quedan guardados en esa PC.
+- **Los PDF se generan en la PC** (`app/js/pdf.js`), sin internet y sin librerías externas.
 - **Secadora:** la soja que pasa por la secadora ya está mezclada en el silo, así que las tomas no son de ningún camión. Cada toma registra la humedad **en caliente** y **en frío**. Arriba se ven las tomas del día, sus promedios y la hora de la última.
 - **Datos anteriores a la 2.18:** las tomas viejas de la secadora conservan la empresa y la humedad del camión que tenían. En el resumen de esos días, la humedad de ingreso sale de esos datos.
 
@@ -151,6 +162,9 @@ npm test             # prueba el cálculo del circuito de tanques (archivado)
 
 ## Historial
 
+- **2.19.0**:
+  - Recepción en dos pasos: primero el bruto y después la tara, con la lista de camiones en planta esperando la tara. Se agrega la patente.
+  - Comprobante de pesada e informe por empresa en PDF, para descargar o compartir por WhatsApp o correo.
 - **2.18.0**:
   - La **humedad de cada camión** pasa a **Recepción**, donde se ve el total y la humedad promedio del día.
   - La **secadora** queda solo con las tomas de la soja ya mezclada: humedad en caliente y en frío, sin empresa ni camión.

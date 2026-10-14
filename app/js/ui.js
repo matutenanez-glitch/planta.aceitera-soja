@@ -110,10 +110,13 @@
    *   coleccion  nombre en el store
    *   columnas   [{ key, format?, className? }] o [{ render(row) → nodo, className? }]
    *   onEditar   fn(registro) → normalmente editor.editar
+   *   acciones   (opcional) botones extra por fila: [{ accion, icono, etiqueta, mostrar?(r), fn(r) }]
+   *   claseFila  (opcional) fn(registro) → clase CSS extra para la fila
    * Borrar pide confirmación con un segundo clic y ofrece "Deshacer".
    * Devuelve { dibujar(), marcar(id|null) }.
    */
-  function tablaRegistros({ tbody, caption, coleccion, columnas, onEditar, vacio }) {
+  function tablaRegistros({ tbody, caption, coleccion, columnas, onEditar, vacio, acciones, claseFila }) {
+    const extras = acciones || [];
     const store = SoyaCore.store;
     let verTodos = false;
     let editandoId = null;
@@ -144,10 +147,11 @@
         });
         const quien = `registro del ${row.fecha}`;
         celdas.push(el('td', { className: 'acciones' }, [
+          ...extras.filter((a) => !a.mostrar || a.mostrar(row)).map((a) => botonAccion(a.accion, a.icono, `${a.etiqueta} (${quien})`, 'btn-icon-extra')),
           botonAccion('editar', 'pencil', 'Editar ' + quien),
           botonAccion('borrar', 'trash-2', 'Borrar ' + quien, 'btn-icon-borrar'),
         ]));
-        const tr = el('tr', { attrs: { 'data-id': row.id } }, celdas);
+        const tr = el('tr', { className: claseFila ? claseFila(row) || '' : '', attrs: { 'data-id': row.id } }, celdas);
         if (row.id === editandoId) tr.classList.add('fila-editando');
         frag.appendChild(tr);
       });
@@ -176,6 +180,12 @@
       if (boton.dataset.accion === 'editar') {
         const registro = store.buscar(coleccion, id);
         if (registro) onEditar(registro);
+        return;
+      }
+      const extra = extras.find((a) => a.accion === boton.dataset.accion);
+      if (extra) {
+        const registro = store.buscar(coleccion, id);
+        if (registro) extra.fn(registro);
         return;
       }
 
@@ -277,7 +287,8 @@
       : store.agregar(coleccion, Object.assign({ fecha: ahora() }, datos));
     if (!guardado) return null;
     editor.terminar();
-    toast(editando ? 'Cambios guardados.' : mensajes.nuevo, 'ok');
+    const accion = mensajes.accion ? { texto: mensajes.accion.texto, fn: () => mensajes.accion.fn(guardado) } : undefined;
+    toast(editando ? 'Cambios guardados.' : mensajes.nuevo, 'ok', accion);
     return guardado;
   }
 

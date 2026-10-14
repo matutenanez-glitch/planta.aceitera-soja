@@ -125,6 +125,8 @@
     @apply ml-1 inline-flex h-7 min-w-7 items-center justify-center rounded-md border border-transparent px-1.5 text-slate-500 transition-colors hover:border-slate-700 hover:bg-slate-800 hover:text-slate-200;
   }
   .btn-icon-borrar:hover { @apply text-red-400; }
+  .btn-icon-extra { @apply text-sky-400 hover:text-sky-200; }
+  .data-table tr.fila-pendiente { @apply bg-sky-500/5; }
   .btn-icon.confirmar { @apply border-red-500/60 bg-red-500/15 text-[11px] font-bold text-red-300; }
 
   /* Formulario en modo edición */

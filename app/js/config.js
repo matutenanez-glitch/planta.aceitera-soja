@@ -7,7 +7,7 @@
   'use strict';
 
   SoyaCore.config = Object.freeze({
-    version: '2.18.0',
+    version: '2.19.0',
     locale: 'es-AR',
 
     /** Cuántas filas muestran las tablas de "últimos registros". */

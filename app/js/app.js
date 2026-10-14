@@ -98,6 +98,7 @@
   $('#app-version').textContent = 'v' + config.version;
   icons.render();
   Object.values(views).forEach((v) => v.init());
+  SoyaCore.comprobantes.init();
   SoyaCore.cuenta.init();
 
   store.errores().forEach((err) => {

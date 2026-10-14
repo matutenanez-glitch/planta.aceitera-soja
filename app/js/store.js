@@ -19,7 +19,7 @@
 
   /** nombre en el código → clave en localStorage (+ campos numéricos) */
   const COLECCIONES = {
-    ingresos:      { clave: 'camiones',      etiqueta: 'Recepción de camiones', numeros: ['neto', 'humedad'] },
+    ingresos:      { clave: 'camiones',      etiqueta: 'Recepción de camiones', numeros: ['bruto', 'tara', 'neto', 'humedad'] },
     despachos:     { clave: 'expeller',      etiqueta: 'Despacho de expeller',  numeros: ['neto'] },
     secadora:      { clave: 'secadora',      etiqueta: 'Secadora',              numeros: ['hCamion', 'hCaliente', 'hFrio'] },
     produccion:    { clave: 'produccion',    etiqueta: 'Producción',            numeros: ['expeller', 'aceite'] },
