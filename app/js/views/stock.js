@@ -155,10 +155,11 @@
     {
       render: (r) => el('div', { className: 'min-w-0' }, [
         el('p', { className: 'max-w-64 truncate font-semibold text-slate-100', text: r.nombre, attrs: { title: r.nombre } }),
-        el('p', { className: 'max-w-64 truncate text-[11px] text-slate-500', text: [r.codigo, r.ubicacion].filter(Boolean).join(' · ') || ' ' }),
+        r.codigo ? el('p', { className: 'max-w-64 truncate text-[11px] text-slate-500', text: r.codigo }) : null,
       ]),
     },
     { key: 'categoria', format: (v) => categoriaCorta(v) },
+    { key: 'ubicacion', className: 'max-w-40 truncate text-slate-400' },
     {
       className: 'num',
       render: (r) => {
@@ -374,17 +375,30 @@
       $('#stock-nombre').addEventListener('input', (e) => e.target.setCustomValidity(''));
       $('#stock-categoria').addEventListener('change', () => $('#stock-nombre').setCustomValidity(''));
 
+      // El formulario está en una ventana: "Agregar repuesto" la abre vacía y el lápiz, con el repuesto.
+      const dialogo = $('#stock-item-dialogo');
       let editor;
+      const abrirItem = (r) => {
+        if (!dialogo.open) dialogo.showModal();
+        if (r) editor.editar(r);
+        else { editor.terminar(); $('#stock-nombre').focus(); }
+      };
+      const cerrarItem = () => dialogo.open && dialogo.close();
+      dialogo.addEventListener('close', () => editor.terminar());
+      $('#stock-item-cerrar').addEventListener('click', cerrarItem);
+      form.querySelector('[data-cancelar]').addEventListener('click', cerrarItem);
+      $('#stock-agregar').addEventListener('click', () => abrirItem(null));
+
       tabla = tablaRegistros({
         tbody: $('#tbody-stock'),
         caption: null,
         coleccion: 'stock',
         columnas: COLUMNAS,
-        onEditar: (r) => editor.editar(r),
+        onEditar: (r) => abrirItem(r),
         ordenar: ordenarYFiltrar,
         describir: (r) => r.nombre,
         mensajeBorrado: (r) => `"${r.nombre}" se sacó del stock.`,
-        vacio: () => (!store.todos('stock').length ? 'Todavía no hay repuestos. Cargá el primero con el formulario.'
+        vacio: () => (!store.todos('stock').length ? 'Todavía no hay repuestos. Tocá "Agregar repuesto" para cargar el primero.'
           : $('#stock-filtro').value === '_reponer' && !$('#stock-buscar').value.trim() ? 'No hay repuestos para reponer.'
           : 'Ningún repuesto coincide con la búsqueda.'),
         claseFila: (r) => (estado(r, hayTabla.get(r.id) || 0) === 'sin' ? 'fila-stock-sin' : ''),
@@ -444,6 +458,7 @@
         const cambioCantidad = id && cantidadAlAbrir != null && nuevaCantidad !== redondear(cantidadAlAbrir);
         const guardado = guardarRegistro('stock', editor, datos, { nuevo: `"${nombre}" agregado al stock.` });
         if (!guardado) return;
+        cerrarItem();
         if (!id && nuevaCantidad) {
           store.agregar('stockMovimientos', { fecha: guardado.fecha, itemId: guardado.id, tipo: 'alta', cantidad: nuevaCantidad, nota: '' });
         } else if (cambioCantidad) {

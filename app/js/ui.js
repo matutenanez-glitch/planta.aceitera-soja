@@ -228,9 +228,12 @@
    *   tituloEdicion(r)    (opcional) texto del título mientras se edita
    * El formulario necesita: [data-form-titulo], [data-campo-fecha] con un
    * <input type="datetime-local">, el botón submit y un botón [data-cancelar].
+   * Puede estar en un panel (.glass-panel) o en un <dialog>: en un diálogo el
+   * botón Cancelar queda siempre a la vista (quien abre el diálogo lo cierra).
    */
   function editorFormulario(form, { rellenar, alTerminar, tabla, tituloEdicion }) {
-    const panel = form.closest('.glass-panel');
+    const panel = form.closest('.glass-panel, dialog');
+    const enDialogo = panel.tagName === 'DIALOG';
     const titulo = panel.querySelector('[data-form-titulo]');
     const tituloNuevo = titulo ? titulo.textContent : '';
     const submit = form.querySelector('button[type="submit"]');
@@ -245,7 +248,7 @@
       form.reset();
       if (campoFecha) { campoFecha.hidden = true; inputFecha.required = false; }
       submit.textContent = textoNuevo;
-      cancelar.hidden = true;
+      if (!enDialogo) cancelar.hidden = true;
       if (titulo) titulo.textContent = tituloNuevo;
       panel.classList.remove('editando');
       if (tabla) tabla.marcar(null);
@@ -262,11 +265,11 @@
         inputFecha.value = String(registro.fecha).replace(' ', 'T').slice(0, 16);
       }
       submit.textContent = 'Guardar cambios';
-      cancelar.hidden = false;
+      if (!enDialogo) cancelar.hidden = false;
       if (titulo) titulo.textContent = tituloEdicion ? tituloEdicion(registro) : `Editando el registro del ${registro.fecha}`;
       panel.classList.add('editando');
       if (tabla) tabla.marcar(id);
-      panel.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      if (!enDialogo) panel.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
       const primero = form.querySelector('input:not([type="hidden"]):not([readonly]), select, textarea');
       if (primero) primero.focus({ preventScroll: true });
     }

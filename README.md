@@ -94,6 +94,7 @@ El aceite no lo despacha la planta: lo retira con su camión la empresa que lo c
 
 Piezas y repuestos para prensas, extrusores, reductores y bombas, y cosas generales (lubricantes, herramientas).
 
+- **Agregar un repuesto nuevo:** con el botón **Agregar repuesto**, arriba de la lista, se abre una ventana para cargarlo. El lápiz de cada fila abre la misma ventana para corregirlo.
 - **Cada repuesto** tiene nombre, para qué sector es, código y ubicación (opcionales), en qué se cuenta (unidades, juegos, litros, kg o metros), la cantidad que hay y un **mínimo**.
 - **Aviso cuando se está por agotar.** Cuando la cantidad llega al mínimo, el repuesto pasa a **Reponer**. Si no queda ninguno, pasa a **Sin stock**. Se avisa así:
     - en el menú, al lado de **Stock de Repuestos**, con la cantidad de repuestos para reponer (en rojo si alguno está sin stock);
@@ -183,6 +184,7 @@ npm test             # prueba el cálculo del circuito de tanques (archivado)
 
 ## Historial
 
+- **2.20.1**: botón **Agregar repuesto** bien a la vista en Stock, que abre el formulario en una ventana. La lista de repuestos ocupa todo el ancho y suma la columna Ubicación.
 - **2.20.0**:
   - Nueva sección **Stock de Repuestos**, con alertas cuando un repuesto llega al mínimo o se termina, y entradas, salidas y conteos con historial.
   - Los repuestos del stock que se usan en un **mantenimiento** se descuentan solos (y vuelven si se corrige o se borra el registro).
