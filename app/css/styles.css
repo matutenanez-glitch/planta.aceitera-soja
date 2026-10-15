@@ -776,6 +776,12 @@
       border-color: color-mix(in oklab, var(--color-red-500) 40%, transparent);
     }
   }
+  .border-sky-400\/30 {
+    border-color: color-mix(in srgb, oklch(74.6% 0.16 232.661) 30%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      border-color: color-mix(in oklab, var(--color-sky-400) 30%, transparent);
+    }
+  }
   .border-sky-400\/50 {
     border-color: color-mix(in srgb, oklch(74.6% 0.16 232.661) 50%, transparent);
     @supports (color: color-mix(in lab, red, red)) {
@@ -865,6 +871,12 @@
   }
   .bg-sky-500 {
     background-color: var(--color-sky-500);
+  }
+  .bg-sky-500\/10 {
+    background-color: color-mix(in srgb, oklch(68.5% 0.169 237.323) 10%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      background-color: color-mix(in oklab, var(--color-sky-500) 10%, transparent);
+    }
   }
   .bg-slate-200 {
     background-color: var(--color-slate-200);
@@ -1185,6 +1197,9 @@
   }
   .text-red-400 {
     color: var(--color-red-400);
+  }
+  .text-sky-200 {
+    color: var(--color-sky-200);
   }
   .text-sky-300 {
     color: var(--color-sky-300);

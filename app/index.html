@@ -372,6 +372,42 @@
             <!-- 2.4 SECADORA ------------------------------------------------------- -->
             <section id="view-secadora" class="view" aria-label="Secadora y tomas de laboratorio" hidden>
                 <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                    <!-- Soja que entró hoy por los camiones: lo que hay para secar -->
+                    <div id="sec-soja" class="glass-panel col-span-1 rounded-2xl border-brand-500/20 bg-linear-to-r from-brand-900/20 to-transparent p-6 lg:col-span-3" aria-labelledby="sec-soja-titulo">
+                        <div class="flex flex-wrap items-center justify-between gap-6">
+                            <div>
+                                <h3 id="sec-soja-titulo" class="flex items-center gap-2 text-lg font-bold text-slate-200"><i data-lucide="truck" class="h-5 w-5 text-brand-400"></i> Soja para secar · hoy</h3>
+                                <p class="mt-1 text-xs text-slate-400">Lo que entró hoy en los camiones de soja (neto de balanza, de Recepción).</p>
+                                <p id="sec-soja-ayer" class="mt-1 text-xs text-slate-500"></p>
+                            </div>
+                            <div class="flex flex-wrap items-end gap-8 text-right">
+                                <div>
+                                    <p class="text-[11px] font-bold tracking-wide text-slate-400 uppercase">Camiones</p>
+                                    <output id="sec-soja-camiones" class="block text-2xl font-black text-white">0</output>
+                                </div>
+                                <div>
+                                    <p class="text-[11px] font-bold tracking-wide text-slate-400 uppercase">Humedad de ingreso</p>
+                                    <output id="sec-soja-humedad" class="block text-2xl font-black text-white">-</output>
+                                </div>
+                                <output id="sec-soja-kg" class="glow-text text-4xl font-black text-brand-400">0 kg</output>
+                            </div>
+                        </div>
+                        <p id="sec-soja-pendientes" class="mt-4 flex items-center gap-2 rounded-lg border border-sky-400/30 bg-sky-500/10 px-3 py-2 text-xs text-sky-200" hidden></p>
+                        <div id="sec-soja-detalle" class="mt-4 overflow-x-auto" hidden>
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Hora</th>
+                                        <th scope="col">Empresa</th>
+                                        <th scope="col" class="num">Kg</th>
+                                        <th scope="col" class="num">Humedad</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="sec-soja-lista"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
                     <div class="glass-panel col-span-1 flex flex-wrap items-center justify-between gap-6 rounded-2xl border-orange-500/20 bg-linear-to-r from-orange-900/20 to-transparent p-6 lg:col-span-3">
                         <div>
                             <h3 class="text-lg font-bold text-slate-200">Tomas de hoy</h3>

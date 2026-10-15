@@ -57,6 +57,7 @@ archivo/                 versiones anteriores y el circuito de tanques (en pausa
 - **Informe por empresa en PDF.** Está en el botón de la tabla. Lista los camiones de una empresa (o de todas) en un período, con el total de kg y la humedad promedio. Si son muchos, ocupa varias páginas.
 - **Datos de la planta.** El nombre, el CUIT, la dirección y el teléfono que salen en los PDF se completan una vez y quedan guardados en esa PC.
 - **Los PDF se generan en la PC** (`app/js/pdf.js`), sin internet y sin librerías externas.
+- **Soja para secar:** arriba de la Secadora se ve la soja que entró hoy en los camiones (los mismos kg que en Recepción): kg, camiones y humedad de ingreso, con el detalle de cada camión. Abajo dice cuánto entró ayer, y avisa si hay camiones de soja en planta esperando la tara (sus kg se suman al cargarla).
 - **Secadora:** la soja que pasa por la secadora ya está mezclada en el silo, así que las tomas no son de ningún camión. Cada toma registra la humedad **en caliente** y **en frío**. Arriba se ven las tomas del día, sus promedios y la hora de la última.
 - **Datos anteriores a la 2.18:** las tomas viejas de la secadora conservan la empresa y la humedad del camión que tenían. En el resumen de esos días, la humedad de ingreso sale de esos datos.
 
@@ -209,6 +210,7 @@ npm test             # prueba el cálculo del circuito de tanques (archivado)
 
 ## Historial
 
+- **2.22.0**: la Secadora muestra la **soja para secar**: los kg que entraron hoy en los camiones, con su humedad, el detalle por camión, lo de ayer y los camiones que esperan la tara.
 - **2.21.1**: las prensas vuelven a llamarse Prensa 1 a 8 (en la 2.21.0 figuraron por error como "extrusoras"); lo cargado con esos nombres, también en el stock, pasa solo a la prensa que corresponde. Cada línea tiene su extrusor/dosificador.
 - **2.21.0**: equipos por lugar, con sus nombres (Línea 1, Línea 2, Tolva de producción, Tanques de aceite y Exteriores). Mantenimientos se cargan eligiendo lugar y equipo. Estado de equipos muestra un panel por lugar con el resumen y lo último de cada equipo.
 - **2.20.1**: botón **Agregar repuesto** bien a la vista en Stock, que abre el formulario en una ventana. La lista de repuestos ocupa todo el ancho y suma la columna Ubicación.
