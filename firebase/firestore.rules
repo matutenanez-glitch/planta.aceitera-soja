@@ -1,0 +1,43 @@
+rules_version = '2';
+
+// SoyaCore OS: reglas de Firestore.
+// Cada cuenta (el dueño de una planta) solo puede leer y escribir sus propios datos,
+// en usuarios/{uid}/{coleccion}/{id}. En la nube nada se borra: lo que se borra en la
+// app queda guardado con borrado = true. Una PC no puede pisar un registro con una
+// versión más vieja que la que ya está en la nube.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /usuarios/{uid}/{coleccion}/{id} {
+      function esDueno() {
+        return request.auth != null && request.auth.uid == uid;
+      }
+
+      function coleccionValida() {
+        return coleccion in ['ingresos', 'despachos', 'secadora', 'produccion', 'mantenimiento', 'despachosAceite', 'stock', 'stockMovimientos'];
+      }
+
+      function registroValido() {
+        let d = request.resource.data;
+        return d.keys().hasOnly(['datos', 'borrado', 'modificado', 'servidor', 'dispositivo'])
+          && d.datos is string && d.datos.size() < 20000
+          && d.borrado is bool
+          && d.modificado is int
+          && d.servidor == request.time
+          && (!('dispositivo' in d) || (d.dispositivo is string && d.dispositivo.size() < 64));
+      }
+
+      allow read: if esDueno() && coleccionValida();
+      allow create: if esDueno() && coleccionValida() && registroValido();
+      // Gana el cambio más nuevo: no se acepta una versión más vieja que la guardada.
+      allow update: if esDueno() && coleccionValida() && registroValido()
+        && request.resource.data.modificado >= resource.data.modificado;
+      allow delete: if false;
+    }
+
+    // Todo lo demás está cerrado.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

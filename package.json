@@ -1,0 +1,18 @@
+{
+  "name": "gestion-aceitera",
+  "version": "2.22.0",
+  "private": true,
+  "description": "Gestión Aceitera: gestión de plantas aceiteras de soja (app de escritorio, funciona sin internet, copia en la nube opcional).",
+  "type": "module",
+  "scripts": {
+    "build:css": "node scripts/build-css.mjs",
+    "watch:css": "node scripts/build-css.mjs --watch",
+    "test": "node --test"
+  },
+  "devDependencies": {
+    "tailwindcss": "4.3.3"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
