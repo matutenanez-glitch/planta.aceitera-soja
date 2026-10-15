@@ -2,9 +2,10 @@
  * Equipos de la planta por lugar (líneas y sectores), sacados de config.lugares.
  *
  * Los mantenimientos guardan el id del equipo (equipoId), su lugar y su nombre.
- * Los registros de versiones anteriores solo tenían el nombre ("Prensa 3"): se
- * reconocen por los nombres anteriores de cada equipo (antes: [...]). Los que no
- * tienen equivalencia quedan como "otros", con su nombre y su historial.
+ * Los registros de versiones anteriores solo tenían el nombre ("Extrusor Línea 1"),
+ * o un id que después cambió: se reconocen por los nombres e ids anteriores de cada
+ * equipo (antes: [...]). Los que no tienen equivalencia quedan como "otros", con
+ * su nombre y su historial.
  */
 (function (SoyaCore) {
   'use strict';
@@ -28,8 +29,7 @@
   /** Equipo de un registro de mantenimiento (o null si no está en la lista actual). */
   function de(r) {
     if (!r) return null;
-    if (r.equipoId && porId.has(r.equipoId)) return porId.get(r.equipoId);
-    if (r.equipoId) return null; // un equipo que se sacó de la lista
+    if (r.equipoId) return porId.get(r.equipoId) || porNombreAnterior.get(r.equipoId) || null;
     return porNombreAnterior.get(r.equipo) || null;
   }
 
@@ -42,7 +42,7 @@
     buscar: (id) => porId.get(id) || null,
     de,
     nombreCompleto,
-    /** Cómo se muestra el equipo de un registro: "Línea 1 · Extrusora 3", o su nombre viejo. */
+    /** Cómo se muestra el equipo de un registro: "Línea 1 · Prensa 3", o su nombre viejo. */
     nombreDe: (r) => { const eq = de(r); return eq ? nombreCompleto(eq) : (r && r.equipo) || '-'; },
     /** Clave única del equipo de un registro (para agrupar el historial). */
     claveDe: (r) => { const eq = de(r); return eq ? eq.id : 'otro:' + ((r && r.equipo) || ''); },

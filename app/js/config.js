@@ -7,7 +7,7 @@
   'use strict';
 
   SoyaCore.config = Object.freeze({
-    version: '2.21.0',
+    version: '2.21.1',
     locale: 'es-AR',
 
     /** Cuántas filas muestran las tablas de "últimos registros". */
@@ -59,10 +59,10 @@
      * un mantenimiento, primero se ofrecen los repuestos del tipo del equipo.
      */
     tiposEquipo: {
-      Extrusora: 'Extrusoras',
-      Reductor:  'Cajas reductoras',
-      Extrusor:  'Extrusor/dosificador',
-      Bomba:     'Bombas',
+      Prensa:   'Prensas',
+      Reductor: 'Cajas reductoras',
+      Extrusor: 'Extrusores',
+      Bomba:    'Bombas',
     },
 
     /**
@@ -71,17 +71,19 @@
      *   id      NO se cambia nunca: es lo que guardan los mantenimientos.
      *   nombre  se puede cambiar cuando se quiera (el historial sigue en su lugar).
      *   tipo    una de las claves de tiposEquipo.
-     *   antes   nombres que tenía en versiones anteriores, para no perder su historial.
+     *   antes   nombres (o ids) que tuvo en versiones anteriores, para no perder su historial.
+     *           Hasta la 2.20 los registros guardaban solo el nombre ("Prensa 3"); en la
+     *           2.21.0 las prensas figuraron por error como "extrusoras" (L1-EXTRUSORA-N).
      */
     lugares: [
       {
         id: 'L1',
         nombre: 'Línea 1',
         equipos: [
-          { id: 'L1-EXTRUSORA-1', nombre: 'Extrusora 1', tipo: 'Extrusora', antes: ['Prensa 1'] },
-          { id: 'L1-EXTRUSORA-2', nombre: 'Extrusora 2', tipo: 'Extrusora', antes: ['Prensa 2'] },
-          { id: 'L1-EXTRUSORA-3', nombre: 'Extrusora 3', tipo: 'Extrusora', antes: ['Prensa 3'] },
-          { id: 'L1-EXTRUSORA-4', nombre: 'Extrusora 4', tipo: 'Extrusora', antes: ['Prensa 4'] },
+          { id: 'L1-PRENSA-1', nombre: 'Prensa 1', tipo: 'Prensa', antes: ['Prensa 1', 'L1-EXTRUSORA-1'] },
+          { id: 'L1-PRENSA-2', nombre: 'Prensa 2', tipo: 'Prensa', antes: ['Prensa 2', 'L1-EXTRUSORA-2'] },
+          { id: 'L1-PRENSA-3', nombre: 'Prensa 3', tipo: 'Prensa', antes: ['Prensa 3', 'L1-EXTRUSORA-3'] },
+          { id: 'L1-PRENSA-4', nombre: 'Prensa 4', tipo: 'Prensa', antes: ['Prensa 4', 'L1-EXTRUSORA-4'] },
           { id: 'L1-CR-ALIMENTADOR', nombre: 'Caja reductora alimentador dosificador', tipo: 'Reductor' },
           { id: 'L1-CR-DOSIFICADOR', nombre: 'Caja reductora dosificador prensa', tipo: 'Reductor' },
           { id: 'L1-CR-CHIMANGO-RECEPTOR', nombre: 'Caja reductora chimango receptor', tipo: 'Reductor' },
@@ -97,10 +99,10 @@
         id: 'L2',
         nombre: 'Línea 2',
         equipos: [
-          { id: 'L2-EXTRUSORA-1', nombre: 'Extrusora 1', tipo: 'Extrusora', antes: ['Prensa 5'] },
-          { id: 'L2-EXTRUSORA-2', nombre: 'Extrusora 2', tipo: 'Extrusora', antes: ['Prensa 6'] },
-          { id: 'L2-EXTRUSORA-3', nombre: 'Extrusora 3', tipo: 'Extrusora', antes: ['Prensa 7'] },
-          { id: 'L2-EXTRUSORA-4', nombre: 'Extrusora 4', tipo: 'Extrusora', antes: ['Prensa 8'] },
+          { id: 'L2-PRENSA-5', nombre: 'Prensa 5', tipo: 'Prensa', antes: ['Prensa 5', 'L2-EXTRUSORA-1'] },
+          { id: 'L2-PRENSA-6', nombre: 'Prensa 6', tipo: 'Prensa', antes: ['Prensa 6', 'L2-EXTRUSORA-2'] },
+          { id: 'L2-PRENSA-7', nombre: 'Prensa 7', tipo: 'Prensa', antes: ['Prensa 7', 'L2-EXTRUSORA-3'] },
+          { id: 'L2-PRENSA-8', nombre: 'Prensa 8', tipo: 'Prensa', antes: ['Prensa 8', 'L2-EXTRUSORA-4'] },
           { id: 'L2-CR-ALIMENTADOR', nombre: 'Caja reductora alimentador dosificador', tipo: 'Reductor' },
           { id: 'L2-CR-DOSIFICADOR', nombre: 'Caja reductora dosificador prensa', tipo: 'Reductor' },
           { id: 'L2-CR-CHIMANGO-RECEPTOR', nombre: 'Caja reductora chimango receptor', tipo: 'Reductor' },
@@ -125,7 +127,7 @@
         equipos: [
           { id: 'TQ-CR-T1', nombre: 'Caja reductora T1 (tanque)', tipo: 'Reductor', antes: ['Motor/Reductor Agitador Tanque 1'] },
           { id: 'TQ-CR-T2', nombre: 'Caja reductora T2 (tanque)', tipo: 'Reductor', antes: ['Motor/Reductor Agitador Tanque 2'] },
-          { id: 'TQ-EXTRUSORA', nombre: 'Extrusora tanques', tipo: 'Extrusora' },
+          { id: 'TQ-EXTRUSORA', nombre: 'Extrusora tanques', tipo: 'Extrusor' },
           { id: 'TQ-BOMBA-ACEITE', nombre: 'Bomba aceite', tipo: 'Bomba' },
           { id: 'TQ-BOMBA-GOMA', nombre: 'Bomba goma', tipo: 'Bomba' },
         ],

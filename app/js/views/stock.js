@@ -313,7 +313,7 @@
       if (localStorage.getItem(MARCA) || store.todos('stock').length) return;
       const viejo = JSON.parse(localStorage.getItem('soyacore_stock') || 'null');
       if (!Array.isArray(viejo) || !viejo.length) return;
-      const categorias = { 'Repuestos Prensas': 'Extrusora', 'Repuestos Extrusor': 'Extrusor' };
+      const categorias = { 'Repuestos Prensas': 'Prensa', 'Repuestos Extrusor': 'Extrusor' };
       let pasados = 0;
       viejo.forEach((s) => {
         if (!s || !String(s.n || '').trim()) return;

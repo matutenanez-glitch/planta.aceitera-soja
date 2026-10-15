@@ -67,9 +67,9 @@
         if (estado) estado.cambio = true;
       }
     }
-    // v2.21: los repuestos "para prensas" pasan a ser "para extrusoras" (las prensas se llaman extrusoras).
-    if (nombre === 'stock' && r.categoria === 'Prensa') {
-      r.categoria = 'Extrusora';
+    // La 2.21.0 llamó "extrusoras" a las prensas por error: sus repuestos vuelven a ser "para prensas".
+    if (nombre === 'stock' && r.categoria === 'Extrusora') {
+      r.categoria = 'Prensa';
       if (estado) estado.cambio = true;
     }
     return r;

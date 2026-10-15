@@ -88,7 +88,7 @@ El aceite no lo despacha la planta: lo retira con su camión la empresa que lo c
 Los equipos están ordenados por **lugar**, cada uno con su nombre (en `config.js` → `lugares`):
 
 - **Línea 1** y **Línea 2**, cada una con:
-    - Extrusora 1 a 4;
+    - las prensas: Prensa 1 a 4 en la Línea 1 y Prensa 5 a 8 en la Línea 2;
     - las cajas reductoras: alimentador dosificador, dosificador prensa, chimango receptor, elevador expeller, borrero y chimango aceite;
     - el extrusor/dosificador de la línea y su caja reductora;
     - la bomba batea.
@@ -106,7 +106,7 @@ Los equipos están ordenados por **lugar**, cada uno con su nombre (en `config.j
 Al tocar un equipo se ve su historial y se puede registrar un mantenimiento para ese equipo.
 
 **Mantenimientos anteriores a la 2.21:**
-- Las prensas pasaron a llamarse extrusoras: Prensa 1 a 4 son las Extrusoras 1 a 4 de la Línea 1, y Prensa 5 a 8, las de la Línea 2.
+- Prensa 1 a 4 quedan en la Línea 1 y Prensa 5 a 8 en la Línea 2, con su historial.
 - Los extrusores de cada línea y los agitadores de los tanques también se reconocen solos.
 - Los equipos viejos que no tienen equivalencia (reductores "L1 - Reductor N", "Bomba N") aparecen en **Otros**, con su historial.
 - Al editar uno de esos registros, se puede pasar al equipo que corresponde.
@@ -114,7 +114,7 @@ Al tocar un equipo se ve su historial y se puede registrar un mantenimiento para
 
 ## Stock de repuestos
 
-Piezas y repuestos para extrusoras, cajas reductoras, extrusores/dosificadores y bombas, y cosas generales (lubricantes, herramientas).
+Piezas y repuestos para prensas, cajas reductoras, extrusores y bombas, y cosas generales (lubricantes, herramientas).
 
 - **Agregar un repuesto nuevo:** con el botón **Agregar repuesto**, arriba de la lista, se abre una ventana para cargarlo. El lápiz de cada fila abre la misma ventana para corregirlo.
 - **Cada repuesto** tiene nombre, para qué tipo de equipo es, código y ubicación (opcionales), en qué se cuenta (unidades, juegos, litros, kg o metros), la cantidad que hay y un **mínimo**.
@@ -128,7 +128,7 @@ Piezas y repuestos para extrusoras, cajas reductoras, extrusores/dosificadores y
     - **Contamos** pone lo que se contó en el depósito y anota la diferencia.
 
   También se puede corregir desde **Editar**. Cada repuesto tiene su historial de movimientos, con los mantenimientos en que se usó.
-- **Descuento automático desde Mantenimientos.** En el registro de mantenimiento se eligen los **repuestos del stock que se usaron** y cuántos. Al guardar se descuentan solos. Primero aparecen los del tipo del equipo (por ejemplo, los de extrusoras para una extrusora), y cada uno dice cuánto hay y cuánto va a quedar. Si se corrige o se borra el mantenimiento, el stock se acomoda solo. Los repuestos que no están en el stock se escriben en **Otros repuestos**.
+- **Descuento automático desde Mantenimientos.** En el registro de mantenimiento se eligen los **repuestos del stock que se usaron** y cuántos. Al guardar se descuentan solos. Primero aparecen los del tipo del equipo (por ejemplo, los de prensas para una prensa), y cada uno dice cuánto hay y cuánto va a quedar. Si se corrige o se borra el mantenimiento, el stock se acomoda solo. Los repuestos que no están en el stock se escriben en **Otros repuestos**.
 - **Más de lo que figura.** Si se usó más de lo que figura en el stock, el mantenimiento se guarda igual (el repuesto se usó). El stock queda en negativo, con aviso, hasta que se corrija con **Contamos**.
 - **Cómo se calcula la cantidad.** No se guarda en el repuesto: se calcula con sus movimientos (cantidad inicial, compras, salidas y conteos) menos lo usado en los mantenimientos. Así, dos PCs que cargan a la vez no se pisan.
 - **Stock del sistema anterior.** Si la PC tiene el stock de la v2.5 (`soyacore_stock`) y el stock nuevo está vacío, se pasa solo, una vez.
@@ -206,7 +206,8 @@ npm test             # prueba el cálculo del circuito de tanques (archivado)
 
 ## Historial
 
-- **2.21.0**: equipos por lugar, con sus nombres (Línea 1, Línea 2, Tolva de producción, Tanques de aceite y Exteriores). Mantenimientos se cargan eligiendo lugar y equipo. Estado de equipos muestra un panel por lugar con el resumen y lo último de cada equipo. Las prensas pasan a llamarse extrusoras, también en el stock.
+- **2.21.1**: las prensas vuelven a llamarse Prensa 1 a 8 (en la 2.21.0 figuraron por error como "extrusoras"); lo cargado con esos nombres, también en el stock, pasa solo a la prensa que corresponde. Cada línea tiene su extrusor/dosificador.
+- **2.21.0**: equipos por lugar, con sus nombres (Línea 1, Línea 2, Tolva de producción, Tanques de aceite y Exteriores). Mantenimientos se cargan eligiendo lugar y equipo. Estado de equipos muestra un panel por lugar con el resumen y lo último de cada equipo.
 - **2.20.1**: botón **Agregar repuesto** bien a la vista en Stock, que abre el formulario en una ventana. La lista de repuestos ocupa todo el ancho y suma la columna Ubicación.
 - **2.20.0**:
   - Nueva sección **Stock de Repuestos**, con alertas cuando un repuesto llega al mínimo o se termina, y entradas, salidas y conteos con historial.

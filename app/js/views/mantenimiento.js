@@ -52,8 +52,8 @@
   const OTROS = '_otros';
   /** Al editar uno de esos registros: su nombre y su tipo, para guardarlo igual. */
   let equipoViejo = null;
-  /** Hasta la 2.20 las extrusoras se llamaban prensas. */
-  const TIPO_ANTERIOR = { Prensa: 'Extrusora' };
+  /** La 2.21.0 llamó "extrusoras" a las prensas. */
+  const TIPO_ANTERIOR = { Extrusora: 'Prensa' };
 
   /** Tipo del equipo elegido: decide qué repuestos del stock se ofrecen primero. */
   function tipoElegido() {

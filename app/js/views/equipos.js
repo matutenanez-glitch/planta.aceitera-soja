@@ -53,7 +53,7 @@
   const fechaCorta = (f) => `${f.slice(8, 10)}/${f.slice(5, 7)}/${f.slice(2, 4)}`;
   const DIAS = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
   const conDia = (f) => `${DIAS[new Date(parse(f)).getDay()]} ${f.slice(8, 10)}/${f.slice(5, 7)}`;
-  const intervenciones = (n) => `${n} intervención${n === 1 ? '' : 'es'}`;
+  const intervenciones = (n) => `${n} ${n === 1 ? 'intervención' : 'intervenciones'}`;
 
   /** Estado de cada equipo según su historial, agrupado por lugar. */
   function calcularEstados() {
