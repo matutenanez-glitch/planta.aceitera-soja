@@ -13,6 +13,8 @@ Funciona **sin internet** y guarda los datos **en la PC donde se usa**. Si el du
 2. Usá siempre **el mismo navegador y el mismo usuario de Windows**: los datos quedan guardados en ese navegador.
 3. Hacé un **backup** con el botón **Exportar** (abajo a la izquierda) al menos una vez por semana y guardalo fuera de la PC. La app avisa en ámbar cuando pasaron 7 días.
 
+**Un solo archivo.** Con `node scripts/empaquetar.mjs` se arma `dist/gestion-aceitera-v<versión>.html`, con todo adentro. Sirve para pasar la app por pendrive, correo o WhatsApp: se abre con doble clic, sin descomprimir nada, y funciona igual que la carpeta `app/`.
+
 > **Si venís de la v2.8:** abrí la versión nueva en el mismo navegador donde usabas la versión anterior y los datos aparecen solos (se usan las mismas claves `soya_*`). La v2.8 también sigue pudiendo leerlos.
 
 ## Estructura del proyecto
@@ -36,6 +38,7 @@ app/                     ← la aplicación (esto es lo que se instala en la pla
   js/app.js              arranque y navegación
 src/styles.css           ← fuente de los estilos (Tailwind CSS v4)
 scripts/build-css.mjs    compila src/styles.css → app/css/styles.css
+scripts/empaquetar.mjs   arma la app en un solo archivo HTML (dist/)
 scripts/sincronizar_github.bat   sube los cambios a GitHub (Windows)
 firebase/firestore.rules         reglas de la base en la nube (cada dueño ve solo lo suyo)
 docs/nube-firebase.md            cómo poner en marcha la copia en la nube
