@@ -15,6 +15,7 @@
     <script src="js/icons.js" defer></script>
     <script src="js/ui.js" defer></script>
     <script src="js/turnos.js" defer></script>
+    <script src="js/planta.js" defer></script>
     <script src="js/store.js" defer></script>
     <script src="js/nube.js" defer></script>
     <script src="js/graficos.js" defer></script>
@@ -598,11 +599,11 @@
                         <h3 class="mb-4 flex items-center gap-2 font-semibold text-slate-200"><i data-lucide="wrench" class="h-4 w-4 text-slate-400"></i> <span data-form-titulo>Registro de Mantenimiento</span></h3>
                         <form id="form-mantenimiento" class="space-y-4 text-sm" autocomplete="off">
                             <div>
-                                <label for="mant-tipo" class="field-label">Sector / Tipo</label>
-                                <select id="mant-tipo" required class="field"></select>
+                                <label for="mant-lugar" class="field-label">Lugar (línea o sector)</label>
+                                <select id="mant-lugar" required class="field"></select>
                             </div>
                             <div>
-                                <label for="mant-equipo" class="field-label">Equipo Específico</label>
+                                <label for="mant-equipo" class="field-label">Equipo</label>
                                 <select id="mant-equipo" required class="field"></select>
                             </div>
                             <div>

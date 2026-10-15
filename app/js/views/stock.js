@@ -16,9 +16,9 @@
   const { config, store } = SoyaCore;
 
   // ---------- Categorías y unidades ----------
-  /** "Para" qué es cada repuesto: los sectores de equipos y las categorías extra. */
+  /** "Para" qué es cada repuesto: los tipos de equipo y las categorías extra. */
   const CATEGORIAS = {};
-  Object.entries(config.equipos).forEach(([k, def]) => { CATEGORIAS[k] = { corta: def.etiqueta.split(' (')[0], larga: def.etiqueta.split(' (')[0] }; });
+  Object.entries(config.tiposEquipo).forEach(([k, etiqueta]) => { CATEGORIAS[k] = { corta: etiqueta, larga: etiqueta }; });
   Object.entries(config.stock.categoriasExtra).forEach(([k, etiqueta]) => { CATEGORIAS[k] = { corta: etiqueta.split(' (')[0], larga: etiqueta }; });
   const ORDEN_CATEGORIAS = Object.keys(CATEGORIAS);
   const categoriaCorta = (k) => (CATEGORIAS[k] ? CATEGORIAS[k].corta : k || '-');
@@ -218,7 +218,7 @@
     }));
     store.todos('mantenimiento').forEach((r) => usosDe(r).filter((u) => u.itemId === itemId).forEach((u) => lista.push({
       fecha: r.fecha,
-      texto: `Usado en ${r.equipo}`,
+      texto: `Usado en ${SoyaCore.planta.nombreDe(r)}`,
       detalle: r.tarea || '',
       cantidad: -Number(u.cantidad),
     })));
@@ -313,7 +313,7 @@
       if (localStorage.getItem(MARCA) || store.todos('stock').length) return;
       const viejo = JSON.parse(localStorage.getItem('soyacore_stock') || 'null');
       if (!Array.isArray(viejo) || !viejo.length) return;
-      const categorias = { 'Repuestos Prensas': 'Prensa', 'Repuestos Extrusor': 'Extrusor' };
+      const categorias = { 'Repuestos Prensas': 'Extrusora', 'Repuestos Extrusor': 'Extrusor' };
       let pasados = 0;
       viejo.forEach((s) => {
         if (!s || !String(s.n || '').trim()) return;

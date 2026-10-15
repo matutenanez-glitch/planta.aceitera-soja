@@ -146,10 +146,7 @@
     @apply border-brand-500/60 bg-brand-500/15 text-brand-300;
   }
 
-  /* Tarjetas de estado de equipos */
-  .equipo-card {
-    @apply flex min-w-0 flex-col gap-1.5 rounded-xl border border-l-4 border-slate-800 bg-slate-900/60 p-3 text-left transition-colors hover:bg-slate-800/70;
-  }
+  /* Bordes de estado (tarjetas de turnos) */
   .estado-operativo     { @apply border-l-emerald-500; }
   .estado-observaciones { @apply border-l-amber-400; }
   .estado-fuera         { @apply border-l-red-500 bg-red-950/30; }

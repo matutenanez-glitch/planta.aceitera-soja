@@ -1,5 +1,7 @@
 /*
- * Vista: Mantenimiento de prensas, extrusores, reductores y bombas.
+ * Vista: Mantenimiento de los equipos, por lugar (Línea 1, Línea 2, Tanques de
+ * aceite, Exteriores; ver config.lugares). Cada registro guarda el equipo
+ * (equipoId), su lugar, su nombre y su tipo.
  *
  * Los repuestos del stock que se usaron se guardan en el registro
  * (usados: [{ itemId, nombre, unidad, cantidad }]) y se descuentan solos del
@@ -11,7 +13,7 @@
 
   const { $, el, fillSelect, num, tablaRegistros, editorFormulario, guardarRegistro } = SoyaCore.ui;
   const { store } = SoyaCore;
-  const equipos = SoyaCore.config.equipos;
+  const planta = SoyaCore.planta;
   const estados = SoyaCore.config.estadosEquipo;
   const stock = SoyaCore.views.stock;
   /** Los registros anteriores a la v2.11 no tenían estado: se toman como operativos. */
@@ -30,15 +32,35 @@
 
   const COLUMNAS = [
     { key: 'fecha' },
-    { key: 'equipo' },
+    {
+      className: 'min-w-40 whitespace-normal',
+      render: (r) => {
+        const eq = planta.de(r);
+        return el('div', null, [
+          el('p', { className: 'text-slate-200', text: eq ? eq.nombre : r.equipo || '-' }),
+          el('p', { className: 'text-[11px] text-slate-500', text: eq ? eq.lugarNombre : 'Ya no está en la lista' }),
+        ]);
+      },
+    },
     { key: 'tarea', className: 'max-w-56 truncate' },
     { key: 'repuestos', className: 'max-w-56 truncate', format: (_, r) => textoRepuestos(r) },
     { key: 'estado', format: (_, r) => estados[estadoDe(r)].etiqueta },
     { key: 'observaciones', className: 'max-w-56 truncate' },
   ];
 
-  /** Registros viejos no guardaban el tipo: se deduce buscando el equipo en las listas. */
-  const tipoDe = (r) => r.tipo || Object.keys(equipos).find((t) => equipos[t].lista.includes(r.equipo)) || Object.keys(equipos)[0];
+  /** Equipos que ya no están en la lista (registros viejos sin equivalencia). */
+  const OTROS = '_otros';
+  /** Al editar uno de esos registros: su nombre y su tipo, para guardarlo igual. */
+  let equipoViejo = null;
+  /** Hasta la 2.20 las extrusoras se llamaban prensas. */
+  const TIPO_ANTERIOR = { Prensa: 'Extrusora' };
+
+  /** Tipo del equipo elegido: decide qué repuestos del stock se ofrecen primero. */
+  function tipoElegido() {
+    const eq = planta.buscar($('#mant-equipo').value);
+    if (eq) return eq.tipo;
+    return equipoViejo ? TIPO_ANTERIOR[equipoViejo.tipo] || equipoViejo.tipo || null : null;
+  }
 
   // ---------- Repuestos del stock que se usaron ----------
   /**
@@ -51,12 +73,12 @@
     return stock.redondear((hay.get(itemId) || 0) + (usadosAntes.get(itemId) || 0));
   }
 
-  /** Opciones del selector de repuestos: primero los del sector elegido, después los generales y el resto. */
+  /** Opciones del selector de repuestos: primero los del tipo del equipo, después los generales y el resto. */
   function llenarOpciones(select, elegido, hay) {
-    const tipo = $('#mant-tipo').value;
+    const tipo = tipoElegido();
     const items = store.todos('stock').slice().sort((a, b) => String(a.nombre).localeCompare(String(b.nombre), 'es'));
     const grupos = [
-      { etiqueta: `Para ${stock.categoriaCorta(tipo)}`, items: items.filter((i) => i.categoria === tipo) },
+      { etiqueta: `Para ${stock.categoriaCorta(tipo)}`, items: tipo ? items.filter((i) => i.categoria === tipo) : [] },
       { etiqueta: 'Generales', items: items.filter((i) => i.categoria === 'General') },
       { etiqueta: 'De otros sectores', items: items.filter((i) => i.categoria !== tipo && i.categoria !== 'General') },
     ];
@@ -172,18 +194,32 @@
     actualizarUsados();
   }
 
+  /** Llena los lugares; con un registro viejo sin equivalencia agrega "Otros". */
+  function llenarLugares(conOtros) {
+    const actual = $('#mant-lugar').value;
+    const opciones = planta.lugares().map((l) => ({ value: l.id, label: l.nombre }));
+    if (conOtros) opciones.push({ value: OTROS, label: 'Otros (ya no están en la lista)' });
+    fillSelect($('#mant-lugar'), opciones);
+    if ([...$('#mant-lugar').options].some((o) => o.value === actual)) $('#mant-lugar').value = actual;
+  }
+
+  /** Equipos del lugar elegido, en el orden de config.lugares. */
   function actualizarEquipos() {
-    const tipo = $('#mant-tipo').value;
-    fillSelect($('#mant-equipo'), (equipos[tipo] || { lista: [] }).lista);
+    const lugar = planta.lugar($('#mant-lugar').value);
+    const opciones = lugar
+      ? lugar.equipos.map((e) => ({ value: e.id, label: e.nombre }))
+      : equipoViejo ? [{ value: OTROS, label: equipoViejo.nombre }] : [];
+    fillSelect($('#mant-equipo'), opciones);
     actualizarUsados();
   }
 
   SoyaCore.views = SoyaCore.views || {};
   SoyaCore.views.mantenimiento = {
     init() {
-      fillSelect($('#mant-tipo'), Object.entries(equipos).map(([value, def]) => ({ value, label: def.etiqueta })));
+      llenarLugares(false);
       fillSelect($('#mant-estado'), Object.entries(estados).map(([value, def]) => ({ value, label: def.etiqueta })), 'operativo');
-      $('#mant-tipo').addEventListener('change', actualizarEquipos);
+      $('#mant-lugar').addEventListener('change', actualizarEquipos);
+      $('#mant-equipo').addEventListener('change', actualizarUsados);
       $('#mant-agregar-uso').addEventListener('click', () => {
         const li = agregarFila(null);
         li.querySelector('select').focus();
@@ -202,15 +238,14 @@
       editor = editorFormulario($('#form-mantenimiento'), {
         tabla,
         rellenar(r) {
-          $('#mant-tipo').value = tipoDe(r);
           usadosAntes = new Map();
           stock.usosDe(r).forEach((u) => usadosAntes.set(u.itemId, (usadosAntes.get(u.itemId) || 0) + Number(u.cantidad)));
+          const eq = planta.de(r);
+          equipoViejo = eq ? null : { nombre: r.equipo || '-', tipo: r.tipo || '' };
+          llenarLugares(!eq);
+          $('#mant-lugar').value = eq ? eq.lugar : OTROS;
           actualizarEquipos();
-          const select = $('#mant-equipo');
-          if (![...select.options].some((o) => o.value === r.equipo)) {
-            select.appendChild(el('option', { text: r.equipo, attrs: { value: r.equipo } }));
-          }
-          select.value = r.equipo;
+          $('#mant-equipo').value = eq ? eq.id : OTROS;
           $('#mant-tarea').value = r.tarea || '';
           $('#mant-piezas').value = r.repuestos === 'Ninguno' ? '' : r.repuestos || '';
           $('#mant-obs').value = r.observaciones || '';
@@ -219,6 +254,8 @@
         },
         alTerminar() {
           usadosAntes = new Map();
+          equipoViejo = null;
+          llenarLugares(false);
           limpiarUsados();
           actualizarEquipos();
         },
@@ -228,9 +265,12 @@
         e.preventDefault();
         const usados = usadosDelFormulario();
         const otros = $('#mant-piezas').value.trim();
+        const eq = planta.buscar($('#mant-equipo').value);
+        const equipo = eq
+          ? { lugar: eq.lugar, equipoId: eq.id, equipo: eq.nombre, tipo: eq.tipo }
+          : { lugar: '', equipoId: '', equipo: equipoViejo ? equipoViejo.nombre : '', tipo: equipoViejo ? equipoViejo.tipo : '' };
         const guardado = guardarRegistro('mantenimiento', editor, {
-          tipo: $('#mant-tipo').value,
-          equipo: $('#mant-equipo').value,
+          ...equipo,
           tarea: $('#mant-tarea').value.trim(),
           usados,
           repuestos: otros || (usados.length ? '' : 'Ninguno'),
@@ -249,10 +289,13 @@
     },
     refresh() {},
     /** Prepara el formulario para un equipo (lo usa el tablero de Estado de Equipos). */
-    nuevoPara(tipo, equipo) {
-      $('#mant-tipo').value = tipo;
+    nuevoPara(equipoId) {
+      const eq = planta.buscar(equipoId);
+      if (!eq) return;
+      $('#mant-lugar').value = eq.lugar;
       actualizarEquipos();
-      $('#mant-equipo').value = equipo;
+      $('#mant-equipo').value = eq.id;
+      actualizarUsados();
       $('#mant-tarea').focus();
     },
     estadoDe,

@@ -1,13 +1,13 @@
 /*
  * Configuración de la planta.
- * Todo lo que cambia de una planta a otra (equipos, turnos, densidad) vive acá,
+ * Todo lo que cambia de una planta a otra (lugares y equipos, turnos, densidad) vive acá,
  * así no hay que tocar el HTML ni la lógica para adaptarlo.
  */
 (function (SoyaCore) {
   'use strict';
 
   SoyaCore.config = Object.freeze({
-    version: '2.20.1',
+    version: '2.21.0',
     locale: 'es-AR',
 
     /** Cuántas filas muestran las tablas de "últimos registros". */
@@ -54,35 +54,95 @@
     /** En un turno se pasan hasta 2 tanques: no se acepta más que eso. */
     maxTanquesPorTurno: 2,
 
-    /** Equipos por sector, para el formulario de mantenimiento. */
-    equipos: {
-      // 2 líneas de 4 prensas; cada línea tiene un extrusor.
-      Prensa: {
-        etiqueta: 'Prensas (Línea 1: 1 a 4 · Línea 2: 5 a 8)',
-        lista: ['Prensa 1', 'Prensa 2', 'Prensa 3', 'Prensa 4', 'Prensa 5', 'Prensa 6', 'Prensa 7', 'Prensa 8'],
-      },
-      Extrusor: {
-        etiqueta: 'Extrusores (uno por línea)',
-        lista: ['Extrusor Línea 1', 'Extrusor Línea 2'],
-      },
-      Reductor: {
-        etiqueta: 'Cajas Reductoras (WEG/Bronto)',
-        lista: [
-          'L1 - Reductor 1', 'L1 - Reductor 2', 'L1 - Reductor 3', 'L1 - Reductor 4', 'L1 - Reductor 5',
-          'L2 - Reductor 1', 'L2 - Reductor 2', 'L2 - Reductor 3', 'L2 - Reductor 4', 'L2 - Reductor 5', 'L2 - Reductor 6',
-          'Extrusor Principal L1', 'Extrusor Principal L2',
-          'Motor/Reductor Agitador Tanque 1', 'Motor/Reductor Agitador Tanque 2',
-        ],
-      },
-      Bomba: {
-        etiqueta: 'Bombas',
-        lista: ['Bomba 1', 'Bomba 2', 'Bomba 3', 'Bomba 4'],
-      },
+    /**
+     * Tipos de equipo. Sirven para el "Para" de los repuestos del stock: al cargar
+     * un mantenimiento, primero se ofrecen los repuestos del tipo del equipo.
+     */
+    tiposEquipo: {
+      Extrusora: 'Extrusoras',
+      Reductor:  'Cajas reductoras',
+      Extrusor:  'Extrusor/dosificador',
+      Bomba:     'Bombas',
     },
 
     /**
-     * Stock de repuestos. Cada repuesto es "para" uno de los sectores de
-     * "equipos" (Prensa, Extrusor, …) o para una de estas categorías extra.
+     * Equipos de la planta, por lugar (línea o sector), en el orden en que se muestran
+     * en Mantenimientos y en Estado de Equipos.
+     *   id      NO se cambia nunca: es lo que guardan los mantenimientos.
+     *   nombre  se puede cambiar cuando se quiera (el historial sigue en su lugar).
+     *   tipo    una de las claves de tiposEquipo.
+     *   antes   nombres que tenía en versiones anteriores, para no perder su historial.
+     */
+    lugares: [
+      {
+        id: 'L1',
+        nombre: 'Línea 1',
+        equipos: [
+          { id: 'L1-EXTRUSORA-1', nombre: 'Extrusora 1', tipo: 'Extrusora', antes: ['Prensa 1'] },
+          { id: 'L1-EXTRUSORA-2', nombre: 'Extrusora 2', tipo: 'Extrusora', antes: ['Prensa 2'] },
+          { id: 'L1-EXTRUSORA-3', nombre: 'Extrusora 3', tipo: 'Extrusora', antes: ['Prensa 3'] },
+          { id: 'L1-EXTRUSORA-4', nombre: 'Extrusora 4', tipo: 'Extrusora', antes: ['Prensa 4'] },
+          { id: 'L1-CR-ALIMENTADOR', nombre: 'Caja reductora alimentador dosificador', tipo: 'Reductor' },
+          { id: 'L1-CR-DOSIFICADOR', nombre: 'Caja reductora dosificador prensa', tipo: 'Reductor' },
+          { id: 'L1-CR-CHIMANGO-RECEPTOR', nombre: 'Caja reductora chimango receptor', tipo: 'Reductor' },
+          { id: 'L1-CR-ELEVADOR', nombre: 'Caja reductora elevador expeller', tipo: 'Reductor' },
+          { id: 'L1-CR-BORRERO', nombre: 'Caja reductora borrero', tipo: 'Reductor' },
+          { id: 'L1-CR-CHIMANGO-ACEITE', nombre: 'Caja reductora chimango aceite', tipo: 'Reductor' },
+          { id: 'L1-EXTRUSOR', nombre: 'Extrusor/dosificador línea 1', tipo: 'Extrusor', antes: ['Extrusor Línea 1'] },
+          { id: 'L1-CR-EXTRUSOR', nombre: 'Caja reductora extrusor', tipo: 'Reductor', antes: ['Extrusor Principal L1'] },
+          { id: 'L1-BOMBA-BATEA', nombre: 'Bomba batea 1', tipo: 'Bomba' },
+        ],
+      },
+      {
+        id: 'L2',
+        nombre: 'Línea 2',
+        equipos: [
+          { id: 'L2-EXTRUSORA-1', nombre: 'Extrusora 1', tipo: 'Extrusora', antes: ['Prensa 5'] },
+          { id: 'L2-EXTRUSORA-2', nombre: 'Extrusora 2', tipo: 'Extrusora', antes: ['Prensa 6'] },
+          { id: 'L2-EXTRUSORA-3', nombre: 'Extrusora 3', tipo: 'Extrusora', antes: ['Prensa 7'] },
+          { id: 'L2-EXTRUSORA-4', nombre: 'Extrusora 4', tipo: 'Extrusora', antes: ['Prensa 8'] },
+          { id: 'L2-CR-ALIMENTADOR', nombre: 'Caja reductora alimentador dosificador', tipo: 'Reductor' },
+          { id: 'L2-CR-DOSIFICADOR', nombre: 'Caja reductora dosificador prensa', tipo: 'Reductor' },
+          { id: 'L2-CR-CHIMANGO-RECEPTOR', nombre: 'Caja reductora chimango receptor', tipo: 'Reductor' },
+          { id: 'L2-CR-ELEVADOR', nombre: 'Caja reductora elevador expeller', tipo: 'Reductor' },
+          { id: 'L2-CR-BORRERO', nombre: 'Caja reductora borrero', tipo: 'Reductor' },
+          { id: 'L2-CR-CHIMANGO-ACEITE', nombre: 'Caja reductora chimango aceite', tipo: 'Reductor' },
+          { id: 'L2-EXTRUSOR', nombre: 'Extrusor/dosificador línea 2', tipo: 'Extrusor', antes: ['Extrusor Línea 2'] },
+          { id: 'L2-CR-EXTRUSOR', nombre: 'Caja reductora extrusor', tipo: 'Reductor', antes: ['Extrusor Principal L2'] },
+          { id: 'L2-BOMBA-BATEA', nombre: 'Bomba batea 2', tipo: 'Bomba' },
+        ],
+      },
+      {
+        id: 'TP',
+        nombre: 'Tolva de producción',
+        equipos: [
+          { id: 'TP-CR-TOLVA', nombre: 'Caja reductora tolva de producción', tipo: 'Reductor' },
+        ],
+      },
+      {
+        id: 'TQ',
+        nombre: 'Tanques de aceite',
+        equipos: [
+          { id: 'TQ-CR-T1', nombre: 'Caja reductora T1 (tanque)', tipo: 'Reductor', antes: ['Motor/Reductor Agitador Tanque 1'] },
+          { id: 'TQ-CR-T2', nombre: 'Caja reductora T2 (tanque)', tipo: 'Reductor', antes: ['Motor/Reductor Agitador Tanque 2'] },
+          { id: 'TQ-EXTRUSORA', nombre: 'Extrusora tanques', tipo: 'Extrusora' },
+          { id: 'TQ-BOMBA-ACEITE', nombre: 'Bomba aceite', tipo: 'Bomba' },
+          { id: 'TQ-BOMBA-GOMA', nombre: 'Bomba goma', tipo: 'Bomba' },
+        ],
+      },
+      {
+        id: 'EX',
+        nombre: 'Exteriores',
+        equipos: [
+          { id: 'EX-BOMBA-EXTERNA', nombre: 'Bomba externa', tipo: 'Bomba' },
+          { id: 'EX-BOMBA-EXTRACCION', nombre: 'Bomba extracción de aceite', tipo: 'Bomba' },
+        ],
+      },
+    ],
+
+    /**
+     * Stock de repuestos. Cada repuesto es "para" uno de los tipos de equipo
+     * (tiposEquipo) o para una de estas categorías extra.
      * La cantidad se cuenta en una de estas unidades: las dos primeras van de
      * a una (enteras); las demás aceptan decimales.
      */
