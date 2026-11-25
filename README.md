@@ -245,6 +245,7 @@ npm test             # prueba el cálculo del circuito de tanques (archivado)
 
 ## Historial
 
+- **2.24.2**: todo se ve nítido: los paneles tienen fondo sólido (antes eran semitransparentes, con el fondo desenfocado), al abrir un diálogo la página de atrás solo se oscurece (antes se desenfocaba) y los números grandes y botones ya no tienen brillo difuso.
 - **2.24.1**: la "Extrusora tanques" pasa a llamarse **Decantador** (con su propio tipo, también en el stock); su historial sigue igual.
 - **2.24.0**:
   - **Modo día / noche**, con el botón de arriba a la derecha (cada PC recuerda el suyo).

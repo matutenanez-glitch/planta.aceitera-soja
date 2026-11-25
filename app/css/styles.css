@@ -1290,14 +1290,6 @@
     --tw-shadow: 0 0 8px var(--tw-shadow-color, #34d399);
     box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
   }
-  .shadow-\[0_0_15px_rgba\(245\,158\,11\,0\.2\)\] {
-    --tw-shadow: 0 0 15px var(--tw-shadow-color, rgba(245,158,11,0.2));
-    box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
-  }
-  .shadow-\[0_0_15px_rgba\(245\,158\,11\,0\.3\)\] {
-    --tw-shadow: 0 0 15px var(--tw-shadow-color, rgba(245,158,11,0.3));
-    box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
-  }
   .shadow-inner {
     --tw-shadow: inset 0 2px 4px 0 var(--tw-shadow-color, rgb(0 0 0 / 0.05));
     box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
@@ -1525,12 +1517,11 @@
 }
 @layer components {
   .glass-panel {
-    background: rgb(15 23 42 / 0.6);
-    backdrop-filter: blur(12px);
-    border: 1px solid rgb(51 65 85 / 0.5);
+    background: rgb(12 19 36);
+    border: 1px solid rgb(51 65 85 / 0.6);
   }
   .glow-text {
-    text-shadow: 0 0 15px rgb(251 191 36 / 0.4);
+    text-shadow: none;
   }
   .nav-item {
     display: flex;
@@ -2056,8 +2047,7 @@
     }
   }
   .dialogo::backdrop {
-    background: rgb(2 6 23 / 0.75);
-    backdrop-filter: blur(4px);
+    background: rgb(2 6 23 / 0.7);
   }
   .viz-grilla {
     stroke: var(--color-slate-800);
@@ -2263,18 +2253,15 @@
   background: linear-gradient(160deg, #f8fafc 0%, #eef2f7 60%, #e2e8f0 100%);
 }
 :root[data-tema="claro"] .glass-panel {
-  background: rgb(255 255 255 / 0.82);
+  background: #fff;
   border-color: rgb(203 213 225 / 0.8);
   box-shadow: 0 1px 2px rgb(15 23 42 / 0.06);
-}
-:root[data-tema="claro"] .glow-text {
-  text-shadow: none;
 }
 :root[data-tema="claro"] .nav-item[aria-current="page"] {
   background: rgb(245 158 11 / 0.14);
 }
 :root[data-tema="claro"] .dialogo::backdrop {
-  background: rgb(15 23 42 / 0.45);
+  background: rgb(15 23 42 / 0.4);
 }
 :root[data-tema="claro"] {
   --color-viz-soja: #475569;

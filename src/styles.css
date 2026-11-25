@@ -57,13 +57,12 @@
 }
 
 @layer components {
-  /* Paneles */
+  /* Paneles: fondo sólido y sin desenfoque, así todo se lee nítido */
   .glass-panel {
-    background: rgb(15 23 42 / 0.6);
-    backdrop-filter: blur(12px);
-    border: 1px solid rgb(51 65 85 / 0.5);
+    background: rgb(12 19 36);
+    border: 1px solid rgb(51 65 85 / 0.6);
   }
-  .glow-text { text-shadow: 0 0 15px rgb(251 191 36 / 0.4); }
+  .glow-text { text-shadow: none; }
 
   /* Navegación lateral */
   .nav-item {
@@ -162,7 +161,8 @@
   .dialogo {
     @apply m-auto w-full max-w-2xl rounded-2xl border border-slate-700 bg-slate-900 p-0 text-slate-200 shadow-2xl shadow-black/60;
   }
-  .dialogo::backdrop { background: rgb(2 6 23 / 0.75); backdrop-filter: blur(4px); }
+  /* Detrás de un diálogo la página solo se oscurece (sin desenfocar) */
+  .dialogo::backdrop { background: rgb(2 6 23 / 0.7); }
 
   /* Gráficos */
   .viz-grilla { stroke: var(--color-slate-800); stroke-width: 1; }
@@ -214,13 +214,12 @@
  */
 :root[data-tema="claro"] body { background: linear-gradient(160deg, #f8fafc 0%, #eef2f7 60%, #e2e8f0 100%); }
 :root[data-tema="claro"] .glass-panel {
-  background: rgb(255 255 255 / 0.82);
+  background: #fff;
   border-color: rgb(203 213 225 / 0.8);
   box-shadow: 0 1px 2px rgb(15 23 42 / 0.06);
 }
-:root[data-tema="claro"] .glow-text { text-shadow: none; }
 :root[data-tema="claro"] .nav-item[aria-current="page"] { background: rgb(245 158 11 / 0.14); }
-:root[data-tema="claro"] .dialogo::backdrop { background: rgb(15 23 42 / 0.45); }
+:root[data-tema="claro"] .dialogo::backdrop { background: rgb(15 23 42 / 0.4); }
 :root[data-tema="claro"] { --color-viz-soja: #475569; }
 /* Textos blancos y casi negros: blancos pasan a oscuros, salvo en botones de color. */
 :root[data-tema="claro"] .text-white { color: #0f172a; }
