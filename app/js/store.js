@@ -72,6 +72,12 @@
       r.categoria = 'Prensa';
       if (estado) estado.cambio = true;
     }
+    // v2.24.1: la "Extrusora tanques" se llama Decantador (mismo id, así sigue su historial).
+    if (nombre === 'mantenimiento' && r.equipoId === 'TQ-EXTRUSORA' && (r.tipo === 'Extrusor' || r.equipo === 'Extrusora tanques')) {
+      r.tipo = 'Decantador';
+      r.equipo = 'Decantador';
+      if (estado) estado.cambio = true;
+    }
     // v2.23: los aceites y las grasas que estaban en "General" pasan a sus categorías.
     if (nombre === 'stock' && r.categoria === 'General') {
       const n = String(r.nombre || '').trim().toLowerCase();

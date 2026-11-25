@@ -7,7 +7,7 @@
   'use strict';
 
   SoyaCore.config = Object.freeze({
-    version: '2.24.0',
+    version: '2.24.1',
     locale: 'es-AR',
 
     /** Cuántas filas muestran las tablas de "últimos registros". */
@@ -63,6 +63,7 @@
       Reductor: 'Cajas reductoras',
       Extrusor: 'Extrusores',
       Bomba:    'Bombas',
+      Decantador: 'Decantadores',
     },
 
     /**
@@ -127,7 +128,8 @@
         equipos: [
           { id: 'TQ-CR-T1', nombre: 'Caja reductora T1 (tanque)', tipo: 'Reductor', antes: ['Motor/Reductor Agitador Tanque 1'] },
           { id: 'TQ-CR-T2', nombre: 'Caja reductora T2 (tanque)', tipo: 'Reductor', antes: ['Motor/Reductor Agitador Tanque 2'] },
-          { id: 'TQ-EXTRUSORA', nombre: 'Extrusora tanques', tipo: 'Extrusor' },
+          // El id viene de cuando se lo llamó "Extrusora tanques" (2.21 a 2.24.0): no se cambia, así sigue su historial.
+          { id: 'TQ-EXTRUSORA', nombre: 'Decantador', tipo: 'Decantador', antes: ['Extrusora tanques'] },
           { id: 'TQ-BOMBA-ACEITE', nombre: 'Bomba aceite', tipo: 'Bomba' },
           { id: 'TQ-BOMBA-GOMA', nombre: 'Bomba goma', tipo: 'Bomba' },
         ],

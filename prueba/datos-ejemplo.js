@@ -10,7 +10,7 @@
 (function () {
   'use strict';
   try {
-    const VERSION_DEMO = '2.24.0';
+    const VERSION_DEMO = '2.24.1';
     if (localStorage.getItem('soya_sin_ejemplo')) return;
     const CLAVES = ['soya_produccion', 'soya_camiones', 'soya_expeller', 'soya_secadora', 'soya_mantenimiento', 'soya_aceite_despachos', 'soya_stock_items', 'soya_stock_movimientos'];
     const hayDatos = CLAVES.some((k) => localStorage.getItem(k));
@@ -112,7 +112,7 @@
     mant(3, 9, 45, eq('L2-EXTRUSOR', 'Extrusor/dosificador línea 2', 'L2', 'Extrusor'), 'Ajuste de sinfín', 'operativo');
     mant(3, 10, 15, eq('L2-CR-BORRERO', 'Caja reductora borrero', 'L2', 'Reductor'), 'Se agregó aceite', 'operativo');
     mant(3, 11, 30, eq('TQ-BOMBA-ACEITE', 'Bomba aceite', 'TQ', 'Bomba'), 'Revisión de sello mecánico', 'fuera', 'Sello roto, esperando repuesto');
-    mant(3, 12, 10, eq('TQ-EXTRUSORA', 'Extrusora tanques', 'TQ', 'Extrusor'), 'Engrase', 'operativo', '', [{ itemId: grasa.id, nombre: grasa.nombre, unidad: 'kg', cantidad: 0.5 }]);
+    mant(3, 12, 10, eq('TQ-EXTRUSORA', 'Decantador', 'TQ', 'Decantador'), 'Engrase', 'operativo', '', [{ itemId: grasa.id, nombre: grasa.nombre, unidad: 'kg', cantidad: 0.5 }]);
     mant(3, 14, 0, eq('L2-PRENSA-6', 'Prensa 6', 'L2', 'Prensa'), 'Cambio de crapodinas', 'operativo', '', [{ itemId: crapodina.id, nombre: crapodina.nombre, unidad: 'unidades', cantidad: 2 }]);
     mant(3, 15, 20, eq('EX-BOMBA-EXTRACCION', 'Bomba extracción de aceite', 'EX', 'Bomba'), 'Cambio de rodamiento', 'operativo', '', [{ itemId: rodamiento.id, nombre: rodamiento.nombre, unidad: 'unidades', cantidad: 1 }]);
 

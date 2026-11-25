@@ -118,7 +118,7 @@ Los equipos están ordenados por **lugar**, cada uno con su nombre (en `config.j
     - el extrusor/dosificador de la línea y su caja reductora;
     - la bomba batea.
 - **Tolva de producción:** su caja reductora.
-- **Tanques de aceite:** cajas reductoras T1 y T2, extrusora tanques, bomba aceite y bomba goma.
+- **Tanques de aceite:** cajas reductoras T1 y T2, decantador, bomba aceite y bomba goma.
 - **Exteriores:** bomba externa y bomba extracción de aceite.
 
 **Mantenimientos** tiene tres partes:
@@ -245,6 +245,7 @@ npm test             # prueba el cálculo del circuito de tanques (archivado)
 
 ## Historial
 
+- **2.24.1**: la "Extrusora tanques" pasa a llamarse **Decantador** (con su propio tipo, también en el stock); su historial sigue igual.
 - **2.24.0**:
   - **Modo día / noche**, con el botón de arriba a la derecha (cada PC recuerda el suyo).
   - **Recepción:** un camión que vuelve en el día usa la tara que ya tiene (**¿Volvió un camión de hoy?**, **Usar esa tara** y la tara puesta en **Cargar tara**).
