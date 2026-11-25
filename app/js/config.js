@@ -7,7 +7,7 @@
   'use strict';
 
   SoyaCore.config = Object.freeze({
-    version: '2.22.0',
+    version: '2.23.0',
     locale: 'es-AR',
 
     /** Cuántas filas muestran las tablas de "últimos registros". */
@@ -24,7 +24,7 @@
       aceite:        { titulo: 'Aceite por día y turno',            icono: 'droplet' },
       despachoAceite:{ titulo: 'Retiro de Aceite',                  icono: 'fuel' },
       equipos:       { titulo: 'Estado de Equipos',                 icono: 'gauge' },
-      mantenimiento: { titulo: 'Registro de Mantenimiento',         icono: 'wrench' },
+      mantenimiento: { titulo: 'Mantenimientos',                    icono: 'wrench' },
       stock:         { titulo: 'Stock de Repuestos',                icono: 'package' },
       resumen:       { titulo: 'Resumen por día y por mes',         icono: 'chart-column' },
     },
@@ -144,12 +144,15 @@
 
     /**
      * Stock de repuestos. Cada repuesto es "para" uno de los tipos de equipo
-     * (tiposEquipo) o para una de estas categorías extra.
+     * (tiposEquipo) o para una de estas categorías extra. Los aceites y las
+     * grasas son los que ofrecen los botones "Aceite" y "Grasa" de Mantenimientos.
      * La cantidad se cuenta en una de estas unidades: las dos primeras van de
      * a una (enteras); las demás aceptan decimales.
      */
     stock: {
-      categoriasExtra: { General: 'General (lubricantes, herramientas, otros)' },
+      categoriasExtra: { Aceite: 'Aceites', Grasa: 'Grasas', General: 'General (herramientas y otros)' },
+      /** Unidad que se propone al cargar un repuesto de estas categorías. */
+      unidadSugerida: { Aceite: 'litros', Grasa: 'kg' },
       unidades: ['unidades', 'juegos', 'litros', 'kg', 'metros'],
       unidadesEnteras: ['unidades', 'juegos'],
     },

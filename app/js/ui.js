@@ -116,13 +116,14 @@
    *   claseFila  (opcional) fn(registro) → clase CSS extra para la fila
    *   ordenar    (opcional) fn(lista) → lista ordenada (y filtrada); se muestran
    *              todas (si no, se muestran los últimos cargados, el más nuevo arriba)
+   *   filtrar    (opcional) fn(registro) → true para mostrarlo (los demás no se cuentan)
    *   describir  (opcional) fn(registro) → cómo nombrar la fila en los botones
    *              (por defecto "registro del <fecha>")
    *   mensajeBorrado (opcional) fn(registro) → texto del aviso al borrar
    * Borrar pide confirmación con un segundo clic y ofrece "Deshacer".
    * Devuelve { dibujar(), marcar(id|null) }.
    */
-  function tablaRegistros({ tbody, caption, coleccion, columnas, onEditar, vacio, acciones, claseFila, ordenar, describir, mensajeBorrado }) {
+  function tablaRegistros({ tbody, caption, coleccion, columnas, onEditar, vacio, acciones, claseFila, ordenar, filtrar, describir, mensajeBorrado }) {
     const extras = acciones || [];
     const store = SoyaCore.store;
     let verTodos = false;
@@ -136,7 +137,8 @@
     }
 
     function dibujar() {
-      const filas = ordenar ? ordenar(store.todos(coleccion)) : store.todos(coleccion);
+      const todas = filtrar ? store.todos(coleccion).filter(filtrar) : store.todos(coleccion);
+      const filas = ordenar ? ordenar(todas) : todas;
       const limite = verTodos || ordenar ? filas.length || 1 : SoyaCore.config.filasPorTabla;
       const visibles = ordenar ? filas : filas.slice(-limite).reverse();
       const frag = document.createDocumentFragment();

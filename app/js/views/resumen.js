@@ -237,10 +237,9 @@
       { valor: horaDe }, { valor: (r) => fmt.porcentaje(r.hCaliente), className: 'num' }, { valor: (r) => fmt.porcentaje(r.hFrio), className: 'num' },
     ], 'Sin tomas de la secadora este día.');
 
-    const estados = SoyaCore.config.estadosEquipo;
     filasTabla('#res-dia-mant', t.mantenimiento.slice().sort(porHora), [
       { valor: horaDe }, { valor: (r) => SoyaCore.planta.nombreDe(r), className: 'max-w-64 truncate' }, { valor: (r) => r.tarea, className: 'max-w-56 truncate' },
-      { valor: (r) => estados[SoyaCore.views.mantenimiento.estadoDe(r)].etiqueta },
+      { valor: (r) => SoyaCore.views.mantenimiento.quedoTexto(r) },
     ], 'Sin mantenimientos este día.');
   }
 

@@ -20,6 +20,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const INPUT = path.join(ROOT, 'src', 'styles.css');
 const OUTPUT = path.join(ROOT, 'app', 'css', 'styles.css');
 const SOURCE_DIR = path.join(ROOT, 'app');
+const PRUEBA_DIR = path.join(ROOT, 'prueba');
 const TAILWIND_DIR = path.dirname(require.resolve('tailwindcss/package.json'));
 
 function listSources(dir) {
@@ -52,7 +53,9 @@ async function loadStylesheet(id, base) {
 async function build() {
   const started = Date.now();
   const compiler = await compile(fs.readFileSync(INPUT, 'utf8'), { base: path.dirname(INPUT), loadStylesheet });
-  const css = compiler.build([...extractCandidates(listSources(SOURCE_DIR))]);
+  // También las clases de la versión de prueba (prueba/), que se suman al empaquetar.
+  const extras = fs.existsSync(PRUEBA_DIR) ? listSources(PRUEBA_DIR) : [];
+  const css = compiler.build([...extractCandidates([...listSources(SOURCE_DIR), ...extras])]);
   fs.mkdirSync(path.dirname(OUTPUT), { recursive: true });
   fs.writeFileSync(OUTPUT, '/* Generado por scripts/build-css.mjs a partir de src/styles.css. No editar a mano. */\n' + css);
   console.log(`✔ app/css/styles.css (${(css.length / 1024).toFixed(1)} KB) en ${Date.now() - started} ms`);

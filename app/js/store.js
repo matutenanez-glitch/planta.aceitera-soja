@@ -72,6 +72,15 @@
       r.categoria = 'Prensa';
       if (estado) estado.cambio = true;
     }
+    // v2.23: los aceites y las grasas que estaban en "General" pasan a sus categorías.
+    if (nombre === 'stock' && r.categoria === 'General') {
+      const n = String(r.nombre || '').trim().toLowerCase();
+      const nueva = n.startsWith('aceite') ? 'Aceite' : n.startsWith('grasa') ? 'Grasa' : null;
+      if (nueva) {
+        r.categoria = nueva;
+        if (estado) estado.cambio = true;
+      }
+    }
     return r;
   }
 

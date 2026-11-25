@@ -200,4 +200,7 @@
   .stock-card.stock-sin { @apply border-l-red-500 bg-red-950/30; }
   .data-table tr.fila-stock-sin { @apply bg-red-500/5; }
   .uso-fila { @apply space-y-1.5 rounded-lg border border-slate-800 bg-slate-950/40 p-2; }
+
+  /* Tilde del mantenimiento de la semana */
+  .check-equipo { @apply h-4 w-4 shrink-0 cursor-pointer rounded accent-emerald-500; }
 }

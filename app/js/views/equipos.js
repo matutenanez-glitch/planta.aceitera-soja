@@ -63,14 +63,21 @@
       if (!porClave.has(k)) porClave.set(k, []);
       porClave.get(k).push(r);
     });
+    const mant = SoyaCore.views.mantenimiento;
+    const lunes = mant.lunesDe(SoyaCore.ui.hoy());
     const item = (clave, nombre, lugar, lugarNombre, tipo) => {
       const historial = (porClave.get(clave) || []).slice().sort((a, b) => String(a.fecha).localeCompare(String(b.fecha)));
       const ultimo = historial[historial.length - 1] || null;
+      // Cómo quedó: lo dice el último registro que no es un tilde de la semana.
+      const conEstado = historial.filter((r) => !mant.esTilde(r));
+      const ultimoEstado = conEstado[conEstado.length - 1] || null;
+      const deLaSemana = historial.filter((r) => mant.enSemana(r, lunes));
       return {
-        clave, nombre, lugar, lugarNombre, tipo, historial, ultimo,
+        clave, nombre, lugar, lugarNombre, tipo, historial, ultimo, ultimoEstado,
         completo: lugar === OTROS ? nombre : `${lugarNombre} · ${nombre}`,
-        estado: ultimo ? SoyaCore.views.mantenimiento.estadoDe(ultimo) : 'sin',
+        estado: ultimoEstado ? mant.estadoDe(ultimoEstado) : ultimo ? 'operativo' : 'sin',
         ultimoMs: ultimo ? parse(ultimo.fecha) : null,
+        semana: deLaSemana.length ? deLaSemana[deLaSemana.length - 1] : null,
       };
     };
     const lugares = planta.lugares().map((l) => ({
@@ -108,6 +115,9 @@
       el('td', null, [chipEstado(e.estado)]),
       el('td', { className: 'tabular-nums ' + (e.ultimo ? 'text-slate-300' : 'text-slate-500'), text: e.ultimo ? `${fechaCorta(e.ultimo.fecha)} · ${haceDias(e.ultimoMs)}` : '-' }),
       el('td', { className: 'max-w-64 truncate ' + (e.ultimo ? st.texto : 'text-slate-500'), text: e.ultimo ? e.ultimo.tarea : '-', attrs: { title: e.ultimo ? e.ultimo.tarea : '' } }),
+      el('td', { attrs: { 'data-semana': '' } }, [e.lugar === OTROS ? el('span', { className: 'text-slate-500', text: '-' })
+        : e.semana ? el('span', { className: 'flex items-center gap-1 font-semibold text-emerald-300' }, [el('i', { attrs: { 'data-lucide': 'check' }, className: 'h-3.5 w-3.5' }), el('span', { text: `Hecho · ${conDia(e.semana.fecha)}` })])
+        : el('span', { className: 'text-slate-500', text: 'Pendiente' })]),
     ]);
   }
 
@@ -120,11 +130,16 @@
     const ultimo = registros.reduce((m, r) => (!m || String(r.fecha) > String(m.fecha) ? r : m), null);
     const alerta = cuenta.fuera ? 'ring-1 ring-red-500/50' : cuenta.observaciones ? 'ring-1 ring-amber-400/40' : '';
 
-    const resumen = el('div', { className: 'mt-3 flex flex-wrap items-center gap-2' }, ORDEN_ESTADOS.filter((k) => cuenta[k]).map((k) =>
+    const hechos = l.equipos.filter((e) => e.semana).length;
+    const chipSemana = l.id === OTROS ? null : el('span', { className: 'chip ' + (hechos === l.equipos.length ? 'chip-operativo' : 'chip-sin'), attrs: { 'data-chip-semana': '' } }, [
+      el('i', { attrs: { 'data-lucide': 'clipboard-check' }, className: 'h-3 w-3' }),
+      el('span', { text: `Esta semana: ${hechos} de ${l.equipos.length} hechos` }),
+    ]);
+    const resumen = el('div', { className: 'mt-3 flex flex-wrap items-center gap-2' }, [chipSemana, ...ORDEN_ESTADOS.filter((k) => cuenta[k]).map((k) =>
       el('span', { className: `chip ${ESTILO[k].chip}` }, [
         el('i', { attrs: { 'data-lucide': ESTILO[k].icono }, className: 'h-3 w-3' }),
         el('span', { text: `${cuenta[k]} ${cuenta[k] === 1 && k === 'operativo' ? 'operativo' : PLURAL[k]}` }),
-      ])));
+      ]))]);
 
     const tabla = el('div', { className: 'mt-4 overflow-x-auto' }, [
       el('table', { className: 'data-table' }, [
@@ -133,6 +148,7 @@
           el('th', { attrs: { scope: 'col' }, text: 'Estado' }),
           el('th', { attrs: { scope: 'col' }, text: 'Último mantenimiento' }),
           el('th', { attrs: { scope: 'col' }, text: 'Qué se hizo' }),
+          el('th', { attrs: { scope: 'col' }, text: 'Esta semana' }),
         ])]),
         el('tbody', null, visibles.map(fila)),
       ]),
@@ -183,7 +199,7 @@
       .filter((e) => e.estado === 'fuera' || e.estado === 'observaciones')
       .sort((a, b) => (a.estado === b.estado ? 0 : a.estado === 'fuera' ? -1 : 1));
     $('#eq-pendientes').replaceChildren(...(pendientes.length
-      ? pendientes.map((e) => itemLista(e, e.ultimo.observaciones || e.ultimo.tarea, chipEstado(e.estado)))
+      ? pendientes.map((e) => itemLista(e, e.ultimoEstado.observaciones || e.ultimoEstado.tarea, chipEstado(e.estado)))
       : [el('li', { className: 'rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200', text: 'Ningún equipo quedó con observaciones ni fuera de servicio.' })]));
 
     const antiguos = lista
@@ -222,10 +238,12 @@
       ? e.historial.slice().reverse().map((r) => el('li', { className: 'rounded-xl border border-slate-800 bg-slate-950/40 p-3' }, [
           el('div', { className: 'flex flex-wrap items-center justify-between gap-2' }, [
             el('span', { className: 'font-mono text-[11px] text-slate-500 tabular-nums', text: r.fecha }),
-            chipEstado(SoyaCore.views.mantenimiento.estadoDe(r)),
+            SoyaCore.views.mantenimiento.esTilde(r)
+              ? el('span', { className: 'chip chip-operativo' }, [el('i', { attrs: { 'data-lucide': 'check' }, className: 'h-3 w-3' }), el('span', { text: 'Hecho' })])
+              : chipEstado(SoyaCore.views.mantenimiento.estadoDe(r)),
           ]),
           el('p', { className: 'mt-1.5 font-semibold text-slate-200', text: r.tarea }),
-          el('p', { className: 'mt-0.5 text-xs text-slate-400', text: `Repuestos: ${SoyaCore.views.mantenimiento.textoRepuestos(r)}` }),
+          SoyaCore.views.mantenimiento.esTilde(r) ? null : el('p', { className: 'mt-0.5 text-xs text-slate-400', text: `Se usó: ${SoyaCore.views.mantenimiento.textoRepuestos(r)}` }),
           r.observaciones ? el('p', { className: 'mt-0.5 text-xs text-slate-400', text: `Observaciones: ${r.observaciones}` }) : null,
         ]))
       : [el('li', { className: 'text-sm text-slate-500 italic', text: 'Sin mantenimientos cargados para este equipo.' })]));

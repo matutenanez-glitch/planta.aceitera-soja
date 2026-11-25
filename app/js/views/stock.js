@@ -313,7 +313,7 @@
       if (localStorage.getItem(MARCA) || store.todos('stock').length) return;
       const viejo = JSON.parse(localStorage.getItem('soyacore_stock') || 'null');
       if (!Array.isArray(viejo) || !viejo.length) return;
-      const categorias = { 'Repuestos Prensas': 'Prensa', 'Repuestos Extrusor': 'Extrusor' };
+      const categorias = { 'Repuestos Prensas': 'Prensa', 'Repuestos Extrusor': 'Extrusor', 'Lubricantes / Aceites': 'Aceite' };
       let pasados = 0;
       viejo.forEach((s) => {
         if (!s || !String(s.n || '').trim()) return;
@@ -339,6 +339,8 @@
 
   // ---------- Vista ----------
   let tabla;
+  /** Abre "Agregar repuesto" con el "Para" elegido (lo usa Mantenimientos). */
+  let abrirNuevo = () => {};
 
   function dibujar() {
     hayTabla = existencias();
@@ -373,7 +375,12 @@
       };
       $('#stock-unidad').addEventListener('change', actualizarPasos);
       $('#stock-nombre').addEventListener('input', (e) => e.target.setCustomValidity(''));
-      $('#stock-categoria').addEventListener('change', () => $('#stock-nombre').setCustomValidity(''));
+      $('#stock-categoria').addEventListener('change', () => {
+        $('#stock-nombre').setCustomValidity('');
+        // Al cargar uno nuevo, los aceites se cuentan en litros y las grasas en kg.
+        const sugerida = config.stock.unidadSugerida[$('#stock-categoria').value];
+        if (sugerida && !editor.id) { $('#stock-unidad').value = sugerida; actualizarPasos(); }
+      });
 
       // El formulario está en una ventana: "Agregar repuesto" la abre vacía y el lápiz, con el repuesto.
       const dialogo = $('#stock-item-dialogo');
@@ -388,6 +395,13 @@
       $('#stock-item-cerrar').addEventListener('click', cerrarItem);
       form.querySelector('[data-cancelar]').addEventListener('click', cerrarItem);
       $('#stock-agregar').addEventListener('click', () => abrirItem(null));
+      abrirNuevo = (categoria) => {
+        abrirItem(null);
+        if (CATEGORIAS[categoria]) {
+          $('#stock-categoria').value = categoria;
+          $('#stock-categoria').dispatchEvent(new Event('change'));
+        }
+      };
 
       tabla = tablaRegistros({
         tbody: $('#tbody-stock'),
@@ -498,5 +512,6 @@
     categoriaCorta,
     avisarSiFalta,
     abrirMovimiento,
+    abrirNuevo: (categoria) => abrirNuevo(categoria),
   };
 })(window.SoyaCore = window.SoyaCore || {});

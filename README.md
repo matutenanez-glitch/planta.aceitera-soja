@@ -15,6 +15,15 @@ Funciona **sin internet** y guarda los datos **en la PC donde se usa**. Si el du
 
 **Un solo archivo.** Con `node scripts/empaquetar.mjs` se arma `dist/gestion-aceitera-v<versión>.html`, con todo adentro. Sirve para pasar la app por pendrive, correo o WhatsApp: se abre con doble clic, sin descomprimir nada, y funciona igual que la carpeta `app/`.
 
+**Versión de prueba para un cliente.** Con `node scripts/empaquetar.mjs --prueba` se arma `dist/gestion-aceitera-v<versión>-prueba.html`. Opcionalmente se agregan `--whatsapp=549…` y `--correo=…`, que es adonde llegan las sugerencias. La versión de prueba:
+- trae datos de ejemplo y una bienvenida que explica cómo probar;
+- tiene en el encabezado el cartel **Versión de prueba** y dos botones:
+    - **Sugerencia** abre WhatsApp o el correo con el mensaje listo (dice en qué pantalla estaba el cliente), o lo copia;
+    - **Datos de prueba** sirve para **empezar de cero** o **volver a cargar el ejemplo**;
+- guarda todo aparte (`prueba:` delante de cada clave): lo que se cargue al probar no aparece en la versión final, aunque se abra en el mismo navegador.
+
+Sin `--whatsapp` ni `--correo`, el cliente elige a quién mandar la sugerencia. Lo que suma la versión de prueba está en `prueba/`.
+
 > **Si venís de la v2.8:** abrí la versión nueva en el mismo navegador donde usabas la versión anterior y los datos aparecen solos (se usan las mismas claves `soya_*`). La v2.8 también sigue pudiendo leerlos.
 
 ## Estructura del proyecto
@@ -38,7 +47,9 @@ app/                     ← la aplicación (esto es lo que se instala en la pla
   js/app.js              arranque y navegación
 src/styles.css           ← fuente de los estilos (Tailwind CSS v4)
 scripts/build-css.mjs    compila src/styles.css → app/css/styles.css
-scripts/empaquetar.mjs   arma la app en un solo archivo HTML (dist/)
+scripts/empaquetar.mjs   arma la app en un solo archivo HTML (dist/); con --prueba, la versión de prueba
+prueba/                  solo para la versión de prueba y la vista previa: datos de ejemplo, cartel,
+                         sugerencias, datos aparte y nube simulada
 scripts/sincronizar_github.bat   sube los cambios a GitHub (Windows)
 firebase/firestore.rules         reglas de la base en la nube (cada dueño ve solo lo suyo)
 docs/nube-firebase.md            cómo poner en marcha la copia en la nube
@@ -100,14 +111,28 @@ Los equipos están ordenados por **lugar**, cada uno con su nombre (en `config.j
 - **Tanques de aceite:** cajas reductoras T1 y T2, extrusora tanques, bomba aceite y bomba goma.
 - **Exteriores:** bomba externa y bomba extracción de aceite.
 
-**Cargar un mantenimiento:** se elige el lugar, después el equipo, y se completa qué se hizo, los repuestos y cómo quedó.
+**Mantenimientos** tiene tres partes:
+
+1. **Mantenimiento de la semana:** un tilde por equipo, agrupado por lugar, para marcar a qué equipos se les hizo el mantenimiento.
+    - Cada lugar muestra cuántos van ("9 de 13") y tiene un botón **Tildar todos**.
+    - Las flechas pasan a semanas anteriores, por si algo quedó sin tildar. Un tilde en una semana pasada queda con fecha del sábado de esa semana.
+    - Un equipo queda tildado si tiene cualquier mantenimiento cargado esa semana (de lunes a domingo).
+    - Destildar borra el tilde. Si el equipo tiene cargado lo que se usó, se borra desde el historial.
+    - El tilde no cambia cómo quedó el equipo: un equipo fuera de servicio sigue así hasta que se cargue que quedó operativo.
+2. **Qué se usó:** se elige el lugar y el equipo, y con los botones **Aceite**, **Grasa** y **Repuesto** se agrega lo que se le puso.
+    - Cada botón ofrece solo lo del stock que corresponde (aceites, grasas o repuestos; de los repuestos, primero los del tipo del equipo).
+    - Se pone la cantidad en litros, kg o unidades, y se ve cuánto va a quedar.
+    - Al guardar se descuenta solo del stock y el equipo queda tildado en la semana.
+    - **Otros** es para lo que no está en el stock.
+    - **Qué se hizo** es opcional (por ejemplo, "cambio de crapodinas"). También se carga **cómo quedó** el equipo.
+3. **Historial:** todos los mantenimientos, para corregir o borrar. Los tildes de la semana se muestran solo si se pide.
 
 **Estado de equipos.** Hay un panel por lugar, con un pantallazo de cómo está:
 - cuántos equipos quedaron *Operativos*, *Con observaciones* o *Fuera de servicio*, y cuántos no tienen registros;
 - cuándo fue su último mantenimiento;
 - equipo por equipo, lo último que se le hizo y hace cuánto.
 
-Al tocar un equipo se ve su historial y se puede registrar un mantenimiento para ese equipo.
+Cada lugar muestra también cuántos equipos tienen el mantenimiento de **esta semana** hecho, y cada equipo dice "Hecho" (con el día) o "Pendiente". Al tocar un equipo se ve su historial y se puede registrar lo que se usó.
 
 **Mantenimientos anteriores a la 2.21:**
 - Prensa 1 a 4 quedan en la Línea 1 y Prensa 5 a 8 en la Línea 2, con su historial.
@@ -118,7 +143,7 @@ Al tocar un equipo se ve su historial y se puede registrar un mantenimiento para
 
 ## Stock de repuestos
 
-Piezas y repuestos para prensas, cajas reductoras, extrusores y bombas, y cosas generales (lubricantes, herramientas).
+Piezas y repuestos para prensas, cajas reductoras, extrusores y bombas, **aceites**, **grasas** y cosas generales (herramientas). Los aceites y las grasas son los que ofrecen los botones **Aceite** y **Grasa** de Mantenimientos: al cargarlos, se cuentan en litros y kg. Los aceites y grasas que estaban en "General" (su nombre empieza con "Aceite" o "Grasa") pasan solos a su categoría.
 
 - **Agregar un repuesto nuevo:** con el botón **Agregar repuesto**, arriba de la lista, se abre una ventana para cargarlo. El lápiz de cada fila abre la misma ventana para corregirlo.
 - **Cada repuesto** tiene nombre, para qué tipo de equipo es, código y ubicación (opcionales), en qué se cuenta (unidades, juegos, litros, kg o metros), la cantidad que hay y un **mínimo**.
@@ -132,7 +157,7 @@ Piezas y repuestos para prensas, cajas reductoras, extrusores y bombas, y cosas 
     - **Contamos** pone lo que se contó en el depósito y anota la diferencia.
 
   También se puede corregir desde **Editar**. Cada repuesto tiene su historial de movimientos, con los mantenimientos en que se usó.
-- **Descuento automático desde Mantenimientos.** En el registro de mantenimiento se eligen los **repuestos del stock que se usaron** y cuántos. Al guardar se descuentan solos. Primero aparecen los del tipo del equipo (por ejemplo, los de prensas para una prensa), y cada uno dice cuánto hay y cuánto va a quedar. Si se corrige o se borra el mantenimiento, el stock se acomoda solo. Los repuestos que no están en el stock se escriben en **Otros repuestos**.
+- **Descuento automático desde Mantenimientos.** En **Qué se usó** se elige lo que se usó y cuánto. Al guardar se descuenta solo. Si se corrige o se borra el mantenimiento, el stock se acomoda solo. Lo que no está en el stock se escribe en **Otros**.
 - **Más de lo que figura.** Si se usó más de lo que figura en el stock, el mantenimiento se guarda igual (el repuesto se usó). El stock queda en negativo, con aviso, hasta que se corrija con **Contamos**.
 - **Cómo se calcula la cantidad.** No se guarda en el repuesto: se calcula con sus movimientos (cantidad inicial, compras, salidas y conteos) menos lo usado en los mantenimientos. Así, dos PCs que cargan a la vez no se pisan.
 - **Stock del sistema anterior.** Si la PC tiene el stock de la v2.5 (`soyacore_stock`) y el stock nuevo está vacío, se pasa solo, una vez.
@@ -210,6 +235,11 @@ npm test             # prueba el cálculo del circuito de tanques (archivado)
 
 ## Historial
 
+- **2.23.0**:
+  - **Mantenimientos más simple:** un tilde por equipo para marcar el mantenimiento de la semana (por lugar, con "Tildar todos" y semanas anteriores), y un apartado **Qué se usó** con botones **Aceite**, **Grasa** y **Repuesto** que salen del stock.
+  - Estado de equipos muestra lo hecho esta semana.
+  - El stock suma las categorías **Aceites** y **Grasas**.
+  - **Versión de prueba** para clientes (`empaquetar.mjs --prueba`).
 - **2.22.0**: la Secadora muestra la **soja para secar**: los kg que entraron hoy en los camiones, con su humedad, el detalle por camión, lo de ayer y los camiones que esperan la tara.
 - **2.21.1**: las prensas vuelven a llamarse Prensa 1 a 8 (en la 2.21.0 figuraron por error como "extrusoras"); lo cargado con esos nombres, también en el stock, pasa solo a la prensa que corresponde. Cada línea tiene su extrusor/dosificador.
 - **2.21.0**: equipos por lugar, con sus nombres (Línea 1, Línea 2, Tolva de producción, Tanques de aceite y Exteriores). Mantenimientos se cargan eligiendo lugar y equipo. Estado de equipos muestra un panel por lugar con el resumen y lo último de cada equipo.
