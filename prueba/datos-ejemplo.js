@@ -10,7 +10,7 @@
 (function () {
   'use strict';
   try {
-    const VERSION_DEMO = '2.23.0';
+    const VERSION_DEMO = '2.24.0';
     if (localStorage.getItem('soya_sin_ejemplo')) return;
     const CLAVES = ['soya_produccion', 'soya_camiones', 'soya_expeller', 'soya_secadora', 'soya_mantenimiento', 'soya_aceite_despachos', 'soya_stock_items', 'soya_stock_movimientos'];
     const hayDatos = CLAVES.some((k) => localStorage.getItem(k));
@@ -61,6 +61,8 @@
     // Hoy
     const minutosHoy = ahora.getHours() * 60 + ahora.getMinutes();
     const hoyA = (frac) => { const d = new Date(ahora); d.setHours(0, Math.max(5, Math.floor(minutosHoy * frac)), 0, 0); return d; };
+    // Un camión que ya vino hoy y volvió: en "En planta" avisa que ya tiene tara de hoy
+    camiones.push({ id: nid(), fecha: fecha(hoyA(0.2)), fechaTara: fecha(hoyA(0.25)), empresa: 'Agro Norte SA', conductor: 'Luis Ferreyra', patente: 'AE789MN', carga: 'Soja', humedad: 14.9, bruto: 42300, tara: 12140, neto: 30160 });
     camiones.push({ id: nid(), fecha: fecha(hoyA(0.4)), fechaTara: fecha(hoyA(0.45)), empresa: 'Cooperativa La Unión', conductor: 'Marta Ojeda', patente: 'AD456KL', carga: 'Soja', humedad: 14.6, bruto: 41000, tara: 11860, neto: 29140 });
     // Dos camiones que se pesaron llenos y esperan la tara
     camiones.push({ id: nid(), fecha: fecha(hoyA(0.8)), empresa: 'Agro Norte SA', conductor: 'Luis Ferreyra', patente: 'AE789MN', carga: 'Soja', humedad: null, bruto: 41800, tara: null, neto: null });

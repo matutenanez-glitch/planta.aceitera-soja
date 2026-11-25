@@ -9,6 +9,8 @@
     <!-- Todo es local: la app funciona sin internet. Solo se conecta a Firebase
          para la copia en la nube, si el dueño ingresa con su cuenta (js/nube.js). -->
     <link rel="stylesheet" href="css/styles.css">
+    <!-- Modo día / noche: sin "defer", para que no parpadee al abrir -->
+    <script src="js/tema.js"></script>
 
     <!-- Scripts: "defer" los descarga en paralelo y los ejecuta en orden, cuando el HTML ya está listo. -->
     <script src="js/config.js" defer></script>
@@ -127,9 +129,14 @@
                 <i id="page-icon" data-lucide="truck" class="text-brand-400"></i>
                 <span id="page-name">Recepción de Camiones</span>
             </h2>
-            <div class="flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900 px-3 py-1.5 text-slate-300 shadow-inner">
-                <span class="h-2 w-2 animate-pulse rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]" aria-hidden="true"></span>
-                <span id="app-version" class="text-xs font-medium">v—</span>
+            <div class="flex items-center gap-2">
+                <button type="button" id="btn-tema" class="btn-sm" aria-pressed="false">
+                    <i data-lucide="sun" class="h-3.5 w-3.5" data-tema-icono></i> <span data-tema-texto>Modo día</span>
+                </button>
+                <div class="flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900 px-3 py-1.5 text-slate-300 shadow-inner">
+                    <span class="h-2 w-2 animate-pulse rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]" aria-hidden="true"></span>
+                    <span id="app-version" class="text-xs font-medium">v—</span>
+                </div>
             </div>
         </header>
 
@@ -169,6 +176,11 @@
                     <div class="glass-panel col-span-1 rounded-2xl p-6">
                         <h3 class="mb-4 flex items-center gap-2 font-semibold text-brand-400"><i data-lucide="clipboard-list" class="h-4 w-4"></i> <span data-form-titulo>Nuevo Ingreso</span></h3>
                         <form id="form-ingreso" class="space-y-4 text-sm" autocomplete="off">
+                            <div id="in-volvio" class="rounded-xl border border-sky-400/30 bg-sky-500/10 p-3" hidden>
+                                <p class="mb-2 flex items-center gap-1.5 text-xs font-semibold text-sky-200"><i data-lucide="refresh-cw" class="h-3.5 w-3.5"></i> ¿Volvió un camión de hoy?</p>
+                                <p class="mb-2 text-[11px] text-slate-400">Tocalo y se completan sus datos y la tara que ya tiene. Solo falta el bruto y la humedad.</p>
+                                <div id="in-volvio-lista" class="flex flex-wrap gap-2"></div>
+                            </div>
                             <div>
                                 <label for="in-empresa" class="field-label">Nombre de la Empresa</label>
                                 <input type="text" id="in-empresa" required maxlength="120" class="field">
@@ -204,6 +216,10 @@
                                 </div>
                             </div>
                             <p class="field-hint -mt-2">Si el camión todavía no descargó, dejá la tara vacía: queda "en planta" y la tara se carga cuando sale vacío.</p>
+                            <div id="in-tara-sugerida" class="-mt-1 flex items-center justify-between gap-3 rounded-lg border border-sky-400/30 bg-sky-500/10 px-3 py-2 text-xs text-sky-200" aria-live="polite" hidden>
+                                <span id="in-tara-sugerida-texto"></span>
+                                <button type="button" id="in-tara-usar" class="btn-sm shrink-0">Usar esa tara</button>
+                            </div>
                             <div class="flex items-center justify-between rounded-xl border border-brand-500/30 bg-brand-900/20 p-3 shadow-inner">
                                 <span class="text-xs font-medium tracking-wider text-brand-400 uppercase">Peso Neto Calculado:</span>
                                 <output id="in-neto" for="in-bruto in-tara" class="text-xl font-bold text-white">0 kg</output>
@@ -982,6 +998,7 @@
             </div>
             <div class="space-y-4 p-5 text-sm">
                 <dl id="tara-datos" class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-xs"></dl>
+                <p id="tara-previa" class="flex items-start gap-2 rounded-lg border border-sky-400/30 bg-sky-500/10 px-3 py-2 text-xs text-sky-200" hidden></p>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label for="tara-kg" class="field-label">Tara (kg)</label>

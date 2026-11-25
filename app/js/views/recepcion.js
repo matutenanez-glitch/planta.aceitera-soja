@@ -19,6 +19,41 @@
   /** Camión que se pesó lleno y todavía no tiene tara (no tiene neto). */
   const enPlanta = (c) => c.neto == null || c.neto === '' || isNaN(Number(c.neto));
 
+  // ---------- La tara del mismo camión ----------
+  /*
+   * Un camión puede venir hasta 3 veces en el día: su tara (vacío) es la misma, así
+   * que no hace falta pesarlo vacío cada vez. Se reconoce por la patente; si alguno
+   * de los dos viajes no tiene patente, por el nombre del chofer.
+   */
+  const normal = (t) => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  function mismoCamion(a, b) {
+    const pa = normal(a.patente);
+    const pb = normal(b.patente);
+    if (pa && pb) return pa === pb;
+    const ca = normal(a.conductor);
+    return !!ca && ca === normal(b.conductor);
+  }
+  const horaDe = (r) => String(r.fechaTara || r.fecha).slice(11, 16);
+
+  /** La última tara de hoy de ese camión (o null). */
+  function taraDeHoy(datos, excluirId) {
+    if (!normal(datos.patente) && !normal(datos.conductor)) return null;
+    return store.todos('ingresos')
+      .filter((c) => c.id !== excluirId && String(c.fecha).startsWith(hoy()) && !enPlanta(c) && Number(c.tara) > 0 && mismoCamion(c, datos))
+      .sort((a, b) => String(a.fechaTara || a.fecha).localeCompare(String(b.fechaTara || b.fecha)))
+      .pop() || null;
+  }
+
+  /** Camiones distintos que ya se taron hoy, el último primero. */
+  function taradosDeHoy() {
+    const vistos = [];
+    store.todos('ingresos')
+      .filter((c) => String(c.fecha).startsWith(hoy()) && !enPlanta(c) && Number(c.tara) > 0 && (normal(c.patente) || normal(c.conductor)))
+      .sort((a, b) => String(b.fechaTara || b.fecha).localeCompare(String(a.fechaTara || a.fecha)))
+      .forEach((c) => { if (!vistos.some((v) => mismoCamion(v, c))) vistos.push(c); });
+    return vistos;
+  }
+
   /** Humedad promedio de varios camiones, ponderada por los kg de cada uno. */
   function humedadPonderada(camiones) {
     const conDato = camiones.filter(tieneHumedad);
@@ -67,6 +102,10 @@
           ]),
           el('p', { className: 'truncate text-xs text-slate-400', text: `${c.conductor || '-'} · ${c.carga || 'Soja'}` }),
           el('p', { className: 'text-xs text-slate-300 tabular-nums', text: `Bruto ${fmt.kg(c.bruto)} · entró a las ${String(c.fecha).slice(11, 16)} (${hace(c.fecha)})` }),
+          ((previa) => (previa ? el('p', { className: 'mt-0.5 flex items-center gap-1 text-xs font-semibold text-sky-300', attrs: { 'data-tara-previa': '' } }, [
+            el('i', { attrs: { 'data-lucide': 'refresh-cw' }, className: 'h-3 w-3' }),
+            el('span', { text: `Ya tiene tara de hoy: ${fmt.kg(previa.tara)} (${horaDe(previa)})` }),
+          ]) : null))(taraDeHoy(c, c.id)),
         ]),
         boton,
       ]);
@@ -76,6 +115,7 @@
 
   // ---------- Diálogo "Cargar la tara" ----------
   let taraId = null;
+  let taraPrevia = null; // el viaje de hoy del que se tomó la tara (o null)
 
   function netoTara() {
     const r = store.buscar('ingresos', taraId);
@@ -94,12 +134,25 @@
       ...fila('Bruto', fmt.kg(r.bruto)),
       ...fila('Entró', `${String(r.fecha).slice(8, 10)}/${String(r.fecha).slice(5, 7)} a las ${String(r.fecha).slice(11, 16)} (${hace(r.fecha)})`),
     );
-    $('#tara-kg').value = '';
+    // Si el camión ya se taró hoy, la tara ya queda puesta.
+    taraPrevia = taraDeHoy(r, r.id);
+    $('#tara-kg').value = taraPrevia ? taraPrevia.tara : '';
+    $('#tara-previa').hidden = !taraPrevia;
+    if (taraPrevia) {
+      $('#tara-previa').replaceChildren(
+        el('i', { attrs: { 'data-lucide': 'refresh-cw' }, className: 'mt-0.5 h-3.5 w-3.5 shrink-0' }),
+        el('span', { text: `Este camión ya se taró hoy a las ${horaDe(taraPrevia)} con ${fmt.kg(taraPrevia.tara)}: la tara ya está puesta. Si lo pesaste de nuevo, cambiala.` }),
+      );
+      SoyaCore.icons.render($('#tara-previa'));
+    }
     $('#tara-humedad').value = tieneHumedad(r) ? r.humedad : '';
     $('#tara-humedad').required = esSoja(r);
     netoTara();
     $('#tara-dialogo').showModal();
-    $('#tara-kg').focus();
+    // Con la tara puesta, lo que falta es la humedad (si es soja y no la tiene) o guardar.
+    if (taraPrevia && $('#tara-humedad').required && !$('#tara-humedad').value) $('#tara-humedad').focus();
+    else if (taraPrevia) $('#form-tara button[type=submit]').focus();
+    else $('#tara-kg').focus();
   }
 
   function initTara() {
@@ -122,6 +175,7 @@
       const h = num($('#tara-humedad'));
       const guardado = store.actualizar('ingresos', r.id, {
         tara: t,
+        taraDe: taraPrevia && Number(taraPrevia.tara) === t ? taraPrevia.id : null,
         neto,
         humedad: isNaN(h) ? (tieneHumedad(r) ? r.humedad : null) : h,
         fechaTara: ahora(),
@@ -167,6 +221,8 @@
     let editor;
     let sinHumedadAntes = false; // camión de soja cargado antes de la v2.18, sin humedad
     let fechaTaraAntes = null;
+    let taraDe = null; // id del viaje de hoy del que se usó la tara (mismo camión)
+    let sugerida = null;
 
     const actualizarNeto = () => {
       if (recepcion && tara.value === '') salida.textContent = num(bruto) > 0 ? 'Falta la tara' : '0 kg';
@@ -185,8 +241,57 @@
       $('#in-humedad').required = esSoja({ carga: $('#in-carga').value || 'Soja' }) && tara.value !== '' && !exento;
     }
 
+    // ---- La tara del mismo camión (solo en Recepción, al cargar uno nuevo) ----
+    function usarTara(viaje) {
+      tara.value = viaje.tara;
+      taraDe = viaje.id;
+      actualizarNeto();
+      actualizarSugerencia();
+    }
+    function actualizarSugerencia() {
+      if (!recepcion) return;
+      const caja = $('#in-tara-sugerida');
+      sugerida = editor && editor.id ? null : taraDeHoy({ patente: $('#in-patente').value, conductor: $(`#${prefijo}-conductor`).value });
+      caja.hidden = !sugerida;
+      if (!sugerida) { taraDe = null; return; }
+      const usada = taraDe === sugerida.id && num(tara) === Number(sugerida.tara);
+      $('#in-tara-sugerida-texto').textContent = usada
+        ? `Es la tara de su viaje de hoy a las ${horaDe(sugerida)} (${fmt.kg(sugerida.tara)}).`
+        : `Este camión ya se taró hoy a las ${horaDe(sugerida)}: ${fmt.kg(sugerida.tara)}.`;
+      $('#in-tara-usar').hidden = usada;
+    }
+    function dibujarVolvio() {
+      if (!recepcion) return;
+      const lista = editor && editor.id ? [] : taradosDeHoy().slice(0, 8);
+      $('#in-volvio').hidden = !lista.length;
+      $('#in-volvio-lista').replaceChildren(...lista.map((c) => {
+        const b = el('button', { className: 'btn-sm flex-col items-start gap-0 px-3 py-1.5 text-left', attrs: { type: 'button', title: `Usar los datos y la tara de ${c.conductor || c.patente}` } }, [
+          el('span', { className: 'text-xs font-bold text-slate-100', text: c.patente || c.conductor }),
+          el('span', { className: 'text-[10px] font-normal text-slate-400', text: `${c.patente ? (c.conductor || '-') + ' · ' : ''}tara ${fmt.kg(c.tara)}` }),
+        ]);
+        b.addEventListener('click', () => {
+          $(`#${prefijo}-empresa`).value = c.empresa || '';
+          $(`#${prefijo}-conductor`).value = c.conductor || '';
+          $('#in-patente').value = c.patente || '';
+          $('#in-carga').value = c.carga || 'Soja';
+          $('#in-humedad').value = '';
+          usarTara(c);
+          bruto.focus();
+        });
+        return b;
+      }));
+    }
+
     bruto.addEventListener('input', actualizarNeto);
-    tara.addEventListener('input', actualizarNeto);
+    tara.addEventListener('input', () => {
+      if (taraDe && (!sugerida || num(tara) !== Number(sugerida.tara))) taraDe = null;
+      actualizarNeto();
+      actualizarSugerencia();
+    });
+    if (recepcion) {
+      ['#in-patente', `#${prefijo}-conductor`].forEach((sel) => $(sel).addEventListener('input', actualizarSugerencia));
+      $('#in-tara-usar').addEventListener('click', () => { if (sugerida) usarTara(sugerida); });
+    }
 
     const tabla = tablaRegistros({
       tbody: $(`#tbody-${coleccion}`),
@@ -214,10 +319,13 @@
           $('#in-humedad').value = tieneHumedad(r) ? r.humedad : '';
           sinHumedadAntes = esSoja(r) && !tieneHumedad(r) && !enPlanta(r); // completo y viejo, sin humedad
           fechaTaraAntes = r.fechaTara || null;
+          taraDe = r.taraDe || null;
         }
         actualizarNeto();
+        actualizarSugerencia();
+        dibujarVolvio();
       },
-      alTerminar: () => { sinHumedadAntes = false; fechaTaraAntes = null; actualizarNeto(); },
+      alTerminar: () => { sinHumedadAntes = false; fechaTaraAntes = null; taraDe = null; actualizarNeto(); actualizarSugerencia(); dibujarVolvio(); },
     });
 
     if (recepcion) $('#in-carga').addEventListener('input', humedadObligatoria);
@@ -251,6 +359,7 @@
         const h = num($('#in-humedad'));
         registro.humedad = isNaN(h) ? null : h;
         registro.fechaTara = conTara ? fechaTaraAntes || ahora() : null;
+        registro.taraDe = conTara && taraDe ? taraDe : null;
         mensajes = conTara
           ? { nuevo: mensaje, accion: { texto: 'Comprobante', fn: abrirComprobante } }
           : { nuevo: 'Entrada registrada: queda en planta esperando la tara.' };
@@ -261,11 +370,12 @@
     store.alCambiar((c) => {
       if (c !== coleccion && c !== '*') return;
       tabla.dibujar();
-      if (recepcion) actualizarHoy();
+      if (recepcion) { actualizarHoy(); dibujarVolvio(); actualizarSugerencia(); }
     });
     tabla.dibujar();
     actualizarNeto();
     if (recepcion) {
+      dibujarVolvio();
       actualizarHoy();
       setInterval(() => !$('#view-recepcion').hidden && dibujarEnPlanta(), 60000); // "hace N min"
     }

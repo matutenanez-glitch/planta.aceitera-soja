@@ -52,6 +52,8 @@
     outline: 2px solid var(--color-brand-400);
     outline-offset: 2px;
   }
+
+  :root { color-scheme: dark; }
 }
 
 @layer components {
@@ -204,3 +206,29 @@
   /* Tilde del mantenimiento de la semana */
   .check-equipo { @apply h-4 w-4 shrink-0 cursor-pointer rounded accent-emerald-500; }
 }
+
+/*
+ * Modo día (:root[data-tema="claro"]). La escala de colores se da vuelta sola
+ * (ver scripts/build-css.mjs); acá van los colores fijos que no son variables y
+ * los textos que tienen que seguir oscuros o blancos sobre un botón de color.
+ */
+:root[data-tema="claro"] body { background: linear-gradient(160deg, #f8fafc 0%, #eef2f7 60%, #e2e8f0 100%); }
+:root[data-tema="claro"] .glass-panel {
+  background: rgb(255 255 255 / 0.82);
+  border-color: rgb(203 213 225 / 0.8);
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.06);
+}
+:root[data-tema="claro"] .glow-text { text-shadow: none; }
+:root[data-tema="claro"] .nav-item[aria-current="page"] { background: rgb(245 158 11 / 0.14); }
+:root[data-tema="claro"] .dialogo::backdrop { background: rgb(15 23 42 / 0.45); }
+:root[data-tema="claro"] { --color-viz-soja: #475569; }
+/* Textos blancos y casi negros: blancos pasan a oscuros, salvo en botones de color. */
+:root[data-tema="claro"] .text-white { color: #0f172a; }
+:root[data-tema="claro"] .hover\:text-white:hover,
+:root[data-tema="claro"] .btn-sm:hover,
+:root[data-tema="claro"] .btn-cancelar:hover,
+:root[data-tema="claro"] .toast { color: #0f172a; }
+:root[data-tema="claro"] .btn.text-white,
+:root[data-tema="claro"] .nav-badge-sin { color: #fff; }
+:root[data-tema="claro"] .text-slate-900 { color: #0f172a; }
+:root[data-tema="claro"] .text-slate-950 { color: #020617; }

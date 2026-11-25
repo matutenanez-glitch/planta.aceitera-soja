@@ -49,7 +49,28 @@ const enlaceCss = '<link rel="stylesheet" href="css/styles.css">';
 if (!html.includes(enlaceCss)) throw new Error('No encontré el <link> de css/styles.css en index.html');
 html = html.replace(enlaceCss, () => `<style>${css}</style>`);
 
-// Scripts: se sacan del <head> y van al final del <body>, en el mismo orden.
+const etiqueta = (s) => `<script>/* ${s.src} */\n${s.codigo}</script>`;
+const dePrueba = (nombre) => ({ src: `prueba/${nombre}`, codigo: leerJs(path.join(PRUEBA, nombre)) });
+
+// Scripts sin "defer" (el modo día/noche, que va antes de dibujar): quedan en el
+// <head>, en el mismo lugar. En la versión de prueba, antes que ellos van los
+// datos de contacto y "guardar todo aparte", para que lean lo de la prueba.
+const enCabeza = [];
+if (esPrueba) {
+  const datosContacto = { whatsapp: opcion('whatsapp').replace(/\D/g, ''), correo: opcion('correo') };
+  enCabeza.push({ src: 'prueba/contacto', codigo: `window.SoyaPrueba = ${JSON.stringify(datosContacto)};` }, dePrueba('aislar-datos.js'));
+}
+let primero = true;
+html = html.replace(/<script src="([^"]+)"><\/script>/g, (_, src) => {
+  const propio = { src, codigo: leerJs(path.join(APP, src)) };
+  const antes = primero ? enCabeza.map(etiqueta).join('\n    ') + (enCabeza.length ? '\n    ' : '') : '';
+  primero = false;
+  enCabeza.push(propio);
+  return antes + etiqueta(propio);
+});
+if (primero && esPrueba) throw new Error('No encontré el script del <head> (js/tema.js) para poner antes lo de la prueba');
+
+// Scripts con "defer": se sacan del <head> y van al final del <body>, en el mismo orden.
 let scripts = [];
 html = html.replace(/[ \t]*<script src="([^"]+)" defer><\/script>\r?\n?/g, (_, src) => {
   scripts.push({ src, codigo: leerJs(path.join(APP, src)) });
@@ -58,34 +79,27 @@ html = html.replace(/[ \t]*<script src="([^"]+)" defer><\/script>\r?\n?/g, (_, s
 if (!scripts.length) throw new Error('No encontré los <script src="…" defer> en index.html');
 
 if (esPrueba) {
-  const dePrueba = (nombre) => ({ src: `prueba/${nombre}`, codigo: leerJs(path.join(PRUEBA, nombre)) });
   const antesDe = (src, ...nuevos) => {
     const i = scripts.findIndex((s) => s.src === src);
     if (i < 0) throw new Error(`No encontré ${src} para la versión de prueba`);
     scripts.splice(i, 0, ...nuevos);
   };
-  const datosContacto = { whatsapp: opcion('whatsapp').replace(/\D/g, ''), correo: opcion('correo') };
-  // Primero: los datos de contacto y guardar todo aparte (antes que cualquier lectura).
-  scripts.unshift(
-    { src: 'prueba/contacto', codigo: `window.SoyaPrueba = ${JSON.stringify(datosContacto)};` },
-    dePrueba('aislar-datos.js'),
-  );
   antesDe('js/store.js', dePrueba('datos-ejemplo.js'));
   scripts.push(dePrueba('prueba.js'));
   html = html.replace(/<title>([^<]*)<\/title>/, (_, t) => `<title>${t} (prueba)</title>`);
 }
 
-const bloque = scripts.map((s) => `<script>/* ${s.src} */\n${s.codigo}</script>`);
+const bloque = scripts.map(etiqueta);
 if (!html.includes('</body>')) throw new Error('No encontré </body> en index.html');
 html = html.replace('</body>', () => `${bloque.join('\n')}\n</body>`);
 
 // CSP: en vez de 'self', las huellas de cada script y del estilo.
 const cspAntes = /script-src 'self'; style-src 'self';/;
 if (!cspAntes.test(html)) throw new Error('La CSP de index.html no tiene el formato esperado');
-const huellasJs = scripts.map((s) => huella(`/* ${s.src} */\n${s.codigo}`)).join(' ');
+const huellasJs = [...enCabeza, ...scripts].map((s) => huella(`/* ${s.src} */\n${s.codigo}`)).join(' ');
 html = html.replace(cspAntes, () => `script-src ${huellasJs}; style-src ${huella(css)};`);
 
 fs.mkdirSync(DIST, { recursive: true });
 const salida = path.join(DIST, `gestion-aceitera-v${version}${esPrueba ? '-prueba' : ''}.html`);
 fs.writeFileSync(salida, html);
-console.log(`✔ ${path.relative(ROOT, salida)} (${(Buffer.byteLength(html) / 1024).toFixed(0)} KB, ${scripts.length} scripts)`);
+console.log(`✔ ${path.relative(ROOT, salida)} (${(Buffer.byteLength(html) / 1024).toFixed(0)} KB, ${enCabeza.length + scripts.length} scripts)`);

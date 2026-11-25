@@ -50,12 +50,31 @@ async function loadStylesheet(id, base) {
   return { path: file, base: path.dirname(file), content: fs.readFileSync(file, 'utf8') };
 }
 
+/**
+ * Modo día: los mismos colores con la escala dada vuelta (el 900 pasa a ser el 100,
+ * el 300 el 700…). Así los fondos oscuros quedan claros y los textos claros quedan
+ * oscuros sin tocar las clases. Solo para las variables que usa la app; los valores
+ * salen de la paleta de Tailwind. "brand" es ámbar.
+ */
+const INVERSO = { 50: 950, 100: 900, 200: 800, 300: 700, 400: 600, 500: 500, 600: 400, 700: 300, 800: 200, 900: 100, 950: 50 };
+function bloqueModoDia(css) {
+  const paleta = {};
+  for (const m of fs.readFileSync(path.join(TAILWIND_DIR, 'theme.css'), 'utf8').matchAll(/--color-([a-z]+)-(\d+):\s*([^;]+);/g)) paleta[`${m[1]}-${m[2]}`] = m[3].trim();
+  const usadas = new Set([...css.matchAll(/--color-([a-z]+)-(\d+):/g)].map((m) => `${m[1]}-${m[2]}`));
+  const lineas = [...usadas].sort().map((v) => {
+    const [familia, tono] = v.split('-');
+    const valor = paleta[`${familia === 'brand' ? 'amber' : familia}-${INVERSO[tono]}`];
+    return valor ? `  --color-${v}: ${valor};` : null;
+  }).filter(Boolean);
+  return `\n/* Modo día (generado): escala de colores dada vuelta */\n:root[data-tema="claro"] {\n  color-scheme: light;\n${lineas.join('\n')}\n}\n`;
+}
+
 async function build() {
   const started = Date.now();
   const compiler = await compile(fs.readFileSync(INPUT, 'utf8'), { base: path.dirname(INPUT), loadStylesheet });
   // También las clases de la versión de prueba (prueba/), que se suman al empaquetar.
   const extras = fs.existsSync(PRUEBA_DIR) ? listSources(PRUEBA_DIR) : [];
-  const css = compiler.build([...extractCandidates([...listSources(SOURCE_DIR), ...extras])]);
+  const css = compiler.build([...extractCandidates([...listSources(SOURCE_DIR), ...extras])]) + bloqueModoDia(compiler.build([...extractCandidates([...listSources(SOURCE_DIR), ...extras])]));
   fs.mkdirSync(path.dirname(OUTPUT), { recursive: true });
   fs.writeFileSync(OUTPUT, '/* Generado por scripts/build-css.mjs a partir de src/styles.css. No editar a mano. */\n' + css);
   console.log(`✔ app/css/styles.css (${(css.length / 1024).toFixed(1)} KB) en ${Date.now() - started} ms`);

@@ -94,9 +94,28 @@
 
   store.alCambiar(actualizarPanelDatos);
 
+  // ---------- Modo día / noche ----------
+  function dibujarBotonTema() {
+    const dia = SoyaCore.tema.actual() === 'claro';
+    const boton = $('#btn-tema');
+    // El botón ofrece el otro modo.
+    boton.querySelector('[data-tema-texto]').textContent = dia ? 'Modo noche' : 'Modo día';
+    boton.setAttribute('aria-pressed', String(dia));
+    boton.title = dia ? 'Pasar a modo noche (fondo oscuro)' : 'Pasar a modo día (fondo claro)';
+    const icono = boton.querySelector('[data-tema-icono], svg');
+    const nuevo = document.createElement('i');
+    nuevo.dataset.lucide = dia ? 'moon' : 'sun';
+    nuevo.dataset.temaIcono = '';
+    nuevo.className = 'h-3.5 w-3.5';
+    icono.replaceWith(nuevo);
+    icons.render(boton);
+  }
+  $('#btn-tema').addEventListener('click', () => { SoyaCore.tema.cambiar(); dibujarBotonTema(); });
+
   // ---------- Arranque ----------
   $('#app-version').textContent = 'v' + config.version;
   icons.render();
+  dibujarBotonTema();
   Object.values(views).forEach((v) => v.init());
   SoyaCore.comprobantes.init();
   SoyaCore.cuenta.init();

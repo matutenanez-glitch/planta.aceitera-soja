@@ -12,6 +12,7 @@ Funciona **sin internet** y guarda los datos **en la PC donde se usa**. Si el du
 1. Abrí `app/index.html` con doble clic. Usá **Chrome o Edge actualizados**: los estilos necesitan Chrome/Edge 111 o posterior.
 2. Usá siempre **el mismo navegador y el mismo usuario de Windows**: los datos quedan guardados en ese navegador.
 3. Hacé un **backup** con el botón **Exportar** (abajo a la izquierda) al menos una vez por semana y guardalo fuera de la PC. La app avisa en ámbar cuando pasaron 7 días.
+4. **Modo día / noche:** el botón de arriba a la derecha cambia entre el modo noche (fondo oscuro, el de siempre) y el modo día (fondo claro, para pantallas con mucha luz). Cada PC recuerda el suyo.
 
 **Un solo archivo.** Con `node scripts/empaquetar.mjs` se arma `dist/gestion-aceitera-v<versión>.html`, con todo adentro. Sirve para pasar la app por pendrive, correo o WhatsApp: se abre con doble clic, sin descomprimir nada, y funciona igual que la carpeta `app/`.
 
@@ -24,6 +25,8 @@ Funciona **sin internet** y guarda los datos **en la PC donde se usa**. Si el du
 
 Sin `--whatsapp` ni `--correo`, el cliente elige a quién mandar la sugerencia. Lo que suma la versión de prueba está en `prueba/`.
 
+**Versión de prueba con link.** Con `node scripts/prueba-web.mjs` (acepta las mismas `--whatsapp=` y `--correo=`) se arma la misma versión de prueba como carpeta web, en `dist/prueba-web/`. Se sube la carpeta entera a una página (`index.html` es la entrada) y al cliente se le pasa el link: la abre en el navegador de su computadora, sin instalar nada. Lo que cargue queda en **su** navegador, aparte de la versión final.
+
 > **Si venís de la v2.8:** abrí la versión nueva en el mismo navegador donde usabas la versión anterior y los datos aparecen solos (se usan las mismas claves `soya_*`). La v2.8 también sigue pudiendo leerlos.
 
 ## Estructura del proyecto
@@ -33,6 +36,7 @@ app/                     ← la aplicación (esto es lo que se instala en la pla
   index.html             estructura de la página (sin estilos ni lógica adentro)
   css/styles.css         estilos GENERADOS (no editar a mano)
   js/config.js           ← datos de la planta: equipos, turnos, versión
+  js/tema.js             modo día / noche (se carga antes de dibujar, para que no parpadee)
   js/icons.js            íconos (Lucide) incluidos localmente
   js/ui.js               utilidades de pantalla: formato, tablas, avisos
   js/turnos.js           turnos y día de producción (a qué día pertenece cada cierre)
@@ -48,6 +52,7 @@ app/                     ← la aplicación (esto es lo que se instala en la pla
 src/styles.css           ← fuente de los estilos (Tailwind CSS v4)
 scripts/build-css.mjs    compila src/styles.css → app/css/styles.css
 scripts/empaquetar.mjs   arma la app en un solo archivo HTML (dist/); con --prueba, la versión de prueba
+scripts/prueba-web.mjs   arma la versión de prueba como carpeta web (dist/prueba-web/), para pasarla con un link
 prueba/                  solo para la versión de prueba y la vista previa: datos de ejemplo, cartel,
                          sugerencias, datos aparte y nube simulada
 scripts/sincronizar_github.bat   sube los cambios a GitHub (Windows)
@@ -59,6 +64,11 @@ archivo/                 versiones anteriores y el circuito de tanques (en pausa
 ## Recepción y secadora
 
 - **Recepción en dos pasos.** Cuando llegan varios camiones juntos, primero se pesan llenos: se carga el **bruto** y se deja la tara vacía. El camión queda en **"En planta, esperando la tara"**. Cuando descarga y se pesa vacío, se toca **Cargar tara**: la app calcula el **neto** y ofrece el comprobante. Mientras falta la tara, el camión no suma a los totales.
+- **Camión que vuelve en el día.** Un mismo camión puede venir hasta 3 veces por día; no hace falta tararlo cada vez:
+    - arriba de **Nuevo Ingreso**, en **¿Volvió un camión de hoy?**, están los camiones que ya se taron hoy. Al tocar uno se completan empresa, chofer, patente, carga y la tara; solo falta el bruto y la humedad;
+    - si se escribe la patente (o el chofer, si no tiene patente) de un camión que ya se taró hoy, debajo de la tara aparece **Usar esa tara**;
+    - en **En planta**, el camión que ya tiene tara de hoy lo avisa, y en **Cargar tara** la tara viene puesta. Si se lo pesó de nuevo, se cambia y listo.
+    - Se reconoce el camión por la patente, sin importar espacios, guiones ni mayúsculas. Solo se ofrecen taras del mismo día.
 - **Humedad.** Si la carga es soja, se anota la humedad del camión (muestra de laboratorio). Es obligatoria cuando se completa la pesada.
 - **Soja ingresada en el día.** Arriba se ven la cantidad de camiones, los kg y la humedad promedio, ponderada por los kg de cada camión.
 - **Comprobante de pesada en PDF.** Está en el ícono de documento de cada fila, o en el aviso después de cargar la tara. Trae empresa, chofer, patente, carga, humedad, bruto y tara con fecha y hora, neto y lugar para las firmas. Se puede:
@@ -235,6 +245,10 @@ npm test             # prueba el cálculo del circuito de tanques (archivado)
 
 ## Historial
 
+- **2.24.0**:
+  - **Modo día / noche**, con el botón de arriba a la derecha (cada PC recuerda el suyo).
+  - **Recepción:** un camión que vuelve en el día usa la tara que ya tiene (**¿Volvió un camión de hoy?**, **Usar esa tara** y la tara puesta en **Cargar tara**).
+  - **Versión de prueba con link** (`scripts/prueba-web.mjs`).
 - **2.23.0**:
   - **Mantenimientos más simple:** un tilde por equipo para marcar el mantenimiento de la semana (por lugar, con "Tildar todos" y semanas anteriores), y un apartado **Qué se usó** con botones **Aceite**, **Grasa** y **Repuesto** que salen del stock.
   - Estado de equipos muestra lo hecho esta semana.
