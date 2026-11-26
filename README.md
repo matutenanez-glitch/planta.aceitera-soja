@@ -27,6 +27,14 @@ Sin `--whatsapp` ni `--correo`, el cliente elige a quién mandar la sugerencia. 
 
 **Versión de prueba con link.** Con `node scripts/prueba-web.mjs` (acepta las mismas `--whatsapp=` y `--correo=`) se arma la misma versión de prueba como carpeta web, en `dist/prueba-web/`. Se sube la carpeta entera a una página (`index.html` es la entrada) y al cliente se le pasa el link: la abre en el navegador de su computadora, sin instalar nada. Lo que cargue queda en **su** navegador, aparte de la versión final.
 
+**Publicada en internet (Vercel).** El repositorio está listo para [Vercel](https://vercel.com): `vercel.json` le dice que corra `node scripts/web.mjs` (no instala nada) y publique `dist/web/`. Queda:
+- **`https://<proyecto>.vercel.app/`**: la app, para usarla de verdad;
+- **`https://<proyecto>.vercel.app/prueba/`**: la versión de prueba, con datos de ejemplo y "Sugerencia".
+
+Cada una guarda sus datos aparte, en el navegador de quien la usa. Cada vez que se sube un cambio a GitHub, Vercel publica la versión nueva sola. Para armar lo mismo en la PC: `node scripts/web.mjs` (queda en `dist/web/`).
+
+Para conectarlo la primera vez: en Vercel, **Add New… → Project**, importar el repositorio y tocar **Deploy** (la configuración ya está en `vercel.json`). Vercel publica como versión principal la rama `main`; para publicar otra rama: **Settings → Environments → Production → Branch Tracking**.
+
 > **Si venís de la v2.8:** abrí la versión nueva en el mismo navegador donde usabas la versión anterior y los datos aparecen solos (se usan las mismas claves `soya_*`). La v2.8 también sigue pudiendo leerlos.
 
 ## Estructura del proyecto
@@ -53,6 +61,8 @@ src/styles.css           ← fuente de los estilos (Tailwind CSS v4)
 scripts/build-css.mjs    compila src/styles.css → app/css/styles.css
 scripts/empaquetar.mjs   arma la app en un solo archivo HTML (dist/); con --prueba, la versión de prueba
 scripts/prueba-web.mjs   arma la versión de prueba como carpeta web (dist/prueba-web/), para pasarla con un link
+scripts/web.mjs          arma el sitio para Vercel (dist/web/): la app en / y la versión de prueba en /prueba/
+vercel.json              configuración de Vercel (build sin instalar nada, publica dist/web/)
 prueba/                  solo para la versión de prueba y la vista previa: datos de ejemplo, cartel,
                          sugerencias, datos aparte y nube simulada
 scripts/sincronizar_github.bat   sube los cambios a GitHub (Windows)
@@ -247,6 +257,7 @@ npm test             # prueba el cálculo del circuito de tanques (archivado)
 
 ## Historial
 
+- **Publicación en Vercel** (`vercel.json`, `scripts/web.mjs`): la app en `/` y la versión de prueba en `/prueba/`, desde GitHub.
 - **2.25.1**: Recepción más simple. Cada viaje se pesa lleno y vacío **en cualquier orden** (se puede empezar por la tara) y se guarda con un solo peso: el otro se completa en **"Camiones de hoy"**. La flecha **Otro viaje** carga el viaje siguiente del mismo camión, **sin tara obligatoria** (con **Usar la tara anterior**). Se sacan "Va a volver hoy" y "Terminar" de la 2.25.0: el comprobante con todos los viajes está siempre en **Comprobante**.
 - **2.25.0**: **camión de varios viajes**. Con **Va a volver hoy** el camión no se cierra: queda en "Camiones en curso" con **+ Otro viaje** (solo el bruto, con la misma tara) y **Terminar**. Al terminar sale **un solo comprobante con todos los viajes** y el neto total. La **humedad pasa a ser opcional**. Se sacan los botones de "¿Volvió un camión de hoy?" (los reemplaza "+ Otro viaje").
 - **2.24.2**: todo se ve nítido: los paneles tienen fondo sólido (antes eran semitransparentes, con el fondo desenfocado), al abrir un diálogo la página de atrás solo se oscurece (antes se desenfocaba) y los números grandes y botones ya no tienen brillo difuso.

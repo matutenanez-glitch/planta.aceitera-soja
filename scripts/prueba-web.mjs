@@ -3,8 +3,9 @@
  * Arma la VERSIÓN DE PRUEBA como carpeta web, para subirla a una página y pasarle
  * al cliente un link (en vez de un archivo).
  *
- *   node scripts/prueba-web.mjs [--whatsapp=549…] [--correo=…]
- *       → dist/prueba-web/ (index.html + css/ + js/ + prueba/)
+ *   node scripts/prueba-web.mjs [--whatsapp=549…] [--correo=…] [--salida=carpeta]
+ *       → dist/prueba-web/ (index.html + css/ + js/ + prueba/), o la carpeta de --salida
+ *         (relativa al proyecto; la usa scripts/web.mjs para Vercel)
  *
  * Es lo mismo que `empaquetar.mjs --prueba` (datos de ejemplo, cartel, "Sugerencia",
  * "Datos de prueba", datos guardados aparte), pero en archivos separados: así la
@@ -19,10 +20,10 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const APP = path.join(ROOT, 'app');
 const PRUEBA = path.join(ROOT, 'prueba');
-const SALIDA = path.join(ROOT, 'dist', 'prueba-web');
-
 const args = process.argv.slice(2);
 const opcion = (nombre) => { const a = args.find((x) => x.startsWith(`--${nombre}=`)); return a ? a.slice(nombre.length + 3) : ''; };
+const SALIDA = path.resolve(ROOT, opcion('salida') || path.join('dist', 'prueba-web'));
+if (!SALIDA.startsWith(path.join(ROOT, 'dist') + path.sep)) throw new Error('--salida tiene que ser una carpeta dentro de dist/');
 
 fs.rmSync(SALIDA, { recursive: true, force: true });
 fs.cpSync(APP, SALIDA, { recursive: true });
