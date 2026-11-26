@@ -5,12 +5,18 @@
  *    Línea 2, …; ver config.lugares). Tildar guarda un registro corto
  *    ("Mantenimiento hecho", rutina: true). Un equipo queda tildado si tiene
  *    cualquier mantenimiento cargado esa semana (de lunes a domingo).
- * 2. Qué se usó: aceite, grasa y repuestos que se le pusieron a un equipo. Salen
- *    del stock (usados: [{ itemId, nombre, unidad, cantidad }]) y se descuentan
- *    solos (ver views/stock.js). Lo que no está en el stock va como texto.
+ * 2. Qué se usó: aceite, grasa y repuestos. Salen del stock (usados: [{ itemId,
+ *    nombre, unidad, cantidad }]) y se descuentan solos (ver views/stock.js). Lo
+ *    que no está en el stock va como texto. Dos formas (2.27):
+ *    - "Todo el mantenimiento" (la de siempre): lo que se usó en el mantenimiento,
+ *      sin ir equipo por equipo (hay unos 35). Se guarda con general: true, sin
+ *      equipo, y no tilda ningún equipo.
+ *    - "Un equipo": para algo puntual (un cambio de crapodinas en una prensa). El
+ *      equipo queda tildado en la semana.
  * 3. Historial de todos los registros, para corregir o borrar.
  *
- * Cada registro guarda el equipo (equipoId), su lugar, su nombre y su tipo.
+ * Cada registro guarda el equipo (equipoId), su lugar, su nombre y su tipo
+ * (los de todo el mantenimiento: general: true, equipo "Todo el mantenimiento").
  */
 (function (SoyaCore) {
   'use strict';
@@ -24,9 +30,12 @@
   const estadoDe = (r) => (r && estados[r.estado] ? r.estado : 'operativo');
   /** Registro del tilde semanal (no dice cómo quedó el equipo). */
   const esTilde = (r) => !!(r && r.rutina === true);
+  /** Lo que se usó en todo el mantenimiento, sin un equipo. */
+  const esGeneral = (r) => !!(r && r.general === true);
   const TAREA_TILDE = 'Mantenimiento hecho';
-  /** Cómo quedó el equipo, para mostrar ("-" en los tildes). */
-  const quedoTexto = (r) => (esTilde(r) ? '-' : estados[estadoDe(r)].etiqueta);
+  const NOMBRE_GENERAL = 'Todo el mantenimiento';
+  /** Cómo quedó el equipo, para mostrar ("-" en los tildes y en lo de todo el mantenimiento). */
+  const quedoTexto = (r) => (esTilde(r) || esGeneral(r) ? '-' : estados[estadoDe(r)].etiqueta);
 
   /** Lo que se usó en un registro como texto: lo del stock con su cantidad y lo otro. */
   function textoRepuestos(r) {
@@ -67,6 +76,20 @@
       porEquipo.get(eq.id).push(r);
     });
     return porEquipo;
+  }
+
+  /** Todo lo que se usó en la semana (de todos los registros), sumado por repuesto. */
+  function usadosDeSemana(lunes) {
+    const porItem = new Map();
+    store.todos('mantenimiento').filter((r) => enSemana(r, lunes)).forEach((r) => stock.usosDe(r).forEach((u) => {
+      const previo = porItem.get(u.itemId);
+      if (previo) previo.cantidad = stock.redondear(previo.cantidad + Number(u.cantidad));
+      else porItem.set(u.itemId, { itemId: u.itemId, nombre: u.nombre, unidad: u.unidad, cantidad: Number(u.cantidad) });
+    }));
+    return [...porItem.values()].map((u) => {
+      const item = store.buscar('stock', u.itemId);
+      return `${item ? item.nombre : u.nombre} ${stock.cantidadTexto(u.cantidad, item ? item.unidad : u.unidad)}`;
+    });
   }
 
   /** Fecha para un tilde: ahora si es esta semana; si no, el sábado de esa semana. */
@@ -140,6 +163,8 @@
       ]);
     }));
     SoyaCore.icons.render($('#semana-lugares'));
+    const usados = usadosDeSemana(semana);
+    $('#semana-usados').textContent = usados.length ? usados.join(' · ') : 'Todavía no se anotaron repuestos en esta semana.';
     if (focoPendiente) {
       const caja = document.querySelector(`#semana-lugares [data-tilde="${focoPendiente}"]`);
       if (caja) caja.focus();
@@ -191,8 +216,26 @@
   /** La 2.21.0 llamó "extrusoras" a las prensas. */
   const TIPO_ANTERIOR = { Extrusora: 'Prensa' };
 
+  // ---- Para qué: todo el mantenimiento (por defecto) o un equipo ----
+  let para = 'general';
+  const AYUDA_PARA = {
+    general: 'Lo que se usó en el mantenimiento, sin elegir equipo por equipo. No tilda ningún equipo: eso se hace arriba.',
+    equipo: 'Para algo puntual de un equipo (por ejemplo, un cambio de crapodinas). El equipo queda tildado en la semana.',
+  };
+  function ponerPara(modo) {
+    para = modo === 'equipo' ? 'equipo' : 'general';
+    document.querySelectorAll('[data-para]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.para === para)));
+    $('#mant-para-ayuda').textContent = AYUDA_PARA[para];
+    $('#mant-equipo-campos').hidden = para === 'general';
+    $('#mant-estado-campo').hidden = para === 'general';
+    $('#mant-obs-campo').classList.toggle('col-span-2', para === 'general');
+    $('#mant-tarea').placeholder = para === 'general' ? 'Ej: Mantenimiento del sábado' : 'Ej: Cambio de aceite, cambio de crapodinas, desarme completo';
+    actualizarUsados();
+  }
+
   /** Tipo del equipo elegido: decide qué repuestos del stock se ofrecen primero. */
   function tipoElegido() {
+    if (para === 'general') return null;
     const eq = planta.buscar($('#mant-equipo').value);
     if (eq) return eq.tipo;
     return equipoViejo ? TIPO_ANTERIOR[equipoViejo.tipo] || equipoViejo.tipo || null : null;
@@ -216,7 +259,11 @@
     const opcion = (i) => el('option', { text: `${i.nombre} · hay ${stock.cantidadTexto(disponibleAntes(i.id, hay), i.unidad)}`, attrs: { value: i.id } });
     const frag = document.createDocumentFragment();
     frag.appendChild(el('option', { text: CLASES[clase].elegir, attrs: { value: '' } }));
-    if (clase === 'repuesto') {
+    if (clase === 'repuesto' && para === 'general') {
+      // Todo el mantenimiento: agrupados por para qué son (prensas, cajas reductoras…).
+      const categorias = [...new Set(items.map((i) => i.categoria))].sort((a, b) => (a === 'General') - (b === 'General') || stock.categoriaCorta(a).localeCompare(stock.categoriaCorta(b), 'es'));
+      categorias.forEach((cat) => frag.appendChild(el('optgroup', { attrs: { label: cat === 'General' ? 'Generales' : `Para ${stock.categoriaCorta(cat)}` } }, items.filter((i) => i.categoria === cat).map(opcion))));
+    } else if (clase === 'repuesto') {
       // Primero los del tipo del equipo, después los generales y el resto.
       const tipo = tipoElegido();
       [
@@ -377,6 +424,12 @@
     {
       className: 'min-w-40 whitespace-normal',
       render: (r) => {
+        if (esGeneral(r)) {
+          return el('div', null, [
+            el('p', { className: 'text-slate-200', text: NOMBRE_GENERAL }),
+            el('p', { className: 'text-[11px] text-slate-500', text: 'No es de un equipo' }),
+          ]);
+        }
         const eq = planta.de(r);
         return el('div', null, [
           el('p', { className: 'text-slate-200', text: eq ? eq.nombre : r.equipo || '-' }),
@@ -402,6 +455,12 @@
 
       llenarLugares(false);
       fillSelect($('#mant-estado'), Object.entries(estados).map(([value, def]) => ({ value, label: def.etiqueta })), 'operativo');
+      document.querySelectorAll('[data-para]').forEach((b) => b.addEventListener('click', () => ponerPara(b.dataset.para)));
+      $('#semana-anotar').addEventListener('click', () => {
+        ponerPara('general');
+        $('#form-mantenimiento').scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        document.querySelector('[data-agregar-uso="aceite"]').focus();
+      });
       $('#mant-lugar').addEventListener('change', actualizarEquipos);
       $('#mant-equipo').addEventListener('change', actualizarUsados);
       document.querySelectorAll('[data-agregar-uso]').forEach((b) => b.addEventListener('click', () => {
@@ -410,6 +469,7 @@
         if (foco) foco.focus();
       }));
       actualizarEquipos();
+      ponerPara('general');
 
       let editor;
       const tabla = tablaRegistros({
@@ -426,16 +486,19 @@
       $('#mant-ver-tildes').addEventListener('change', () => tabla.dibujar());
       editor = editorFormulario($('#form-mantenimiento'), {
         tabla,
-        tituloEdicion: (r) => `Corrigiendo: ${planta.nombreDe(r)}`,
+        tituloEdicion: (r) => `Corrigiendo: ${esGeneral(r) ? NOMBRE_GENERAL : planta.nombreDe(r)}`,
         rellenar(r) {
           usadosAntes = new Map();
           stock.usosDe(r).forEach((u) => usadosAntes.set(u.itemId, (usadosAntes.get(u.itemId) || 0) + Number(u.cantidad)));
+          ponerPara(esGeneral(r) ? 'general' : 'equipo');
           const eq = planta.de(r);
-          equipoViejo = eq ? null : { nombre: r.equipo || '-', tipo: r.tipo || '' };
-          llenarLugares(!eq);
-          $('#mant-lugar').value = eq ? eq.lugar : OTROS;
-          actualizarEquipos();
-          $('#mant-equipo').value = eq ? eq.id : OTROS;
+          equipoViejo = eq || esGeneral(r) ? null : { nombre: r.equipo || '-', tipo: r.tipo || '' };
+          llenarLugares(!eq && !esGeneral(r));
+          if (!esGeneral(r)) {
+            $('#mant-lugar').value = eq ? eq.lugar : OTROS;
+            actualizarEquipos();
+            $('#mant-equipo').value = eq ? eq.id : OTROS;
+          }
           $('#mant-tarea').value = esTilde(r) ? '' : r.tarea || '';
           $('#mant-piezas').value = r.repuestos === 'Ninguno' ? '' : r.repuestos || '';
           $('#mant-obs').value = r.observaciones || '';
@@ -455,19 +518,29 @@
         e.preventDefault();
         const usados = usadosDelFormulario();
         const otros = $('#mant-piezas').value.trim();
-        const eq = planta.buscar($('#mant-equipo').value);
-        const equipo = eq
-          ? { lugar: eq.lugar, equipoId: eq.id, equipo: eq.nombre, tipo: eq.tipo }
-          : { lugar: '', equipoId: '', equipo: equipoViejo ? equipoViejo.nombre : '', tipo: equipoViejo ? equipoViejo.tipo : '' };
+        const general = para === 'general';
+        if (general && !usados.length && !otros) {
+          toast('Agregá lo que se usó: aceite, grasa, repuestos u "Otros".', 'error');
+          document.querySelector('[data-agregar-uso="aceite"]').focus();
+          return;
+        }
+        const eq = general ? null : planta.buscar($('#mant-equipo').value);
+        const equipo = general
+          ? { general: true, lugar: '', equipoId: '', equipo: NOMBRE_GENERAL, tipo: '' }
+          : eq
+            ? { general: false, lugar: eq.lugar, equipoId: eq.id, equipo: eq.nombre, tipo: eq.tipo }
+            : { general: false, lugar: '', equipoId: '', equipo: equipoViejo ? equipoViejo.nombre : '', tipo: equipoViejo ? equipoViejo.tipo : '' };
         const guardado = guardarRegistro('mantenimiento', editor, {
           ...equipo,
           tarea: $('#mant-tarea').value.trim() || 'Mantenimiento',
           rutina: false,
           usados,
           repuestos: otros,
-          estado: $('#mant-estado').value,
+          estado: general ? '' : $('#mant-estado').value,
           observaciones: $('#mant-obs').value.trim(),
-        }, { nuevo: usados.length ? 'Guardado. Lo que se usó se descontó del stock.' : 'Mantenimiento guardado.' });
+        }, { nuevo: general
+          ? (usados.length ? 'Guardado lo que se usó en el mantenimiento: se descontó del stock.' : 'Guardado lo que se usó en el mantenimiento.')
+          : (usados.length ? 'Guardado. Lo que se usó se descontó del stock.' : 'Mantenimiento guardado.') });
         if (guardado) stock.avisarSiFalta(usados.map((u) => u.itemId));
       });
 
@@ -487,6 +560,7 @@
     nuevoPara(equipoId) {
       const eq = planta.buscar(equipoId);
       if (!eq) return;
+      ponerPara('equipo');
       $('#mant-lugar').value = eq.lugar;
       actualizarEquipos();
       $('#mant-equipo').value = eq.id;
@@ -496,6 +570,7 @@
     },
     estadoDe,
     esTilde,
+    esGeneral,
     quedoTexto,
     textoRepuestos,
     lunesDe,

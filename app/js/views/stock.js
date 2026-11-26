@@ -218,7 +218,7 @@
     }));
     store.todos('mantenimiento').forEach((r) => usosDe(r).filter((u) => u.itemId === itemId).forEach((u) => lista.push({
       fecha: r.fecha,
-      texto: `Usado en ${SoyaCore.planta.nombreDe(r)}`,
+      texto: r.general ? 'Usado en el mantenimiento (todo)' : `Usado en ${SoyaCore.planta.nombreDe(r)}`,
       detalle: r.tarea || '',
       cantidad: -Number(u.cantidad),
     })));

@@ -661,14 +661,28 @@
                             <p id="semana-total" class="text-sm font-bold text-emerald-300 tabular-nums"></p>
                         </div>
                         <div id="semana-lugares" class="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3"></div>
+                        <div class="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-800 bg-slate-900/60 px-4 py-3">
+                            <div class="min-w-0">
+                                <p class="flex items-center gap-1.5 text-xs font-semibold text-slate-200"><i data-lucide="package-minus" class="h-3.5 w-3.5 text-brand-400"></i> Repuestos usados en la semana</p>
+                                <p id="semana-usados" class="mt-0.5 text-xs text-slate-400"></p>
+                            </div>
+                            <button type="button" id="semana-anotar" class="btn-sm shrink-0"><i data-lucide="plus" class="h-3.5 w-3.5"></i> Anotar repuestos del mantenimiento</button>
+                        </div>
                     </div>
 
                     <!-- 2. Qué se usó -->
                     <div class="glass-panel col-span-1 h-fit rounded-2xl p-6">
                         <h3 class="mb-1 flex items-center gap-2 font-semibold text-slate-200"><i data-lucide="package-minus" class="h-4 w-4 text-brand-400"></i> <span data-form-titulo>Qué se usó</span></h3>
-                        <p class="mb-4 text-xs text-slate-400">Aceite, grasa y repuestos que se le pusieron a un equipo. Salen del stock solos, y el equipo queda tildado en la semana.</p>
+                        <p class="mb-4 text-xs text-slate-400">Aceite, grasa y repuestos que se usaron. Salen del stock solos.</p>
                         <form id="form-mantenimiento" class="space-y-4 text-sm" autocomplete="off">
-                            <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <div class="grid grid-cols-2 gap-2" role="group" aria-label="Para qué se usó">
+                                    <button type="button" class="seg" data-para="general" aria-pressed="true">Todo el mantenimiento</button>
+                                    <button type="button" class="seg" data-para="equipo" aria-pressed="false">Un equipo</button>
+                                </div>
+                                <p id="mant-para-ayuda" class="field-hint"></p>
+                            </div>
+                            <div id="mant-equipo-campos" class="grid grid-cols-2 gap-3">
                                 <div>
                                     <label for="mant-lugar" class="field-label">Lugar</label>
                                     <select id="mant-lugar" required class="field"></select>
@@ -697,11 +711,11 @@
                                 <input type="text" id="mant-tarea" maxlength="200" placeholder="Ej: Cambio de aceite, cambio de crapodinas, desarme completo" class="field">
                             </div>
                             <div class="grid grid-cols-2 gap-3">
-                                <div>
+                                <div id="mant-estado-campo">
                                     <label for="mant-estado" class="field-label">Cómo quedó</label>
                                     <select id="mant-estado" required class="field"></select>
                                 </div>
-                                <div>
+                                <div id="mant-obs-campo">
                                     <label for="mant-obs" class="field-label">Observaciones</label>
                                     <input type="text" id="mant-obs" maxlength="500" placeholder="Opcional" class="field">
                                 </div>

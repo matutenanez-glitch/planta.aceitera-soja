@@ -144,12 +144,15 @@ Los equipos están ordenados por **lugar**, cada uno con su nombre (en `config.j
     - Un equipo queda tildado si tiene cualquier mantenimiento cargado esa semana (de lunes a domingo).
     - Destildar borra el tilde. Si el equipo tiene cargado lo que se usó, se borra desde el historial.
     - El tilde no cambia cómo quedó el equipo: un equipo fuera de servicio sigue así hasta que se cargue que quedó operativo.
-2. **Qué se usó:** se elige el lugar y el equipo, y con los botones **Aceite**, **Grasa** y **Repuesto** se agrega lo que se le puso.
+2. **Qué se usó:** con los botones **Aceite**, **Grasa** y **Repuesto** se agrega lo que se usó. Hay dos formas:
+    - **Todo el mantenimiento** (la de siempre): lo que se usó en el mantenimiento, **todo junto, sin elegir equipo por equipo** (son unos 35). Los repuestos aparecen agrupados por para qué son (prensas, cajas reductoras, bombas…). No tilda ningún equipo: eso se hace con los tildes.
+    - **Un equipo**: para algo puntual (por ejemplo, un cambio de crapodinas en la Prensa 3). Se eligen el lugar, el equipo y cómo quedó, y el equipo queda tildado en la semana.
+    - Debajo de los tildes, **Repuestos usados en la semana** suma todo lo usado, con un botón para anotar los repuestos del mantenimiento.
     - Cada botón ofrece solo lo del stock que corresponde (aceites, grasas o repuestos; de los repuestos, primero los del tipo del equipo).
     - Se pone la cantidad en litros, kg o unidades, y se ve cuánto va a quedar.
-    - Al guardar se descuenta solo del stock y el equipo queda tildado en la semana.
+    - Al guardar se descuenta solo del stock (y, en **Un equipo**, el equipo queda tildado en la semana).
     - **Otros** es para lo que no está en el stock.
-    - **Qué se hizo** es opcional (por ejemplo, "cambio de crapodinas"). También se carga **cómo quedó** el equipo.
+    - **Qué se hizo** es opcional (por ejemplo, "cambio de crapodinas"). En **Un equipo** también se carga **cómo quedó** el equipo.
 3. **Historial:** todos los mantenimientos, para corregir o borrar. Los tildes de la semana se muestran solo si se pide.
 
 **Estado de equipos.** Hay un panel por lugar, con un pantallazo de cómo está:
@@ -260,6 +263,7 @@ npm test             # prueba el cálculo del circuito de tanques (archivado)
 
 ## Historial
 
+- **2.27.0**: **Mantenimientos:** los repuestos, el aceite y la grasa del mantenimiento se cargan **todos juntos** ("Todo el mantenimiento"), sin elegir equipo por equipo; salen del stock y no tildan equipos. "Un equipo" queda para algo puntual. Debajo de los tildes, **Repuestos usados en la semana**.
 - **2.26.0**: Recepción con **una ficha por camión**: los viajes son escalones con su bruto y su tara (cada viaje con su propia tara), se escriben ahí mismo sin ventanas, **+ Agregar viaje** suma otro, y **Terminar** cierra la ficha y saca **un solo PDF con todos los viajes**. Cada ficha es de un camión: los viajes se atan a su ficha y no se mezclan con los de otros camiones del día. Se sacan "Otro viaje" (la flecha), las ventanas de tara y "Usar esa tara".
 - **Publicación en Vercel** (`vercel.json`, `scripts/web.mjs`): la app en `/` y la versión de prueba en `/prueba/`, desde GitHub.
 - **2.25.1**: Recepción más simple. Cada viaje se pesa lleno y vacío **en cualquier orden** (se puede empezar por la tara) y se guarda con un solo peso: el otro se completa en **"Camiones de hoy"**. La flecha **Otro viaje** carga el viaje siguiente del mismo camión, **sin tara obligatoria** (con **Usar la tara anterior**). Se sacan "Va a volver hoy" y "Terminar" de la 2.25.0: el comprobante con todos los viajes está siempre en **Comprobante**.

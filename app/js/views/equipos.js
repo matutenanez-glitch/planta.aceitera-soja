@@ -59,6 +59,7 @@
   function calcularEstados() {
     const porClave = new Map();
     store.todos('mantenimiento').forEach((r) => {
+      if (r.general) return; // lo usado en todo el mantenimiento no es de un equipo
       const k = planta.claveDe(r);
       if (!porClave.has(k)) porClave.set(k, []);
       porClave.get(k).push(r);

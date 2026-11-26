@@ -10,7 +10,7 @@
 (function () {
   'use strict';
   try {
-    const VERSION_DEMO = '2.26.0';
+    const VERSION_DEMO = '2.27.0';
     if (localStorage.getItem('soya_sin_ejemplo')) return;
     const CLAVES = ['soya_produccion', 'soya_camiones', 'soya_expeller', 'soya_secadora', 'soya_mantenimiento', 'soya_aceite_despachos', 'soya_stock_items', 'soya_stock_movimientos'];
     const hayDatos = CLAVES.some((k) => localStorage.getItem(k));
@@ -136,6 +136,10 @@
     ];
     [...LINEA(1, [1, 2, 3, 4]), ...LINEA(2, [5, 6, 7, 8]), eq('TQ-CR-T1', 'Caja reductora T1 (tanque)', 'TQ', 'Reductor'), eq('TQ-CR-T2', 'Caja reductora T2 (tanque)', 'TQ', 'Reductor')]
       .forEach((e, i) => tilde(desdeSabado, 8, i * 6, e));
+    // Y lo que se usó en ese mantenimiento, todo junto (sin ir equipo por equipo)
+    mantenimiento.push({ id: nid(), fecha: fecha(dia(desdeSabado, 13, 0)), general: true, lugar: '', equipoId: '', equipo: 'Todo el mantenimiento', tipo: '', tarea: 'Mantenimiento del sábado', rutina: false,
+      usados: [{ itemId: aceiteVG.id, nombre: aceiteVG.nombre, unidad: 'litros', cantidad: 12 }, { itemId: grasa.id, nombre: grasa.nombre, unidad: 'kg', cantidad: 1 }, { itemId: crapodina.id, nombre: crapodina.nombre, unidad: 'unidades', cantidad: 1 }],
+      repuestos: 'Trapos y desengrasante', estado: '', observaciones: '' });
     const desdeLunes = (ahora.getDay() + 6) % 7;
     if (desdeLunes >= 1) {
       tilde(desdeLunes - 1, 16, 10, eq('L1-PRENSA-2', 'Prensa 2', 'L1', 'Prensa'));
