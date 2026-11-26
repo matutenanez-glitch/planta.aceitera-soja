@@ -10,7 +10,7 @@
 (function () {
   'use strict';
   try {
-    const VERSION_DEMO = '2.25.1';
+    const VERSION_DEMO = '2.26.0';
     if (localStorage.getItem('soya_sin_ejemplo')) return;
     const CLAVES = ['soya_produccion', 'soya_camiones', 'soya_expeller', 'soya_secadora', 'soya_mantenimiento', 'soya_aceite_despachos', 'soya_stock_items', 'soya_stock_movimientos'];
     const hayDatos = CLAVES.some((k) => localStorage.getItem(k));
@@ -61,14 +61,17 @@
     // Hoy
     const minutosHoy = ahora.getHours() * 60 + ahora.getMinutes();
     const hoyA = (frac) => { const d = new Date(ahora); d.setHours(0, Math.max(5, Math.floor(minutosHoy * frac)), 0, 0); return d; };
-    // Un camión que ya hizo 2 viajes hoy (en "Ya pesados hoy", con la flecha "Otro viaje")
-    const viaje1 = nid();
-    camiones.push({ id: viaje1, fecha: fecha(hoyA(0.2)), fechaTara: fecha(hoyA(0.25)), empresa: 'Agro Norte SA', conductor: 'Luis Ferreyra', patente: 'AE789MN', carga: 'Soja', humedad: 14.9, bruto: 42300, tara: 12140, neto: 30160 });
-    camiones.push({ id: nid(), fecha: fecha(hoyA(0.6)), fechaTara: fecha(hoyA(0.65)), empresa: 'Agro Norte SA', conductor: 'Luis Ferreyra', patente: 'AE789MN', carga: 'Soja', humedad: null, bruto: 41800, tara: 12140, neto: 29660, taraDe: viaje1 });
-    camiones.push({ id: nid(), fecha: fecha(hoyA(0.4)), fechaTara: fecha(hoyA(0.45)), empresa: 'Cooperativa La Unión', conductor: 'Marta Ojeda', patente: 'AD456KL', carga: 'Soja', humedad: 14.6, bruto: 41000, tara: 11860, neto: 29140 });
-    // Uno que se pesó primero vacío (espera el bruto) y otro lleno (espera la tara)
-    camiones.push({ id: nid(), fecha: fecha(hoyA(0.85)), fechaTara: fecha(hoyA(0.85)), empresa: 'Acopio San Martín', conductor: 'Ana Quiroga', patente: 'AD135LM', carga: 'Soja', humedad: null, bruto: null, tara: 13200, neto: null });
-    camiones.push({ id: nid(), fecha: fecha(hoyA(0.9)), empresa: 'Don Julio Granos', conductor: 'Jorge Paz', patente: 'AB321ZX', carga: 'Soja', humedad: 15.1, bruto: 29600, tara: null, neto: null });
+    // Hoy, 3 camiones en planta, cada uno con su ficha (viajes = escalones):
+    //  1) Agro Norte: 2 viajes completos y el 3.º esperando la tara (con su propia tara en cada viaje)
+    camiones.push({ id: nid(), ficha: 'fdemo1', fecha: fecha(hoyA(0.2)), fechaTara: fecha(hoyA(0.25)), empresa: 'Agro Norte SA', conductor: 'Luis Ferreyra', patente: 'AE789MN', carga: 'Soja', humedad: 14.9, bruto: 42300, tara: 12140, neto: 30160 });
+    camiones.push({ id: nid(), ficha: 'fdemo1', fecha: fecha(hoyA(0.5)), fechaTara: fecha(hoyA(0.55)), empresa: 'Agro Norte SA', conductor: 'Luis Ferreyra', patente: 'AE789MN', carga: 'Soja', humedad: null, bruto: 41800, tara: 12180, neto: 29620 });
+    camiones.push({ id: nid(), ficha: 'fdemo1', fecha: fecha(hoyA(0.82)), empresa: 'Agro Norte SA', conductor: 'Luis Ferreyra', patente: 'AE789MN', carga: 'Soja', humedad: null, bruto: 41950, tara: null, neto: null });
+    //  2) Acopio San Martín: se pesó primero vacío, espera el bruto
+    camiones.push({ id: nid(), ficha: 'fdemo2', fecha: fecha(hoyA(0.85)), fechaTara: fecha(hoyA(0.85)), empresa: 'Acopio San Martín', conductor: 'Ana Quiroga', patente: 'AD135LM', carga: 'Soja', humedad: null, bruto: null, tara: 13200, neto: null });
+    //  3) Don Julio: entró lleno, espera la tara
+    camiones.push({ id: nid(), ficha: 'fdemo3', fecha: fecha(hoyA(0.9)), empresa: 'Don Julio Granos', conductor: 'Jorge Paz', patente: 'AB321ZX', carga: 'Soja', humedad: 15.1, bruto: 29600, tara: null, neto: null });
+    // Y uno que ya terminó (en "Terminados hoy")
+    camiones.push({ id: nid(), ficha: 'fdemo4', fecha: fecha(hoyA(0.4)), fechaTara: fecha(hoyA(0.45)), empresa: 'Cooperativa La Unión', conductor: 'Marta Ojeda', patente: 'AD456KL', carga: 'Soja', humedad: 14.6, bruto: 41000, tara: 11860, neto: 29140, terminado: true });
     secadora.push({ id: nid(), fecha: fecha(hoyA(0.5)), hCaliente: 12.9, hFrio: 12.2 });
     // Hoy: el Turno 1 ya está cargado (si terminó); el Turno 2 queda sin cargar para mostrar el aviso.
     if (ahora.getHours() >= 8 && ahora.getDay() !== 0 && ahora.getDay() !== 6) {

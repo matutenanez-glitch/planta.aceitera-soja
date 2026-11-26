@@ -2,21 +2,24 @@
  * Vistas: Recepción de camiones y Despacho de expeller.
  * Comparten la lógica de balanza (bruto − tara = neto).
  *
- * Recepción: cada viaje pasa dos veces por la balanza, lleno (bruto) y vacío
- * (tara), en cualquier orden. Se carga el peso que se tenga; el viaje queda en
- * "Camiones de hoy" hasta que se carga el otro, y ahí se calcula el neto.
- * Mientras falta un peso, el viaje no suma a los totales. La humedad es opcional.
+ * Recepción (2.26): cada camión tiene una FICHA con sus viajes, uno abajo del otro
+ * (escalones). En cada viaje el camión pasa dos veces por la balanza: lleno (bruto)
+ * y vacío (tara), en cualquier orden, y cada peso se escribe ahí mismo en su
+ * escalón. Con "+ Agregar viaje" se suma el siguiente (con su propia tara). La
+ * ficha queda abierta hasta "Terminar", que la cierra y saca un solo PDF con todos
+ * los viajes. Cada ficha es de un solo camión: los viajes se atan por `ficha` (el
+ * id de la ficha), así no se mezclan aunque vengan varios camiones el mismo día.
  *
- * Varios viajes (2.25.1): con la flecha "Otro viaje" se carga el viaje siguiente
- * del mismo camión (sus datos ya puestos; ningún peso es obligatorio por separado
- * y se ofrece la tara anterior). Cada viaje es un registro, así los totales no
- * cambian. Los viajes de un mismo camión en el día (misma patente, o mismo chofer
- * si no hay patente, y misma carga) salen juntos en un solo comprobante.
+ * Cada viaje es un registro (así los totales, la secadora y el resumen no cambian):
+ *   ficha       id de la ficha del camión (los registros viejos no tienen: su ficha es su id)
+ *   terminado   true en el último viaje cuando se tocó "Terminar"
+ *   fechaTara   hora de la tara; fechaBruto: hora del bruto si se pesó después de la tara
+ * La humedad es opcional. Mientras falta un peso, el viaje no suma a los totales.
  */
 (function (SoyaCore) {
   'use strict';
 
-  const { $, el, fmt, num, hoy, ahora, fechaMs, toast, tablaRegistros, editorFormulario, guardarRegistro } = SoyaCore.ui;
+  const { $, $$, el, fmt, num, hoy, ahora, toast, tablaRegistros, editorFormulario, guardarRegistro } = SoyaCore.ui;
   const store = SoyaCore.store;
 
   /** Un ingreso es de soja si su carga dice "soja" (o no tiene carga: datos viejos). */
@@ -27,48 +30,48 @@
   /** Se pesó primero vacío: tiene la tara y le falta el bruto. */
   const faltaBruto = (c) => enPlanta(c) && !(Number(c.bruto) > 0) && Number(c.tara) > 0;
   const hhmm = (f) => String(f || '').slice(11, 16);
-
-  // ---------- El mismo camión ----------
-  /*
-   * Se reconoce por la patente; si alguno de los dos viajes no tiene patente, por el
-   * nombre del chofer. Sin importar espacios, guiones, acentos ni mayúsculas.
-   */
-  const normal = (t) => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-  function mismoCamion(a, b) {
-    const pa = normal(a.patente);
-    const pb = normal(b.patente);
-    if (pa && pb) return pa === pb;
-    const ca = normal(a.conductor);
-    return !!ca && ca === normal(b.conductor);
-  }
-  const horaDe = (r) => hhmm(r.fechaTara || r.fecha);
-
-  /** La última tara de hoy de ese camión (o null). */
-  function taraDeHoy(datos, excluirId) {
-    if (!normal(datos.patente) && !normal(datos.conductor)) return null;
-    return store.todos('ingresos')
-      .filter((c) => c.id !== excluirId && String(c.fecha).startsWith(hoy()) && Number(c.tara) > 0 && mismoCamion(c, datos))
-      .sort((a, b) => String(a.fechaTara || a.fecha).localeCompare(String(b.fechaTara || b.fecha)))
-      .pop() || null;
-  }
-
-  // ---------- Los viajes del mismo camión en el día ----------
   const diaDe = (r) => String(r.fecha).slice(0, 10);
+  const horaCorta = (f) => (diaDe({ fecha: f }) === hoy() ? hhmm(f) : `${String(f).slice(8, 10)}/${String(f).slice(5, 7)} ${hhmm(f)}`);
   const porFecha = (a, b) => String(a.fecha).localeCompare(String(b.fecha)) || String(a.id).localeCompare(String(b.id));
 
-  /** Todos los viajes de ese camión en el día de r (con r), en orden. */
+  // ---------- Fichas: los viajes de cada camión ----------
+  const fichaDe = (r) => r.ficha || r.id;
+  const nuevaFicha = () => `f${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+
+  /** Todos los viajes de la ficha de r (con r), en orden. */
   function viajesDe(r) {
     if (!r) return [];
-    if (!normal(r.patente) && !normal(r.conductor)) return [r];
-    const carga = normal(r.carga || 'Soja');
-    return store.todos('ingresos')
-      .filter((c) => c.id === r.id || (diaDe(c) === diaDe(r) && normal(c.carga || 'Soja') === carga && mismoCamion(c, r)))
-      .sort(porFecha);
+    const f = fichaDe(r);
+    return store.todos('ingresos').filter((c) => fichaDe(c) === f).sort(porFecha);
   }
   const completos = (viajes) => viajes.filter((v) => !enPlanta(v));
   const netoDe = (viajes) => viajes.reduce((s, v) => s + (Number(v.neto) || 0), 0);
   const textoViajes = (n) => (n === 1 ? '1 viaje' : `${n} viajes`);
-  const esUltimo = (r) => { const v = viajesDe(r); return v[v.length - 1].id === r.id; };
+
+  /**
+   * Fichas abiertas (camiones en planta) y terminadas hoy. Una ficha nueva queda
+   * abierta hasta "Terminar"; un registro viejo (sin ficha) solo mientras le falta un peso.
+   */
+  function fichas() {
+    const grupos = new Map();
+    store.todos('ingresos').forEach((c) => {
+      const f = fichaDe(c);
+      if (!grupos.has(f)) grupos.set(f, []);
+      grupos.get(f).push(c);
+    });
+    const abiertas = [];
+    const terminadas = [];
+    grupos.forEach((viajes) => {
+      viajes.sort(porFecha);
+      const ultimo = viajes[viajes.length - 1];
+      const nueva = viajes.some((v) => v.ficha);
+      if (nueva ? !ultimo.terminado : viajes.some(enPlanta)) abiertas.push(viajes);
+      else if (nueva && viajes.some((v) => diaDe(v) === hoy())) terminadas.push(viajes);
+    });
+    abiertas.sort((a, b) => porFecha(a[0], b[0]));
+    terminadas.sort((a, b) => porFecha(b[b.length - 1], a[a.length - 1]));
+    return { abiertas, terminadas };
+  }
 
   /** Humedad promedio de varios camiones, ponderada por los kg de cada uno. */
   function humedadPonderada(camiones) {
@@ -79,28 +82,10 @@
     return conDato.reduce((s, c) => s + Number(c.humedad) * (Number(c.neto) || 0), 0) / kg;
   }
 
-  function hace(fecha) {
-    const min = Math.round((Date.now() - fechaMs(fecha)) / 60000);
-    if (isNaN(min)) return '';
-    if (min < 1) return 'recién';
-    if (min < 60) return `hace ${min} min`;
-    if (min < 24 * 60) return `hace ${Math.floor(min / 60)} h ${String(min % 60).padStart(2, '0')} min`;
-    return `el ${String(fecha).slice(8, 10)}/${String(fecha).slice(5, 7)}`;
-  }
-
   const abrirComprobante = (r) => SoyaCore.comprobantes.abrirPesada(r);
   const icono = (nombre, clase) => el('i', { attrs: { 'data-lucide': nombre }, className: clase || 'h-3.5 w-3.5' });
 
-  /** Aviso al completar un viaje, con el comprobante (de todos los viajes del día). */
-  function avisoCompleto(r) {
-    const viajes = completos(viajesDe(r));
-    const texto = viajes.length > 1
-      ? `Viaje ${viajes.findIndex((v) => v.id === r.id) + 1} completo: neto ${fmt.kg(r.neto)}. En el día lleva ${textoViajes(viajes.length)}, ${fmt.kg(netoDe(viajes))}.`
-      : `Pesada completa: neto ${fmt.kg(r.neto)}.`;
-    toast(texto, 'ok', { texto: 'Comprobante', fn: () => abrirComprobante(r) });
-  }
-
-  // ---------- Panel del día: camiones de hoy ----------
+  // ---------- Panel del día ----------
   function actualizarHoy() {
     const deHoy = store.todos('ingresos').filter((c) => String(c.fecha).startsWith(hoy()));
     const soja = deHoy.filter((c) => esSoja(c) && !enPlanta(c));
@@ -110,235 +95,239 @@
     dibujarEnPlanta();
   }
 
+  const COLORES = ['border-l-sky-400', 'border-l-emerald-400', 'border-l-violet-400', 'border-l-amber-400', 'border-l-rose-400'];
+  const borradores = new Set(); // fichas con un viaje nuevo todavía sin guardar
+  const COLS = 'grid grid-cols-[5.5rem_minmax(0,1fr)_minmax(0,1fr)_4.5rem_7rem] items-center gap-2';
   const patenteChip = (c) => (c.patente ? el('span', { className: 'rounded border border-slate-600 px-1.5 text-[10px] font-bold tracking-wider text-slate-300 uppercase', text: c.patente }) : null);
+  const kgTexto = (v) => el('span', { className: 'tabular-nums text-slate-200', text: fmt.kg(v) });
+  const campo = (clave, etiqueta, extra) => el('input', {
+    className: 'field px-2 py-1.5 text-sm tabular-nums',
+    attrs: Object.assign({ type: 'number', min: '1', step: '1', inputmode: 'numeric', 'aria-label': etiqueta, placeholder: etiqueta, 'data-clave': clave }, extra || {}),
+  });
 
-  function tarjetaPendiente(c) {
-    const viajes = viajesDe(c);
-    const n = viajes.findIndex((v) => v.id === c.id) + 1;
-    const bruto = faltaBruto(c);
-    const boton = el('button', {
-      className: 'btn w-auto shrink-0 bg-sky-500 px-3 py-1.5 text-xs text-slate-950 hover:bg-sky-400',
-      attrs: { type: 'button', [bruto ? 'data-cargar-bruto' : 'data-cargar-tara']: c.id },
-    }, [icono('scale'), el('span', { text: bruto ? 'Cargar bruto' : 'Cargar tara' })]);
-    boton.addEventListener('click', () => abrirTara(c));
-    const previa = bruto ? null : taraDeHoy(c, c.id);
-    return el('li', { className: 'flex items-center justify-between gap-3 rounded-xl border border-slate-800 bg-slate-900/60 p-3', attrs: { 'data-id': c.id } }, [
-      el('div', { className: 'min-w-0' }, [
-        el('p', { className: 'flex flex-wrap items-center gap-2' }, [
-          el('span', { className: 'truncate font-semibold text-slate-100', text: c.empresa }),
-          patenteChip(c),
-          el('span', { className: 'chip border-sky-400/50 text-sky-300', text: bruto ? 'Falta el bruto' : 'Falta la tara' }),
-          n > 1 ? el('span', { className: 'chip border-slate-600 text-slate-300', text: `Viaje ${n}` }) : null,
-        ]),
-        el('p', { className: 'truncate text-xs text-slate-400', text: `${c.conductor || '-'} · ${c.carga || 'Soja'}` }),
-        el('p', { className: 'text-xs text-slate-300 tabular-nums', text: `${bruto ? `Tara ${fmt.kg(c.tara)}` : `Bruto ${fmt.kg(c.bruto)}`} · a las ${hhmm(c.fecha)} (${hace(c.fecha)})` }),
-        previa ? el('p', { className: 'mt-0.5 flex items-center gap-1 text-xs font-semibold text-sky-300', attrs: { 'data-tara-previa': '' } }, [
-          icono('refresh-cw', 'h-3 w-3'),
-          el('span', { text: `Ya tiene tara de hoy: ${fmt.kg(previa.tara)} (${horaDe(previa)})` }),
-        ]) : null,
-      ]),
-      boton,
+  /** Escalón de un viaje completo. */
+  function filaLista(v, n) {
+    return el('div', { className: `${COLS} px-3 py-2 text-sm`, attrs: { 'data-viaje': v.id } }, [
+      el('span', { className: 'text-xs text-slate-400' }, [el('b', { className: 'text-slate-200', text: `Viaje ${n}` }), el('br'), el('span', { text: horaCorta(v.fecha) })]),
+      kgTexto(v.bruto),
+      kgTexto(v.tara),
+      el('span', { className: 'text-xs text-slate-400 tabular-nums', text: tieneHumedad(v) ? fmt.porcentaje(v.humedad) : '-' }),
+      el('span', { className: 'flex items-center justify-end gap-1 font-bold text-brand-300 tabular-nums' }, [el('span', { text: fmt.kg(v.neto) }), icono('check', 'h-3.5 w-3.5 text-emerald-400')]),
     ]);
   }
 
-  function filaPesado(c) {
-    const viajes = completos(viajesDe(c));
-    const otro = el('button', { className: 'btn w-auto shrink-0 bg-brand-500 px-2.5 py-1 text-xs text-slate-900 hover:bg-brand-400', attrs: { type: 'button', 'data-otro-viaje': c.id, title: 'Cargar otro viaje de este camión' } }, [icono('redo-2'), el('span', { text: 'Otro viaje' })]);
-    otro.addEventListener('click', () => abrirOtroViaje(c));
-    const comp = el('button', { className: 'btn-sm shrink-0', attrs: { type: 'button', 'data-comprobante': c.id, title: viajes.length > 1 ? 'Un comprobante con todos los viajes' : 'Comprobante de pesada' } }, [icono('file-text'), el('span', { text: 'Comprobante' })]);
-    comp.addEventListener('click', () => abrirComprobante(c));
-    return el('li', { className: 'flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-3 py-2', attrs: { 'data-id': c.id, 'data-pesado': '' } }, [
+  /** Escalón para escribir pesos: un viaje al que le falta uno, o uno nuevo (v = null). */
+  function filaEditable(f, v, n, base) {
+    const nuevo = !v;
+    const id = nuevo ? `${f}:nuevo` : v.id;
+    const conBruto = !nuevo && Number(v.bruto) > 0;
+    const conTara = !nuevo && Number(v.tara) > 0;
+    const falta = conBruto ? 'tara' : 'bruto';
+    const bruto = conBruto ? kgTexto(v.bruto) : campo(`${id}:bruto`, 'Bruto', !nuevo ? { 'data-completar': v.id } : { 'data-nuevo': f });
+    const tara = conTara ? kgTexto(v.tara) : campo(`${id}:tara`, 'Tara', !nuevo && conBruto ? { 'data-completar': v.id } : {});
+    const hum = el('input', { className: 'field px-2 py-1.5 text-sm tabular-nums', attrs: { type: 'number', min: '0', max: '100', step: '0.1', inputmode: 'decimal', 'aria-label': 'Humedad (%)', placeholder: 'Hum.', 'data-clave': `${id}:hum` } });
+    if (!nuevo && tieneHumedad(v)) hum.value = v.humedad;
+    const guardar = el('button', { className: 'btn w-auto bg-sky-500 px-3 py-1.5 text-xs text-slate-950 hover:bg-sky-400', attrs: { type: 'submit', 'data-guardar': id } }, [el('span', { text: 'Guardar' })]);
+    const acciones = [guardar];
+    if (nuevo) {
+      const quitar = el('button', { className: 'btn-icon', attrs: { type: 'button', 'aria-label': 'Quitar este viaje sin guardar', 'data-quitar': f } }, [icono('x', 'h-4 w-4')]);
+      quitar.addEventListener('click', () => { borradores.delete(f); dibujarEnPlanta(); });
+      acciones.push(quitar);
+    }
+    const form = el('form', { className: `${COLS} bg-sky-500/5 px-3 py-2`, attrs: { autocomplete: 'off', 'data-viaje': id, novalidate: '' } }, [
+      el('span', { className: 'text-xs text-slate-400' }, [
+        el('b', { className: 'text-slate-200', text: `Viaje ${n}` }), el('br'),
+        el('span', { className: 'font-semibold text-sky-300', text: nuevo ? 'nuevo' : `falta ${falta === 'tara' ? 'la tara' : 'el bruto'}` }),
+      ]),
+      bruto, tara, hum,
+      el('span', { className: 'flex items-center justify-end gap-1' }, acciones),
+    ]);
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (nuevo) guardarNuevo(f, base, n, form); else completar(v, n, form);
+    });
+    return form;
+  }
+
+  function leer(form, sufijo) {
+    const i = form.querySelector(`[data-clave$=":${sufijo}"]`);
+    return i ? num(i) : NaN;
+  }
+
+  /** Guarda el peso que le faltaba a un viaje. */
+  function completar(v, n, form) {
+    const r = store.buscar('ingresos', v.id) || v;
+    const modoBruto = faltaBruto(r);
+    const x = leer(form, modoBruto ? 'bruto' : 'tara');
+    if (!(x > 0)) { toast(`Escribí ${modoBruto ? 'el bruto' : 'la tara'} del viaje ${n}.`, 'error'); form.querySelector('[data-completar]').focus(); return; }
+    const neto = modoBruto ? x - Number(r.tara) : Number(r.bruto) - x;
+    if (!(neto > 0)) { toast(modoBruto ? 'El bruto tiene que ser mayor que la tara.' : 'La tara tiene que ser menor que el bruto.', 'error'); form.querySelector('[data-completar]').focus(); return; }
+    const h = leer(form, 'hum');
+    const cambios = modoBruto ? { bruto: x, neto, fechaBruto: ahora() } : { tara: x, neto, fechaTara: ahora() };
+    cambios.humedad = isNaN(h) ? null : h;
+    const guardado = store.actualizar('ingresos', r.id, cambios);
+    if (!guardado) return;
+    const viajes = completos(viajesDe(guardado));
+    const abierta = fichas().abiertas.some((vs) => fichaDe(vs[0]) === fichaDe(guardado));
+    toast(viajes.length > 1 || abierta
+      ? `Viaje ${n} completo: neto ${fmt.kg(neto)}. Total del camión: ${fmt.kg(netoDe(viajes))}.`
+      : `Pesada completa: neto ${fmt.kg(neto)}.`, 'ok', abierta ? undefined : { texto: 'Comprobante', fn: () => abrirComprobante(guardado) });
+  }
+
+  /** Guarda el viaje nuevo de una ficha (con uno o los dos pesos). */
+  function guardarNuevo(f, base, n, form) {
+    const b = leer(form, 'bruto');
+    const t = leer(form, 'tara');
+    const hayB = b > 0;
+    const hayT = t > 0;
+    if (!hayB && !hayT) { toast(`Escribí el bruto o la tara del viaje ${n}: con uno alcanza.`, 'error'); form.querySelector('[data-nuevo]').focus(); return; }
+    if (hayB && hayT && !(b - t > 0)) { toast('La tara tiene que ser menor que el bruto.', 'error'); return; }
+    const h = leer(form, 'hum');
+    const momento = ahora();
+    borradores.delete(f);
+    const nuevo = store.agregar('ingresos', {
+      fecha: momento,
+      ficha: f,
+      empresa: base.empresa,
+      conductor: base.conductor,
+      patente: base.patente || '',
+      carga: base.carga || 'Soja',
+      humedad: isNaN(h) ? null : h,
+      bruto: hayB ? b : null,
+      tara: hayT ? t : null,
+      neto: hayB && hayT ? b - t : null,
+      fechaTara: hayT ? momento : null,
+    });
+    if (!nuevo) { borradores.add(f); dibujarEnPlanta(); return; }
+    toast(hayB && hayT ? `Viaje ${n} guardado: neto ${fmt.kg(b - t)}.` : `Viaje ${n} guardado: falta ${hayB ? 'la tara' : 'el bruto'}.`, 'ok');
+  }
+
+  /** Terminar: cierra la ficha (tiene que tener todos los viajes completos) y saca el PDF. */
+  function terminar(viajes) {
+    const actuales = viajesDe(viajes[0]);
+    const pendiente = actuales.findIndex(enPlanta);
+    if (pendiente >= 0) {
+      toast(`Al viaje ${pendiente + 1} le falta ${faltaBruto(actuales[pendiente]) ? 'el bruto' : 'la tara'}: completalo (o borralo) antes de terminar.`, 'error');
+      return;
+    }
+    const ultimo = actuales[actuales.length - 1];
+    borradores.delete(fichaDe(ultimo));
+    const guardado = store.actualizar('ingresos', ultimo.id, { terminado: true });
+    if (!guardado) return;
+    abrirComprobante(guardado);
+    toast(`Camión terminado: ${textoViajes(actuales.length)}, neto ${fmt.kg(netoDe(actuales))}.`, 'ok');
+  }
+
+  function tarjetaFicha(viajes, n) {
+    const f = fichaDe(viajes[0]);
+    const c = viajes[viajes.length - 1];
+    const listos = completos(viajes);
+    const hayPendiente = viajes.some(enPlanta);
+    const filas = viajes.map((v, i) => (enPlanta(v) ? filaEditable(f, v, i + 1, c) : filaLista(v, i + 1)));
+    const borrador = borradores.has(f) && !hayPendiente;
+    if (borrador) filas.push(filaEditable(f, null, viajes.length + 1, c));
+
+    const agregar = el('button', { className: 'btn-sm disabled:cursor-not-allowed disabled:opacity-40', attrs: { type: 'button', 'data-agregar-viaje': f } }, [icono('plus'), el('span', { text: 'Agregar viaje' })]);
+    agregar.disabled = hayPendiente || borrador;
+    agregar.title = hayPendiente ? 'Primero completá el viaje que falta' : '';
+    agregar.addEventListener('click', () => {
+      borradores.add(f);
+      dibujarEnPlanta();
+      const i = $(`[data-nuevo="${f}"]`);
+      if (i) i.focus();
+    });
+    const pdf = el('button', { className: 'btn-sm disabled:cursor-not-allowed disabled:opacity-40', attrs: { type: 'button', 'data-comprobante': f } }, [icono('file-text'), el('span', { text: 'PDF' })]);
+    pdf.disabled = !listos.length;
+    pdf.addEventListener('click', () => abrirComprobante(listos[listos.length - 1]));
+    // Terminar pide un segundo toque, así no se cierra por error.
+    const fin = el('button', { className: 'btn w-auto bg-brand-500 px-3 py-1.5 text-xs text-slate-900 hover:bg-brand-400', attrs: { type: 'button', 'data-terminar': f } }, [el('span', { text: 'Terminar' })]);
+    let armado = null;
+    fin.addEventListener('click', () => {
+      if (armado) { clearTimeout(armado); armado = null; terminar(viajes); return; }
+      fin.firstChild.textContent = 'Tocá de nuevo para terminar';
+      armado = setTimeout(() => { armado = null; fin.firstChild.textContent = 'Terminar'; }, 4000);
+    });
+
+    return el('li', { className: `rounded-xl border border-l-4 border-slate-700 bg-slate-900/70 ${COLORES[(n - 1) % COLORES.length]}`, attrs: { 'data-ficha': f } }, [
+      el('div', { className: 'flex flex-wrap items-start justify-between gap-2 border-b border-slate-800 px-3 py-2.5' }, [
+        el('div', { className: 'min-w-0' }, [
+          el('p', { className: 'flex flex-wrap items-center gap-2' }, [
+            el('span', { className: 'chip border-slate-500 text-slate-200', text: `Camión ${n}` }),
+            el('span', { className: 'truncate font-semibold text-slate-100', text: c.empresa }),
+            patenteChip(c),
+          ]),
+          el('p', { className: 'mt-0.5 truncate text-xs text-slate-400', text: `${c.conductor || '-'} · ${c.carga || 'Soja'} · desde las ${horaCorta(viajes[0].fecha)}` }),
+        ]),
+        fin,
+      ]),
+      el('div', { className: `${COLS} px-3 pt-2 text-[10px] font-bold tracking-wider text-slate-500 uppercase` }, [
+        el('span', { text: 'Viaje' }), el('span', { text: 'Bruto (kg)' }), el('span', { text: 'Tara (kg)' }), el('span', { text: 'Hum. %' }), el('span', { className: 'text-right', text: 'Neto' }),
+      ]),
+      el('div', { className: 'divide-y divide-slate-800/70' }, filas),
+      el('div', { className: 'flex flex-wrap items-center justify-between gap-2 border-t border-slate-800 px-3 py-2.5' }, [
+        agregar,
+        el('span', { className: 'flex items-center gap-3' }, [
+          el('span', { className: 'text-xs text-slate-400', attrs: { 'data-total': '' } }, listos.length
+            ? [el('span', { text: `Total ${textoViajes(listos.length)}: ` }), el('b', { className: 'text-sm text-brand-300 tabular-nums', text: fmt.kg(netoDe(listos)) })]
+            : [el('span', { text: 'Sin viajes completos' })]),
+          pdf,
+        ]),
+      ]),
+    ]);
+  }
+
+  function filaTerminada(viajes) {
+    const c = viajes[viajes.length - 1];
+    const pdf = el('button', { className: 'btn-sm shrink-0', attrs: { type: 'button', 'data-comprobante': fichaDe(c) } }, [icono('file-text'), el('span', { text: 'PDF' })]);
+    pdf.addEventListener('click', () => abrirComprobante(c));
+    const reabrir = el('button', { className: 'btn-sm shrink-0', attrs: { type: 'button', 'data-reabrir': fichaDe(c), title: 'Volver a abrir la ficha para agregar otro viaje' } }, [icono('refresh-cw'), el('span', { text: 'Reabrir' })]);
+    reabrir.addEventListener('click', () => {
+      if (store.actualizar('ingresos', c.id, { terminado: false })) toast(`Se volvió a abrir la ficha de ${c.empresa}${c.patente ? ' · ' + c.patente : ''}.`, 'ok');
+    });
+    return el('li', { className: 'flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-3 py-2', attrs: { 'data-terminada': fichaDe(c) } }, [
       el('div', { className: 'min-w-0' }, [
         el('p', { className: 'flex flex-wrap items-center gap-2 text-sm' }, [
           el('span', { className: 'truncate font-semibold text-slate-100', text: c.empresa }),
           patenteChip(c),
           el('span', { className: 'truncate text-xs text-slate-400', text: `${c.conductor || '-'} · ${c.carga || 'Soja'}` }),
         ]),
-        el('p', { className: 'text-xs text-slate-300 tabular-nums', attrs: { 'data-resumen-viajes': '' }, text: `${textoViajes(viajes.length)} · neto ${fmt.kg(netoDe(viajes))} · último a las ${hhmm(c.fecha)}` }),
+        el('p', { className: 'text-xs text-slate-300 tabular-nums', text: `${textoViajes(viajes.length)} · neto ${fmt.kg(netoDe(viajes))}` }),
       ]),
-      el('div', { className: 'flex items-center gap-2' }, [comp, otro]),
+      el('div', { className: 'flex items-center gap-2' }, [pdf, reabrir]),
     ]);
   }
 
-  const MAX_PESADOS = 6;
-  let verTodos = false;
+  const MAX_TERMINADAS = 6;
+  let verTodas = false;
 
   function dibujarEnPlanta() {
-    const pendientes = store.todos('ingresos').filter(enPlanta).sort(porFecha);
-    // Camiones de hoy con el último viaje completo (uno por camión), el más reciente primero.
-    const pesados = store.todos('ingresos')
-      .filter((c) => diaDe(c) === hoy() && !enPlanta(c) && esUltimo(c))
-      .sort((a, b) => porFecha(b, a));
-    $('#rec-en-planta').hidden = !pendientes.length && !pesados.length;
-    $('#rec-en-planta-titulo').textContent = [
-      'Camiones de hoy',
-      [pendientes.length ? `${pendientes.length} ${pendientes.length === 1 ? 'espera' : 'esperan'} un peso` : '', pesados.length ? `${pesados.length} ya ${pesados.length === 1 ? 'pesado' : 'pesados'}` : ''].filter(Boolean).join(' · '),
-    ].filter(Boolean).join(': ');
-    $('#rec-en-planta-lista').replaceChildren(...pendientes.map(tarjetaPendiente));
-    $('#rec-pesados').hidden = !pesados.length;
-    const visibles = verTodos ? pesados : pesados.slice(0, MAX_PESADOS);
-    $('#rec-pesados-lista').replaceChildren(...visibles.map(filaPesado));
+    // Lo que se estaba escribiendo en las fichas no se pierde al redibujar.
+    const escritos = {};
+    $$('#rec-en-planta [data-clave]').forEach((i) => { if (i.value !== '') escritos[i.dataset.clave] = i.value; });
+    const foco = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.clave : null;
+
+    const { abiertas, terminadas } = fichas();
+    $('#rec-en-planta').hidden = !abiertas.length && !terminadas.length;
+    $('#rec-en-planta-titulo').textContent = abiertas.length ? `Camiones en planta: ${abiertas.length}` : 'Camiones en planta';
+    $('#rec-en-planta-lista').replaceChildren(...abiertas.map((v, i) => tarjetaFicha(v, i + 1)));
+    $('#rec-pesados').hidden = !terminadas.length;
+    $('#rec-pesados-lista').replaceChildren(...(verTodas ? terminadas : terminadas.slice(0, MAX_TERMINADAS)).map(filaTerminada));
     const mas = $('#rec-pesados-mas');
-    mas.hidden = pesados.length <= MAX_PESADOS;
-    mas.textContent = verTodos ? 'Ver menos' : `Ver los ${pesados.length} camiones`;
+    mas.hidden = terminadas.length <= MAX_TERMINADAS;
+    mas.textContent = verTodas ? 'Ver menos' : `Ver los ${terminadas.length}`;
+
+    $$('#rec-en-planta [data-clave]').forEach((i) => { if (escritos[i.dataset.clave] != null && i.value === '') i.value = escritos[i.dataset.clave]; });
+    if (foco) { const i = $(`#rec-en-planta [data-clave="${foco}"]`); if (i) i.focus(); }
     SoyaCore.icons.render($('#rec-en-planta'));
   }
 
-  // ---------- Diálogo para completar la pesada (la tara o el bruto que falta) ----------
-  let taraId = null;
-  let taraPrevia = null; // el viaje de hoy del que se tomó la tara (o null)
-  let modoBruto = false; // true: falta el bruto (se pesó primero vacío)
-
-  function netoTara() {
-    const r = store.buscar('ingresos', taraId);
-    const x = num($('#tara-kg'));
-    const n = r && !isNaN(x) ? (modoBruto ? x - Number(r.tara) : Number(r.bruto) - x) : NaN;
-    $('#tara-neto').textContent = n > 0 ? fmt.kg(n) : '-';
-  }
-
-  function abrirTara(r) {
-    taraId = r.id;
-    modoBruto = faltaBruto(r);
-    $('#tara-titulo-texto').textContent = modoBruto ? 'Cargar el bruto' : 'Cargar la tara';
-    $('#tara-kg-label').textContent = modoBruto ? 'Bruto (kg)' : 'Tara (kg)';
-    $('#tara-sub').textContent = `${r.empresa}${r.patente ? ' · ' + r.patente : ''}`;
-    const fila = (k, v) => [el('dt', { className: 'text-slate-500', text: k }), el('dd', { className: 'text-slate-200', text: v })];
-    $('#tara-datos').replaceChildren(
-      ...fila('Chofer', r.conductor || '-'),
-      ...fila('Carga', r.carga || 'Soja'),
-      ...(modoBruto ? fila('Tara', fmt.kg(r.tara)) : fila('Bruto', fmt.kg(r.bruto))),
-      ...fila('Pesado', `${String(r.fecha).slice(8, 10)}/${String(r.fecha).slice(5, 7)} a las ${hhmm(r.fecha)} (${hace(r.fecha)})`),
-    );
-    // Si al camión le falta la tara y ya se taró hoy, la tara queda puesta.
-    taraPrevia = modoBruto ? null : taraDeHoy(r, r.id);
-    $('#tara-kg').value = taraPrevia ? taraPrevia.tara : '';
-    $('#tara-previa').hidden = !taraPrevia;
-    if (taraPrevia) {
-      $('#tara-previa').replaceChildren(
-        icono('refresh-cw', 'mt-0.5 h-3.5 w-3.5 shrink-0'),
-        el('span', { text: `Este camión ya se taró hoy a las ${horaDe(taraPrevia)} con ${fmt.kg(taraPrevia.tara)}: la tara ya está puesta. Si lo pesaste de nuevo, cambiala.` }),
-      );
-      SoyaCore.icons.render($('#tara-previa'));
-    }
-    $('#tara-humedad').value = tieneHumedad(r) ? r.humedad : '';
-    $('#tara-guardar').textContent = modoBruto ? 'Guardar bruto' : 'Guardar tara';
-    netoTara();
-    $('#tara-dialogo').showModal();
-    // Con la tara puesta, solo falta guardar.
-    if (taraPrevia) $('#tara-guardar').focus();
-    else $('#tara-kg').focus();
-  }
-
-  function initTara() {
-    const dialogo = $('#tara-dialogo');
-    const cerrar = () => dialogo.close();
-    $('#tara-cerrar').addEventListener('click', cerrar);
-    $('#tara-cancelar').addEventListener('click', cerrar);
-    $('#tara-kg').addEventListener('input', netoTara);
-    $('#form-tara').addEventListener('submit', (e) => {
-      e.preventDefault();
-      const r = store.buscar('ingresos', taraId);
-      if (!r) { cerrar(); return; }
-      const x = num($('#tara-kg'));
-      const neto = modoBruto ? x - Number(r.tara) : Number(r.bruto) - x;
-      if (!(neto > 0)) {
-        toast(modoBruto ? 'El bruto tiene que ser mayor que la tara.' : 'La tara tiene que ser menor que el bruto.', 'error');
-        $('#tara-kg').focus();
-        return;
-      }
-      const h = num($('#tara-humedad'));
-      const cambios = modoBruto
-        ? { bruto: x, neto, fechaBruto: ahora() }
-        : { tara: x, taraDe: taraPrevia && Number(taraPrevia.tara) === x ? taraPrevia.taraDe || taraPrevia.id : null, neto, fechaTara: ahora() };
-      cambios.humedad = isNaN(h) ? null : h;
-      const guardado = store.actualizar('ingresos', r.id, cambios);
-      if (!guardado) return;
-      cerrar();
-      avisoCompleto(guardado);
-    });
-  }
-
-  // ---------- Diálogo "Otro viaje" (flecha): el viaje siguiente del mismo camión ----------
-  let viajeBase = null; // el último viaje del camión
-  let taraAnterior = null; // la última tara de hoy de ese camión
-
-  function actualizarViaje() {
-    const b = num($('#viaje-bruto'));
-    const t = num($('#viaje-tara'));
-    const hayB = b > 0;
-    const hayT = t > 0;
-    $('#viaje-neto').textContent = hayB && hayT ? (b - t > 0 ? fmt.kg(b - t) : '-') : hayB ? 'Falta la tara' : hayT ? 'Falta el bruto' : '-';
-    $('#viaje-guardar').textContent = hayB && hayT ? 'Guardar viaje' : hayB ? 'Guardar (falta la tara)' : hayT ? 'Guardar (falta el bruto)' : 'Guardar viaje';
-    $('#viaje-usar-tara').hidden = !taraAnterior || t === Number(taraAnterior.tara);
-  }
-
-  function abrirOtroViaje(c) {
-    viajeBase = c;
-    const viajes = viajesDe(c);
-    taraAnterior = taraDeHoy(c);
-    $('#viaje-titulo-texto').textContent = `Viaje ${viajes.length + 1}`;
-    $('#viaje-sub').textContent = [c.empresa, c.patente, c.conductor].filter(Boolean).join(' · ');
-    $('#viaje-lista').replaceChildren(...viajes.map((v, i) => el('li', { className: 'flex items-center justify-between gap-3 px-3 py-1.5 tabular-nums' }, [
-      el('span', { className: 'text-slate-400', text: `Viaje ${i + 1} · ${hhmm(v.fecha)}` }),
-      enPlanta(v)
-        ? el('span', { className: 'text-sky-300', text: faltaBruto(v) ? 'falta el bruto' : 'falta la tara' })
-        : el('span', { className: 'text-slate-300', text: `bruto ${fmt.kg(v.bruto)} · neto ` }, [el('b', { className: 'text-slate-100', text: fmt.kg(v.neto) })]),
-    ])), el('li', { className: 'flex items-center justify-between gap-3 px-3 py-1.5 font-semibold' }, [
-      el('span', { className: 'text-slate-300', text: 'Total hasta ahora' }),
-      el('span', { className: 'text-brand-300', text: fmt.kg(netoDe(completos(viajes))) }),
-    ]));
-    $('#viaje-bruto').value = '';
-    $('#viaje-tara').value = '';
-    $('#viaje-humedad').value = '';
-    $('#viaje-usar-tara').textContent = taraAnterior ? `Usar la tara anterior (${fmt.kg(taraAnterior.tara)})` : '';
-    actualizarViaje();
-    $('#viaje-dialogo').showModal();
-    $('#viaje-bruto').focus();
-  }
-
-  function initViaje() {
-    const dialogo = $('#viaje-dialogo');
-    const cerrar = () => dialogo.close();
-    $('#viaje-cerrar').addEventListener('click', cerrar);
-    $('#viaje-cancelar').addEventListener('click', cerrar);
-    ['#viaje-bruto', '#viaje-tara'].forEach((s) => $(s).addEventListener('input', actualizarViaje));
-    $('#viaje-usar-tara').addEventListener('click', () => {
-      if (!taraAnterior) return;
-      $('#viaje-tara').value = taraAnterior.tara;
-      actualizarViaje();
-      $(num($('#viaje-bruto')) > 0 ? '#viaje-guardar' : '#viaje-bruto').focus();
-    });
-    $('#form-viaje').addEventListener('submit', (e) => {
-      e.preventDefault();
-      const base = viajeBase && (store.buscar('ingresos', viajeBase.id) || viajeBase);
-      if (!base) { cerrar(); return; }
-      const b = num($('#viaje-bruto'));
-      const t = num($('#viaje-tara'));
-      const hayB = b > 0;
-      const hayT = t > 0;
-      if (!hayB && !hayT) { toast('Cargá el bruto (lleno) o la tara (vacío): con uno alcanza.', 'error'); $('#viaje-bruto').focus(); return; }
-      if (hayB && hayT && !(b - t > 0)) { toast('La tara tiene que ser menor que el bruto.', 'error'); $('#viaje-tara').focus(); return; }
-      const h = num($('#viaje-humedad'));
-      const momento = ahora();
-      const nuevo = store.agregar('ingresos', {
-        fecha: momento,
-        empresa: base.empresa,
-        conductor: base.conductor,
-        patente: base.patente || '',
-        carga: base.carga || 'Soja',
-        humedad: isNaN(h) ? null : h,
-        bruto: hayB ? b : null,
-        tara: hayT ? t : null,
-        neto: hayB && hayT ? b - t : null,
-        fechaTara: hayT ? momento : null,
-        taraDe: hayT && taraAnterior && t === Number(taraAnterior.tara) ? taraAnterior.taraDe || taraAnterior.id : null,
-      });
-      if (!nuevo) return;
-      cerrar();
-      const n = viajesDe(nuevo).findIndex((v) => v.id === nuevo.id) + 1;
-      if (!enPlanta(nuevo)) avisoCompleto(nuevo);
-      else toast(`Viaje ${n} registrado: ${hayB ? 'falta la tara' : 'falta el bruto'}. Se completa en "Camiones de hoy".`, 'ok');
-    });
+  /** Desde la tabla: lleva al casillero del peso que falta, en la ficha del camión. */
+  function irACompletar(r) {
+    dibujarEnPlanta();
+    const i = $(`#rec-en-planta [data-completar="${r.id}"]`);
+    if (!i) return;
+    i.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    i.focus({ preventScroll: true });
   }
 
   // ---------- Formularios de balanza ----------
@@ -376,8 +365,6 @@
     let editor;
     let fechaTaraAntes = null;
     let fechaBrutoAntes = null;
-    let taraDe = null; // id del viaje de hoy del que se usó la tara (mismo camión)
-    let sugerida = null;
 
     const actualizarNeto = () => {
       if (recepcion && (bruto.value === '' || tara.value === '')) {
@@ -387,41 +374,13 @@
         salida.textContent = fmt.kg(n > 0 ? n : 0);
       }
       if (recepcion && (!editor || !editor.id)) {
-        $('#in-enviar').textContent = bruto.value !== '' && tara.value === '' ? 'Registrar (falta la tara)'
-          : bruto.value === '' && tara.value !== '' ? 'Registrar (falta el bruto)' : 'Registrar Ingreso';
+        $('#in-enviar').textContent = bruto.value !== '' && tara.value === '' ? 'Registrar camión (falta la tara)'
+          : bruto.value === '' && tara.value !== '' ? 'Registrar camión (falta el bruto)' : 'Registrar camión';
       }
     };
 
-    // ---- La tara del mismo camión (solo en Recepción, al cargar uno nuevo) ----
-    function usarTara(viaje) {
-      tara.value = viaje.tara;
-      taraDe = viaje.taraDe || viaje.id;
-      actualizarNeto();
-      actualizarSugerencia();
-    }
-    function actualizarSugerencia() {
-      if (!recepcion) return;
-      const caja = $('#in-tara-sugerida');
-      sugerida = editor && editor.id ? null : taraDeHoy({ patente: $('#in-patente').value, conductor: $(`#${prefijo}-conductor`).value });
-      caja.hidden = !sugerida;
-      if (!sugerida) { taraDe = null; return; }
-      const usada = num(tara) === Number(sugerida.tara);
-      $('#in-tara-sugerida-texto').textContent = usada
-        ? `Es la tara de su viaje de hoy a las ${horaDe(sugerida)} (${fmt.kg(sugerida.tara)}).`
-        : `Este camión ya se taró hoy a las ${horaDe(sugerida)}: ${fmt.kg(sugerida.tara)}.`;
-      $('#in-tara-usar').hidden = usada;
-    }
-
     bruto.addEventListener('input', actualizarNeto);
-    tara.addEventListener('input', () => {
-      if (taraDe && (!sugerida || num(tara) !== Number(sugerida.tara))) taraDe = null;
-      actualizarNeto();
-      actualizarSugerencia();
-    });
-    if (recepcion) {
-      ['#in-patente', `#${prefijo}-conductor`].forEach((sel) => $(sel).addEventListener('input', actualizarSugerencia));
-      $('#in-tara-usar').addEventListener('click', () => { if (sugerida) usarTara(sugerida); });
-    }
+    tara.addEventListener('input', actualizarNeto);
 
     const tabla = tablaRegistros({
       tbody: $(`#tbody-${coleccion}`),
@@ -430,9 +389,8 @@
       columnas: COLUMNAS[coleccion],
       onEditar: (r) => editor.editar(r),
       acciones: recepcion ? [
-        { accion: 'tara', icono: 'scale', etiqueta: 'Cargar el peso que falta', mostrar: enPlanta, fn: abrirTara },
+        { accion: 'tara', icono: 'scale', etiqueta: 'Cargar el peso que falta (en su ficha)', mostrar: enPlanta, fn: irACompletar },
         { accion: 'comprobante', icono: 'file-text', etiqueta: 'Comprobante PDF', mostrar: (r) => !enPlanta(r), fn: abrirComprobante },
-        { accion: 'otro-viaje', icono: 'redo-2', etiqueta: 'Otro viaje de este camión', mostrar: (r) => !enPlanta(r) && diaDe(r) === hoy() && esUltimo(r), fn: abrirOtroViaje },
       ] : [],
       claseFila: recepcion ? (r) => (enPlanta(r) ? 'fila-pendiente' : '') : null,
     });
@@ -450,12 +408,10 @@
           $('#in-humedad').value = tieneHumedad(r) ? r.humedad : '';
           fechaTaraAntes = r.fechaTara || null;
           fechaBrutoAntes = r.fechaBruto || null;
-          taraDe = r.taraDe || null;
         }
         actualizarNeto();
-        actualizarSugerencia();
       },
-      alTerminar: () => { fechaTaraAntes = null; fechaBrutoAntes = null; taraDe = null; actualizarNeto(); actualizarSugerencia(); },
+      alTerminar: () => { fechaTaraAntes = null; fechaBrutoAntes = null; actualizarNeto(); },
     });
 
     form.addEventListener('submit', (e) => {
@@ -494,10 +450,10 @@
         registro.humedad = isNaN(h) ? null : h;
         registro.fechaTara = conTara ? fechaTaraAntes || ahora() : null;
         registro.fechaBruto = conBruto ? fechaBrutoAntes : null;
-        registro.taraDe = conTara && taraDe ? taraDe : null;
-        mensajes = conBruto && conTara
-          ? { nuevo: mensaje, accion: { texto: 'Comprobante', fn: abrirComprobante } }
-          : { nuevo: `Pesada registrada: ${conBruto ? 'falta la tara' : 'falta el bruto'}. Se completa en "Camiones de hoy" cuando vuelve a la balanza.` };
+        if (!editor.id) registro.ficha = nuevaFicha(); // un camión nuevo = una ficha nueva
+        mensajes = { nuevo: conBruto && conTara
+          ? `Camión registrado: viaje 1 con neto ${fmt.kg(n)}. Su ficha queda en "Camiones en planta".`
+          : `Camión registrado: falta ${conBruto ? 'la tara' : 'el bruto'}. Se completa en su ficha, en "Camiones en planta".` };
       }
       if (guardarRegistro(coleccion, editor, registro, mensajes)) $(`#${prefijo}-empresa`).focus();
     });
@@ -505,24 +461,19 @@
     store.alCambiar((c) => {
       if (c !== coleccion && c !== '*') return;
       tabla.dibujar();
-      if (recepcion) { actualizarHoy(); actualizarSugerencia(); }
+      if (recepcion) actualizarHoy();
     });
     tabla.dibujar();
     actualizarNeto();
     if (recepcion) {
       actualizarHoy();
-      $('#rec-pesados-mas').addEventListener('click', () => { verTodos = !verTodos; dibujarEnPlanta(); });
-      setInterval(() => !$('#view-recepcion').hidden && dibujarEnPlanta(), 60000); // "hace N min"
+      $('#rec-pesados-mas').addEventListener('click', () => { verTodas = !verTodas; dibujarEnPlanta(); });
     }
   }
 
   SoyaCore.views = SoyaCore.views || {};
   SoyaCore.views.recepcion = {
-    init: () => {
-      balanza('in', 'ingresos', 'form-ingreso', 'Ingreso registrado.');
-      initTara();
-      initViaje();
-    },
+    init: () => balanza('in', 'ingresos', 'form-ingreso', 'Ingreso registrado.'),
     refresh: actualizarHoy, // al entrar se recalcula "hoy"
     esSoja,
     tieneHumedad,
@@ -530,7 +481,7 @@
     faltaBruto,
     humedadPonderada,
     viajesDe,
-    abrirOtroViaje,
+    fichaDe,
   };
   SoyaCore.views.despacho = {
     init: () => balanza('out', 'despachos', 'form-despacho', 'Despacho registrado.'),

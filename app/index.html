@@ -167,19 +167,19 @@
 
                     <div id="rec-en-planta" class="glass-panel col-span-1 rounded-2xl p-5 ring-1 ring-sky-400/40 lg:col-span-3" aria-labelledby="rec-en-planta-titulo" hidden>
                         <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-                            <h3 class="flex items-center gap-2 font-semibold text-sky-300"><i data-lucide="truck" class="h-4 w-4"></i> <span id="rec-en-planta-titulo">Camiones de hoy</span></h3>
-                            <p class="text-[11px] text-slate-500">Cuando el camión vuelve a la balanza, cargá el peso que le falta. Con la flecha <b>Otro viaje</b> se carga el viaje siguiente del mismo camión.</p>
+                            <h3 class="flex items-center gap-2 font-semibold text-sky-300"><i data-lucide="truck" class="h-4 w-4"></i> <span id="rec-en-planta-titulo">Camiones en planta</span></h3>
+                            <p class="text-[11px] text-slate-500">Cada camión tiene su ficha: cada vez que pasa por la balanza, escribí el peso en su viaje. Con <b>+ Agregar viaje</b> se suma otro escalón; después del último viaje, <b>Terminar</b> saca el PDF con todos.</p>
                         </div>
-                        <ul id="rec-en-planta-lista" class="mt-3 grid grid-cols-1 gap-3 empty:hidden md:grid-cols-2 2xl:grid-cols-3"></ul>
-                        <div id="rec-pesados" class="mt-4" hidden>
-                            <p class="mb-1.5 text-[11px] font-bold tracking-wider text-slate-500 uppercase">Ya pesados hoy</p>
+                        <ul id="rec-en-planta-lista" class="mt-3 grid grid-cols-1 gap-4 empty:hidden xl:grid-cols-2"></ul>
+                        <div id="rec-pesados" class="mt-5" hidden>
+                            <p class="mb-1.5 text-[11px] font-bold tracking-wider text-slate-500 uppercase">Terminados hoy</p>
                             <ul id="rec-pesados-lista" class="divide-y divide-slate-800 rounded-xl border border-slate-800"></ul>
                             <button type="button" id="rec-pesados-mas" class="link-btn mt-2 text-xs" hidden></button>
                         </div>
                     </div>
 
                     <div class="glass-panel col-span-1 rounded-2xl p-6">
-                        <h3 class="mb-4 flex items-center gap-2 font-semibold text-brand-400"><i data-lucide="clipboard-list" class="h-4 w-4"></i> <span data-form-titulo>Nuevo Ingreso</span></h3>
+                        <h3 class="mb-4 flex items-center gap-2 font-semibold text-brand-400"><i data-lucide="clipboard-list" class="h-4 w-4"></i> <span data-form-titulo>Nuevo camión</span></h3>
                         <form id="form-ingreso" class="space-y-4 text-sm" autocomplete="off">
                             <div>
                                 <label for="in-empresa" class="field-label">Nombre de la Empresa</label>
@@ -210,11 +210,7 @@
                                     <input type="number" id="in-tara" min="0" step="1" inputmode="numeric" placeholder="Vacío" class="field">
                                 </div>
                             </div>
-                            <p class="field-hint -mt-2">Cargá el peso que tengas ahora (lleno o vacío): no hacen falta los dos. El otro se completa en "Camiones de hoy" cuando vuelve a la balanza.</p>
-                            <div id="in-tara-sugerida" class="-mt-1 flex items-center justify-between gap-3 rounded-lg border border-sky-400/30 bg-sky-500/10 px-3 py-2 text-xs text-sky-200" aria-live="polite" hidden>
-                                <span id="in-tara-sugerida-texto"></span>
-                                <button type="button" id="in-tara-usar" class="btn-sm shrink-0">Usar esa tara</button>
-                            </div>
+                            <p class="field-hint -mt-2">Cargá el peso que tengas ahora (lleno o vacío): no hacen falta los dos. El camión queda en "Camiones en planta" con su ficha, y ahí se completa el resto.</p>
                             <div>
                                 <label for="in-humedad" class="field-label">Humedad del camión (%) <span class="font-normal text-slate-500">· opcional</span></label>
                                 <input type="number" id="in-humedad" min="0" max="100" step="0.1" inputmode="decimal" aria-describedby="in-humedad-ayuda" class="field">
@@ -986,86 +982,6 @@
     <!-- ============================================================
          3. NOTIFICACIONES (fuera del flujo; los lectores de pantalla las anuncian)
          ============================================================ -->
-    <!-- Cargar la tara de un camión que está en planta (js/views/recepcion.js) -->
-    <dialog id="tara-dialogo" class="dialogo max-w-md" aria-labelledby="tara-titulo">
-        <form id="form-tara" autocomplete="off">
-            <div class="flex items-start justify-between gap-4 border-b border-slate-800 p-5">
-                <div>
-                    <h3 id="tara-titulo" class="flex items-center gap-2 text-lg font-bold text-white"><i data-lucide="scale" class="h-5 w-5 text-sky-300"></i> <span id="tara-titulo-texto">Cargar la tara</span></h3>
-                    <p id="tara-sub" class="mt-1 text-xs text-slate-400"></p>
-                </div>
-                <button type="button" id="tara-cerrar" class="btn-icon" aria-label="Cerrar"><i data-lucide="x" class="h-4 w-4"></i></button>
-            </div>
-            <div class="space-y-4 p-5 text-sm">
-                <dl id="tara-datos" class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-xs"></dl>
-                <p id="tara-previa" class="flex items-start gap-2 rounded-lg border border-sky-400/30 bg-sky-500/10 px-3 py-2 text-xs text-sky-200" hidden></p>
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label for="tara-kg" id="tara-kg-label" class="field-label">Tara (kg)</label>
-                        <input type="number" id="tara-kg" required min="1" step="1" inputmode="numeric" class="field text-lg font-bold">
-                    </div>
-                    <div>
-                        <label for="tara-humedad" class="field-label">Humedad (%) <span class="font-normal text-slate-500">· opcional</span></label>
-                        <input type="number" id="tara-humedad" min="0" max="100" step="0.1" inputmode="decimal" class="field">
-                    </div>
-                </div>
-                <div class="flex items-center justify-between rounded-xl border border-brand-500/30 bg-brand-900/20 p-3">
-                    <span class="text-xs font-medium tracking-wider text-brand-400 uppercase">Neto:</span>
-                    <output id="tara-neto" class="text-xl font-bold text-white">-</output>
-                </div>
-            </div>
-            <div class="flex justify-end gap-2 border-t border-slate-800 p-4">
-                <button type="button" id="tara-cancelar" class="btn-cancelar py-2 text-sm">Cancelar</button>
-                <button type="submit" id="tara-guardar" class="btn w-auto bg-brand-500 px-5 py-2 text-sm text-slate-900 hover:bg-brand-400">Guardar tara</button>
-            </div>
-        </form>
-    </dialog>
-
-    <!-- Otro viaje del mismo camión: solo el bruto, con la misma tara (js/views/recepcion.js) -->
-    <dialog id="viaje-dialogo" class="dialogo max-w-md" aria-labelledby="viaje-titulo">
-        <form id="form-viaje" autocomplete="off">
-            <div class="flex items-start justify-between gap-4 border-b border-slate-800 p-5">
-                <div>
-                    <h3 id="viaje-titulo" class="flex items-center gap-2 text-lg font-bold text-white"><i data-lucide="redo-2" class="h-5 w-5 text-brand-400"></i> <span id="viaje-titulo-texto">Otro viaje</span></h3>
-                    <p id="viaje-sub" class="mt-1 text-xs text-slate-400"></p>
-                </div>
-                <button type="button" id="viaje-cerrar" class="btn-icon" aria-label="Cerrar"><i data-lucide="x" class="h-4 w-4"></i></button>
-            </div>
-            <div class="space-y-4 p-5 text-sm">
-                <div>
-                    <p class="mb-1.5 text-[11px] font-bold tracking-wider text-slate-500 uppercase">Viajes de hoy</p>
-                    <ol id="viaje-lista" class="divide-y divide-slate-800 rounded-lg border border-slate-800 text-xs"></ol>
-                </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label for="viaje-bruto" class="field-label">Peso Bruto (kg)</label>
-                        <input type="number" id="viaje-bruto" min="1" step="1" inputmode="numeric" placeholder="Lleno" class="field text-lg font-bold">
-                    </div>
-                    <div>
-                        <label for="viaje-tara" class="field-label">Tara (kg)</label>
-                        <input type="number" id="viaje-tara" min="1" step="1" inputmode="numeric" placeholder="Vacío" aria-describedby="viaje-tara-ayuda" class="field text-lg font-bold">
-                    </div>
-                </div>
-                <div class="-mt-2 flex flex-wrap items-center justify-between gap-2">
-                    <p id="viaje-tara-ayuda" class="field-hint mt-0">Cargá el peso que tengas ahora: el otro se completa cuando vuelve a la balanza.</p>
-                    <button type="button" id="viaje-usar-tara" class="btn-sm"></button>
-                </div>
-                <div>
-                    <label for="viaje-humedad" class="field-label">Humedad (%) <span class="font-normal text-slate-500">· opcional</span></label>
-                    <input type="number" id="viaje-humedad" min="0" max="100" step="0.1" inputmode="decimal" class="field">
-                </div>
-                <div class="flex items-center justify-between rounded-xl border border-brand-500/30 bg-brand-900/20 p-3">
-                    <span class="text-xs font-medium tracking-wider text-brand-400 uppercase">Neto de este viaje:</span>
-                    <output id="viaje-neto" class="text-xl font-bold text-white">-</output>
-                </div>
-            </div>
-            <div class="flex justify-end gap-2 border-t border-slate-800 p-4">
-                <button type="button" id="viaje-cancelar" class="btn-cancelar py-2 text-sm">Cancelar</button>
-                <button type="submit" id="viaje-guardar" class="btn w-auto bg-brand-500 px-5 py-2 text-sm text-slate-900 hover:bg-brand-400">Guardar viaje</button>
-            </div>
-        </form>
-    </dialog>
-
     <!-- Comprobante de pesada e informe por empresa en PDF (js/comprobantes.js) -->
     <dialog id="comp-dialogo" class="dialogo max-w-lg" aria-labelledby="comp-titulo">
         <div class="flex items-start justify-between gap-4 border-b border-slate-800 p-5">
