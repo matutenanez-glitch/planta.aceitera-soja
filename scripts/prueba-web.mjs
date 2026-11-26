@@ -3,9 +3,12 @@
  * Arma la VERSIÓN DE PRUEBA como carpeta web, para subirla a una página y pasarle
  * al cliente un link (en vez de un archivo).
  *
- *   node scripts/prueba-web.mjs [--whatsapp=549…] [--correo=…] [--salida=carpeta]
+ *   node scripts/prueba-web.mjs [--whatsapp=549…] [--correo=…] [--salida=carpeta] [--claude]
  *       → dist/prueba-web/ (index.html + css/ + js/ + prueba/), o la carpeta de --salida
  *         (relativa al proyecto; la usa scripts/web.mjs para Vercel)
+ *       --claude: para publicarla como página dentro de Claude (claude.ai/artifact/…),
+ *         donde las descargas pasan por Claude (prueba/descargas-claude.js); la página
+ *         se publica con la capacidad "downloads".
  *
  * Es lo mismo que `empaquetar.mjs --prueba` (datos de ejemplo, cartel, "Sugerencia",
  * "Datos de prueba", datos guardados aparte), pero en archivos separados: así la
@@ -28,7 +31,8 @@ if (!SALIDA.startsWith(path.join(ROOT, 'dist') + path.sep)) throw new Error('--s
 fs.rmSync(SALIDA, { recursive: true, force: true });
 fs.cpSync(APP, SALIDA, { recursive: true });
 fs.mkdirSync(path.join(SALIDA, 'prueba'));
-['aislar-datos.js', 'datos-ejemplo.js', 'prueba.js'].forEach((f) => fs.copyFileSync(path.join(PRUEBA, f), path.join(SALIDA, 'prueba', f)));
+const paraClaude = args.includes('--claude');
+['aislar-datos.js', 'datos-ejemplo.js', 'prueba.js', ...(paraClaude ? ['descargas-claude.js'] : [])].forEach((f) => fs.copyFileSync(path.join(PRUEBA, f), path.join(SALIDA, 'prueba', f)));
 const contacto = { whatsapp: opcion('whatsapp').replace(/\D/g, ''), correo: opcion('correo') };
 fs.writeFileSync(path.join(SALIDA, 'prueba', 'contacto.js'), `/* Adónde llegan las sugerencias (lo arma scripts/prueba-web.mjs). */\nwindow.SoyaPrueba = ${JSON.stringify(contacto)};\n`);
 
@@ -39,6 +43,10 @@ const cambiar = (buscar, reemplazo) => {
 };
 const tema = '<script src="js/tema.js"></script>';
 cambiar(tema, `<script src="prueba/contacto.js"></script>\n    <script src="prueba/aislar-datos.js"></script>\n    ${tema}`);
+if (paraClaude) {
+  const ui = '<script src="js/ui.js" defer></script>';
+  cambiar(ui, `${ui}\n    <script src="prueba/descargas-claude.js" defer></script>`);
+}
 const store = '<script src="js/store.js" defer></script>';
 cambiar(store, `<script src="prueba/datos-ejemplo.js" defer></script>\n    ${store}`);
 const defer = [...html.matchAll(/[ \t]*<script src="[^"]+" defer><\/script>/g)].pop();

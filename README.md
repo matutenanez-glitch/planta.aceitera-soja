@@ -27,6 +27,8 @@ Sin `--whatsapp` ni `--correo`, el cliente elige a quién mandar la sugerencia. 
 
 **Versión de prueba con link.** Con `node scripts/prueba-web.mjs` (acepta las mismas `--whatsapp=` y `--correo=`) se arma la misma versión de prueba como carpeta web, en `dist/prueba-web/`. Se sube la carpeta entera a una página (`index.html` es la entrada) y al cliente se le pasa el link: la abre en el navegador de su computadora, sin instalar nada. Lo que cargue queda en **su** navegador, aparte de la versión final.
 
+**Página de prueba dentro de Claude.** `node scripts/prueba-web.mjs --claude --salida=dist/prueba-claude` arma la versión de prueba para publicarla como página de Claude (claude.ai/artifact/…). Ahí el navegador no deja descargar directo, así que el PDF y el backup se descargan con las descargas de Claude (`prueba/descargas-claude.js`; la página se publica con la capacidad `downloads`). Fuera de Claude ese archivo no cambia nada.
+
 **Publicada en internet (Vercel).** El repositorio está listo para [Vercel](https://vercel.com): `vercel.json` le dice que corra `node scripts/web.mjs` (no instala nada) y publique `dist/web/`. Queda:
 - **https://plantaaceitera-soja.vercel.app/**: la app, para usarla de verdad;
 - **https://plantaaceitera-soja.vercel.app/prueba/**: la versión de prueba, con datos de ejemplo y "Sugerencia".
