@@ -157,11 +157,6 @@
   .chip-fuera         { @apply border-red-500/60 bg-red-500/15 text-red-300; }
   .chip-sin           { @apply border-slate-600 bg-transparent text-slate-400; }
 
-  /* "Va a volver hoy" (camión de varios viajes) */
-  .vuelve-caja { @apply flex cursor-pointer items-start gap-3 rounded-xl border border-slate-700 bg-slate-900/60 p-3 text-xs transition-colors hover:border-slate-500; }
-  .vuelve-caja:has(input:checked) { @apply border-sky-400/70 bg-sky-500/10; }
-  .check-vuelve { @apply mt-0.5 h-4 w-4 shrink-0 accent-sky-500; }
-
   /* Diálogo */
   .dialogo {
     @apply m-auto w-full max-w-2xl rounded-2xl border border-slate-700 bg-slate-900 p-0 text-slate-200 shadow-2xl shadow-black/60;

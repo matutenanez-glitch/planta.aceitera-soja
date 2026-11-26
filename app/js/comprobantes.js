@@ -1,7 +1,8 @@
 /*
  * Comprobante de pesada e informe de ingresos por empresa, en PDF.
  * Si el camión hizo varios viajes en el día, el comprobante es uno solo con
- * todos los viajes y el neto total (2.25).
+ * todos los viajes y el neto total (2.25). El bruto puede pesarse después de la
+ * tara (fechaBruto).
  *
  * Se generan en la PC (pdf.js, sin internet). Desde el diálogo se puede
  * descargar el PDF, compartirlo (si la PC lo permite), o abrir WhatsApp o el
@@ -101,7 +102,7 @@
     doc.texto(col[2], y + 16, 'Kilos', { tam: 8, negrita: true, color: GRIS, alinear: 'der' });
     doc.linea(M, y + 24, ancho - M, y + 24, { color: LINEA });
     const pesos = [
-      ['Bruto (camión lleno)', fechaHora(r.fecha), fmt.kg(r.bruto)],
+      ['Bruto (camión lleno)', fechaHora(r.fechaBruto || r.fecha), fmt.kg(r.bruto)],
       ['Tara (camión vacío)', fechaHora(r.fechaTara), fmt.kg(r.tara)],
     ];
     pesos.forEach(([a, b, c], i) => {
@@ -219,7 +220,7 @@
       `Empresa: ${r.empresa || '-'}`,
       `Chofer: ${r.conductor || '-'}${r.patente ? ` · Patente: ${String(r.patente).toUpperCase()}` : ''}`,
       `Carga: ${r.carga || 'Soja'}${rec().tieneHumedad(r) ? ` · Humedad: ${humedad(r)}` : ''}`,
-      `Bruto: ${fmt.kg(r.bruto)} (${fechaHora(r.fecha)})`,
+      `Bruto: ${fmt.kg(r.bruto)} (${fechaHora(r.fechaBruto || r.fecha)})`,
       `Tara: ${fmt.kg(r.tara)} (${fechaHora(r.fechaTara)})`,
       `*Neto: ${fmt.kg(r.neto)}*`,
     ].filter(Boolean).join('\n');
@@ -390,7 +391,7 @@
         ...filaResumen('Empresa', r.empresa || '-'),
         ...filaResumen('Chofer', `${r.conductor || '-'}${r.patente ? ' · ' + String(r.patente).toUpperCase() : ''}`),
         ...filaResumen('Carga', `${r.carga || 'Soja'}${rec().tieneHumedad(r) ? ` · humedad ${humedad(r)}` : ''}`),
-        ...filaResumen('Bruto', `${fmt.kg(r.bruto)} (${fechaHora(r.fecha)})`),
+        ...filaResumen('Bruto', `${fmt.kg(r.bruto)} (${fechaHora(r.fechaBruto || r.fecha)})`),
         ...filaResumen('Tara', `${fmt.kg(r.tara)} (${fechaHora(r.fechaTara)})`),
         ...filaResumen('Neto', fmt.kg(r.neto), true),
       );
@@ -418,7 +419,7 @@
   }
 
   function abrirPesada(r) {
-    if (!r || rec().enPlanta(r)) { toast('Este camión todavía no tiene tara: cargala primero.', 'error'); return; }
+    if (!r || rec().enPlanta(r)) { toast(`A este viaje le falta ${rec().faltaBruto(r) ? 'el bruto' : 'la tara'}: cargalo primero.`, 'error'); return; }
     const viajes = viajesCompletos(r);
     if (viajes.length > 1) {
       modo = { tipo: 'viajes', registro: r };

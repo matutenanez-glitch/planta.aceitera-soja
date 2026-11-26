@@ -53,7 +53,7 @@
     const ayer = sojaDelDia(SoyaCore.turnos.sumarDias(dia, -1)).filter((c) => !recepcion.enPlanta(c));
     $('#sec-soja-ayer').textContent = ayer.length ? `Ayer: ${fmt.kg(kgDe(ayer))} en ${camiones(ayer.length)}.` : '';
 
-    // Camiones de soja pesados llenos que todavía no tienen tara (de cualquier día).
+    // Camiones de soja a los que les falta un peso (la tara o el bruto), de cualquier día.
     const enPlanta = store.todos('ingresos').filter((c) => recepcion.esSoja(c) && recepcion.enPlanta(c));
     const aviso = $('#sec-soja-pendientes');
     aviso.hidden = !enPlanta.length;
@@ -61,7 +61,7 @@
       const bruto = enPlanta.reduce((s, c) => s + (Number(c.bruto) || 0), 0);
       aviso.replaceChildren(
         el('i', { attrs: { 'data-lucide': 'scale' }, className: 'h-3.5 w-3.5 shrink-0' }),
-        el('span', { text: `Además, ${enPlanta.length === 1 ? 'hay 1 camión' : `hay ${camiones(enPlanta.length)}`} de soja en planta esperando la tara (bruto ${fmt.kg(bruto)}). Sus kg se suman cuando se carga la tara.` }),
+        el('span', { text: `Además, ${enPlanta.length === 1 ? 'hay 1 camión' : `hay ${camiones(enPlanta.length)}`} de soja en planta con la pesada sin completar${bruto ? ` (bruto ${fmt.kg(bruto)})` : ''}. Sus kg se suman cuando se carga el peso que falta.` }),
       );
       SoyaCore.icons.render(aviso);
     }

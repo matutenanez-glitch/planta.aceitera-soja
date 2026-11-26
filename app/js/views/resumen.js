@@ -224,7 +224,7 @@
     $('#res-dia-turnos').replaceChildren(...filasTurnos);
 
     const movimientos = [
-      ...t.ingresos.map((r) => ({ fecha: r.fecha, tipo: `Ingreso (${r.carga || 'Soja'})`, empresa: r.empresa, cantidad: SoyaCore.views.recepcion.enPlanta(r) ? `bruto ${fmt.kg(r.bruto)} (falta tara)` : fmt.kg(r.neto), humedad: SoyaCore.views.recepcion.tieneHumedad(r) ? fmt.porcentaje(r.humedad) : '' })),
+      ...t.ingresos.map((r) => ({ fecha: r.fecha, tipo: `Ingreso (${r.carga || 'Soja'})`, empresa: r.empresa, cantidad: SoyaCore.views.recepcion.enPlanta(r) ? (SoyaCore.views.recepcion.faltaBruto(r) ? `tara ${fmt.kg(r.tara)} (falta bruto)` : `bruto ${fmt.kg(r.bruto)} (falta tara)`) : fmt.kg(r.neto), humedad: SoyaCore.views.recepcion.tieneHumedad(r) ? fmt.porcentaje(r.humedad) : '' })),
       ...t.despExp.map((r) => ({ fecha: r.fecha, tipo: 'Despacho expeller', empresa: r.empresa, cantidad: fmt.kg(r.neto) })),
       ...t.despAce.map((r) => ({ fecha: r.fecha, tipo: 'Retiro de aceite', empresa: r.empresa, cantidad: fmt.kg(SoyaCore.views.despachoAceite.kgDe(r)) })),
     ].sort(porHora);

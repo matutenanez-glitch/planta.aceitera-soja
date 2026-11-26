@@ -63,15 +63,14 @@ archivo/                 versiones anteriores y el circuito de tanques (en pausa
 
 ## Recepción y secadora
 
-- **Recepción en dos pasos.** Cuando llegan varios camiones juntos, primero se pesan llenos: se carga el **bruto** y se deja la tara vacía. El camión queda en **"Camiones en curso"** esperando la tara. Cuando descarga y se pesa vacío, se toca **Cargar tara**: la app calcula el **neto** y ofrece el comprobante. Mientras falta la tara, el camión no suma a los totales.
-- **Camión de varios viajes.** Un mismo camión puede venir varias veces en el día (hasta 3 o más). No hace falta tararlo cada vez:
-    1. Al cargarlo (o al cargar su tara), se tilda **Va a volver hoy**. Así no se cierra: queda en **"Camiones en curso"** con la tarjeta **Va a volver** (viajes, neto hasta ahora y tara).
-    2. Cuando vuelve lleno, se toca **+ Otro viaje**: solo se pone el **bruto** (la tara ya viene puesta; si se lo pesó vacío de nuevo, se cambia). La humedad es opcional.
-    3. En el último viaje se destilda **Va a volver otra vez** (o se toca **Terminar**, que pide un segundo toque). Se cierra y sale **un solo comprobante con todos los viajes**: cada viaje con hora, bruto, tara, neto y humedad, y el **neto total**. Se descarga en PDF o se manda por WhatsApp o correo.
-    - Si un camión vuelve sin haberlo marcado, al escribir su patente (o el chofer, si no tiene patente) aparece **Usar esa tara**. Ese viaje también entra en el comprobante del día.
-    - Cada viaje queda como un ingreso propio (en la tabla dice "viaje 2 de 3"), así los totales del día, la secadora, el resumen y el informe por empresa cuentan cada carga.
-    - Se reconoce el camión por la patente, sin importar espacios, guiones ni mayúsculas, y la misma carga. Los viajes se juntan por día.
-    - Si se terminó por error, se edita el último viaje y se tilda **Va a volver hoy**.
+- **Pesada en dos pasos, en cualquier orden.** Cada viaje pasa dos veces por la balanza: lleno (**bruto**) y vacío (**tara**). En **Nuevo Ingreso** se carga el peso que se tenga: no hacen falta los dos. El camión queda en **"Camiones de hoy"** con **Falta la tara** o **Falta el bruto**. Cuando vuelve a la balanza, se toca **Cargar tara** (o **Cargar bruto**): la app calcula el **neto** y ofrece el comprobante. Mientras falta un peso, el viaje no suma a los totales.
+- **Otro viaje del mismo camión (la flecha).** En "Camiones de hoy", debajo de **Ya pesados hoy**, cada camión tiene **Comprobante** y la flecha **Otro viaje** (también en la tabla, en su último viaje):
+    - la flecha abre el viaje siguiente con los datos del camión ya puestos; se carga el peso que se tenga (bruto o tara), **sin que la tara sea obligatoria**;
+    - **Usar la tara anterior** pone la tara de su último viaje de hoy, si no se lo vuelve a pesar vacío. Al cargar la tara de un viaje que la espera, también viene puesta (se cambia si se lo pesó de nuevo);
+    - **un solo comprobante con todos los viajes** del camión en el día: cada viaje con hora, bruto, tara, neto y humedad, y el **neto total**. Sale desde **Comprobante** o desde la fila de cualquiera de sus viajes;
+    - cada viaje queda como un ingreso propio (en la tabla dice "viaje 2 de 3"), así los totales del día, la secadora, el resumen y el informe por empresa cuentan cada carga;
+    - se reconoce el camión por la patente, sin importar espacios, guiones ni mayúsculas (o por el chofer si no tiene patente), y la misma carga. Los viajes se juntan por día;
+    - si se escribe en Nuevo Ingreso la patente de un camión que ya vino hoy, aparece **Usar esa tara**, y ese viaje también entra en su comprobante.
 - **Humedad.** Se anota la humedad del camión (muestra de laboratorio) si se tomó: es **opcional**. El promedio del día se calcula con los camiones que la tienen.
 - **Soja ingresada en el día.** Arriba se ven la cantidad de camiones, los kg y la humedad promedio, ponderada por los kg de cada camión.
 - **Comprobante de pesada en PDF.** Está en el ícono de documento de cada fila, o en el aviso después de cargar la tara. Si el camión hizo varios viajes ese día, es uno solo con todos los viajes (desde la fila de cualquiera de ellos). Trae empresa, chofer, patente, carga, humedad, bruto y tara con fecha y hora, neto y lugar para las firmas. Se puede:
@@ -248,6 +247,7 @@ npm test             # prueba el cálculo del circuito de tanques (archivado)
 
 ## Historial
 
+- **2.25.1**: Recepción más simple. Cada viaje se pesa lleno y vacío **en cualquier orden** (se puede empezar por la tara) y se guarda con un solo peso: el otro se completa en **"Camiones de hoy"**. La flecha **Otro viaje** carga el viaje siguiente del mismo camión, **sin tara obligatoria** (con **Usar la tara anterior**). Se sacan "Va a volver hoy" y "Terminar" de la 2.25.0: el comprobante con todos los viajes está siempre en **Comprobante**.
 - **2.25.0**: **camión de varios viajes**. Con **Va a volver hoy** el camión no se cierra: queda en "Camiones en curso" con **+ Otro viaje** (solo el bruto, con la misma tara) y **Terminar**. Al terminar sale **un solo comprobante con todos los viajes** y el neto total. La **humedad pasa a ser opcional**. Se sacan los botones de "¿Volvió un camión de hoy?" (los reemplaza "+ Otro viaje").
 - **2.24.2**: todo se ve nítido: los paneles tienen fondo sólido (antes eran semitransparentes, con el fondo desenfocado), al abrir un diálogo la página de atrás solo se oscurece (antes se desenfocaba) y los números grandes y botones ya no tienen brillo difuso.
 - **2.24.1**: la "Extrusora tanques" pasa a llamarse **Decantador** (con su propio tipo, también en el stock); su historial sigue igual.
