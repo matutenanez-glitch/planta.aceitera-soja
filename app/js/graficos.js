@@ -11,6 +11,11 @@
  * grilla tenue, una sola escala, leyenda cuando hay 2 o más series y un
  * tooltip por día (con mouse o con teclado). Los textos se insertan siempre
  * con textContent.
+ *
+ * El gráfico mide exactamente el ancho de su recuadro (nunca más: antes tenía un
+ * mínimo de 320 px y en pantallas de 1366 se salía) y se redibuja si cambia.
+ * El margen izquierdo se ajusta al número más largo del eje, y las fechas de
+ * abajo se saltean para que no se pisen (la última siempre se ve).
  */
 (function (SoyaCore) {
   'use strict';
@@ -89,6 +94,16 @@
     };
   }
 
+  /** Ancho disponible: el del recuadro (si todavía no se ve, uno provisorio; se redibuja al verse). */
+  const anchoDe = (cont) => (cont.clientWidth > 0 ? cont.clientWidth : 320);
+  /** Margen izquierdo según el número más largo del eje (ej. "100.000"). */
+  const margenIzq = (ticks) => Math.round(Math.max(...ticks.map((t) => fmt.entero(t).length)) * 6.6 + 14);
+  /** Qué fechas del eje X se escriben: una cada tantas, sin pisarse, y siempre la última. */
+  function etiquetasX(n, banda) {
+    const cada = Math.max(1, Math.ceil(28 / banda));
+    return (i) => i === n - 1 || (i % cada === 0 && n - 1 - i >= cada);
+  }
+
   /** Re-dibuja cuando cambia el ancho del contenedor (por ejemplo, al mostrar la vista). */
   function alCambiarAncho(cont, dibujar) {
     if (cont._viz) cont._viz.disconnect();
@@ -114,28 +129,29 @@
       const valores = series.flatMap((se) => se.valores);
       if (!valores.some((v) => v > 0)) { vacio(cont, opts.vacio); return; }
 
-      const W = Math.max(cont.clientWidth, 320);
-      const m = { izq: 60, der: 8, arr: 8, aba: 26 };
+      const W = anchoDe(cont);
+      const { max, ticks } = escala(Math.max(...valores));
+      const m = { izq: margenIzq(ticks), der: 10, arr: 8, aba: 26 };
       const pw = W - m.izq - m.der;
       const n = categorias.length;
       const banda = pw / n;
       const ns = series.length;
-      const ancho = Math.min(24, Math.max((banda * 0.72 - (ns - 1) * 2) / ns, 2));
-      const grupo = ancho * ns + (ns - 1) * 2;
-      const { max, ticks } = escala(Math.max(...valores));
+      const sep = banda < 8 ? 1 : 2;
+      const ancho = Math.min(24, Math.max((banda * 0.72 - (ns - 1) * sep) / ns, 1.5));
+      const grupo = ancho * ns + (ns - 1) * sep;
       const Y = (v) => m.arr + alto - (v / max) * alto;
       const fmtV = (v) => fmt.entero(v) + (unidad ? ' ' + unidad : '');
 
-      const svg = s('svg', { viewBox: `0 0 ${W} ${alto + m.arr + m.aba}`, width: W, height: alto + m.arr + m.aba, class: 'block overflow-visible', role: 'img', 'aria-label': opts.titulo || series.map((se) => se.nombre).join(' y ') });
+      const svg = s('svg', { viewBox: `0 0 ${W} ${alto + m.arr + m.aba}`, width: W, height: alto + m.arr + m.aba, class: 'block max-w-full', role: 'img', 'aria-label': opts.titulo || series.map((se) => se.nombre).join(' y ') });
       // grilla y eje Y
       ticks.forEach((tk) => {
         svg.appendChild(s('line', { x1: m.izq, x2: W - m.der, y1: Y(tk), y2: Y(tk), class: tk === 0 ? 'viz-base' : 'viz-grilla' }));
         svg.appendChild(texto({ x: m.izq - 8, y: Y(tk) + 3.5, 'text-anchor': 'end', class: 'viz-eje' }, fmt.entero(tk)));
       });
       // etiquetas X (se saltean si no entran)
-      const cada = Math.max(1, Math.ceil(26 / banda));
+      const conEtiqueta = etiquetasX(n, banda);
       categorias.forEach((c, i) => {
-        if (i % cada === 0 || i === n - 1) svg.appendChild(texto({ x: m.izq + banda * (i + 0.5), y: alto + m.arr + 17, 'text-anchor': 'middle', class: 'viz-eje' }, c.etiqueta));
+        if (conEtiqueta(i)) svg.appendChild(texto({ x: m.izq + banda * (i + 0.5), y: alto + m.arr + 17, 'text-anchor': i === n - 1 && banda < 14 ? 'end' : 'middle', class: 'viz-eje' }, c.etiqueta));
       });
 
       const resaltado = s('rect', { x: 0, y: m.arr, width: banda, height: alto, class: 'viz-resaltado', visibility: 'hidden' });
@@ -147,7 +163,7 @@
           const v = se.valores[i] || 0;
           if (v <= 0) return;
           const h = Math.max(alto - (Y(v) - m.arr), 1);
-          svg.appendChild(columna(x0 + k * (ancho + 2), Y(v), ancho, h, se.color));
+          svg.appendChild(columna(x0 + k * (ancho + sep), Y(v), ancho, h, se.color));
         });
       });
 
@@ -190,24 +206,24 @@
       const { categorias, serie, unidad = '', alto = 160 } = opts;
       if (!serie.valores.some((v) => v > 0)) { vacio(cont, opts.vacio); return; }
 
-      const W = Math.max(cont.clientWidth, 320);
-      const m = { izq: 60, der: 70, arr: 12, aba: 26 };
+      const W = anchoDe(cont);
+      const { max, ticks } = escala(Math.max(...serie.valores));
+      const m = { izq: margenIzq(ticks), der: 70, arr: 12, aba: 26 };
       const pw = W - m.izq - m.der;
       const n = categorias.length;
       const banda = pw / n;
       const X = (i) => m.izq + banda * (i + 0.5);
-      const { max, ticks } = escala(Math.max(...serie.valores));
       const Y = (v) => m.arr + alto - (v / max) * alto;
       const fmtV = (v) => fmt.entero(v) + (unidad ? ' ' + unidad : '');
 
-      const svg = s('svg', { viewBox: `0 0 ${W} ${alto + m.arr + m.aba}`, width: W, height: alto + m.arr + m.aba, class: 'block overflow-visible', role: 'img', 'aria-label': opts.titulo || serie.nombre });
+      const svg = s('svg', { viewBox: `0 0 ${W} ${alto + m.arr + m.aba}`, width: W, height: alto + m.arr + m.aba, class: 'block max-w-full', role: 'img', 'aria-label': opts.titulo || serie.nombre });
       ticks.forEach((tk) => {
         svg.appendChild(s('line', { x1: m.izq, x2: W - m.der, y1: Y(tk), y2: Y(tk), class: tk === 0 ? 'viz-base' : 'viz-grilla' }));
         svg.appendChild(texto({ x: m.izq - 8, y: Y(tk) + 3.5, 'text-anchor': 'end', class: 'viz-eje' }, fmt.entero(tk)));
       });
-      const cada = Math.max(1, Math.ceil(26 / banda));
+      const conEtiqueta = etiquetasX(n, banda);
       categorias.forEach((c, i) => {
-        if (i % cada === 0 || i === n - 1) svg.appendChild(texto({ x: X(i), y: alto + m.arr + 17, 'text-anchor': 'middle', class: 'viz-eje' }, c.etiqueta));
+        if (conEtiqueta(i)) svg.appendChild(texto({ x: X(i), y: alto + m.arr + 17, 'text-anchor': 'middle', class: 'viz-eje' }, c.etiqueta));
       });
 
       const puntos = serie.valores.map((v, i) => `${X(i)},${Y(v || 0)}`);

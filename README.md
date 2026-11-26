@@ -263,6 +263,7 @@ npm test             # prueba el cálculo del circuito de tanques (archivado)
 
 ## Historial
 
+- **2.27.1**: **Resumen del mes:** los gráficos (soja, aceite, expeller) quedan **dentro de su recuadro** en cualquier pantalla: miden el ancho real del recuadro, el margen de los números se ajusta solo y las fechas de abajo no se pisan.
 - **2.27.0**: **Mantenimientos:** los repuestos, el aceite y la grasa del mantenimiento se cargan **todos juntos** ("Todo el mantenimiento"), sin elegir equipo por equipo; salen del stock y no tildan equipos. "Un equipo" queda para algo puntual. Debajo de los tildes, **Repuestos usados en la semana**.
 - **2.26.0**: Recepción con **una ficha por camión**: los viajes son escalones con su bruto y su tara (cada viaje con su propia tara), se escriben ahí mismo sin ventanas, **+ Agregar viaje** suma otro, y **Terminar** cierra la ficha y saca **un solo PDF con todos los viajes**. Cada ficha es de un camión: los viajes se atan a su ficha y no se mezclan con los de otros camiones del día. Se sacan "Otro viaje" (la flecha), las ventanas de tara y "Usar esa tara".
 - **Publicación en Vercel** (`vercel.json`, `scripts/web.mjs`): la app en `/` y la versión de prueba en `/prueba/`, desde GitHub.
