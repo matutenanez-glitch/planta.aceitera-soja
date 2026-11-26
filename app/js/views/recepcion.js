@@ -5,7 +5,14 @@
  * Recepción en dos pasos: cuando llegan varios camiones, primero se pesan
  * llenos (bruto) y quedan "en planta". Cuando descargan, se pesan vacíos y se
  * carga la tara: ahí se calcula el neto y se puede sacar el comprobante en PDF.
- * También se carga la humedad de cada camión (muestra de laboratorio).
+ * La humedad (muestra de laboratorio) es opcional.
+ *
+ * Camión de varios viajes (2.25): si "Va a volver hoy", el camión no se cierra:
+ * queda en "Camiones en curso" con "+ Otro viaje" (solo el bruto, con la misma
+ * tara) y "Terminar". Cada viaje es un registro (así los totales no cambian) con
+ * `vuelve: true` si después de ese viaje el camión vuelve. Los viajes de un mismo
+ * camión en el mismo día (misma patente, o mismo chofer si no hay patente, y misma
+ * carga) salen juntos en un solo comprobante.
  */
 (function (SoyaCore) {
   'use strict';
@@ -44,14 +51,28 @@
       .pop() || null;
   }
 
-  /** Camiones distintos que ya se taron hoy, el último primero. */
-  function taradosDeHoy() {
-    const vistos = [];
-    store.todos('ingresos')
-      .filter((c) => String(c.fecha).startsWith(hoy()) && !enPlanta(c) && Number(c.tara) > 0 && (normal(c.patente) || normal(c.conductor)))
-      .sort((a, b) => String(b.fechaTara || b.fecha).localeCompare(String(a.fechaTara || a.fecha)))
-      .forEach((c) => { if (!vistos.some((v) => mismoCamion(v, c))) vistos.push(c); });
-    return vistos;
+  // ---------- Los viajes del mismo camión en el día ----------
+  const diaDe = (r) => String(r.fecha).slice(0, 10);
+  const porFecha = (a, b) => String(a.fecha).localeCompare(String(b.fecha)) || String(a.id).localeCompare(String(b.id));
+
+  /** Todos los viajes de ese camión en el día de r (con r), en orden. */
+  function viajesDe(r) {
+    if (!r) return [];
+    if (!normal(r.patente) && !normal(r.conductor)) return [r];
+    const carga = normal(r.carga || 'Soja');
+    return store.todos('ingresos')
+      .filter((c) => c.id === r.id || (diaDe(c) === diaDe(r) && normal(c.carga || 'Soja') === carga && mismoCamion(c, r)))
+      .sort(porFecha);
+  }
+  const completos = (viajes) => viajes.filter((v) => !enPlanta(v));
+  const netoDe = (viajes) => viajes.reduce((s, v) => s + (Number(v.neto) || 0), 0);
+
+  /** Camiones de hoy que ya completaron un viaje y van a volver: su último viaje. */
+  function vanAVolver() {
+    return store.todos('ingresos')
+      .filter((c) => diaDe(c) === hoy() && c.vuelve && !enPlanta(c))
+      .filter((c) => { const v = viajesDe(c); return v[v.length - 1].id === c.id; })
+      .sort(porFecha);
   }
 
   /** Humedad promedio de varios camiones, ponderada por los kg de cada uno. */
@@ -73,6 +94,19 @@
   }
 
   const abrirComprobante = (r) => SoyaCore.comprobantes.abrirPesada(r);
+  const icono = (nombre, clase) => el('i', { attrs: { 'data-lucide': nombre }, className: clase || 'h-3.5 w-3.5' });
+  const textoViajes = (n) => (n === 1 ? '1 viaje' : `${n} viajes`);
+
+  /** Al terminar: si hizo más de un viaje, sale directo el comprobante con todos. */
+  function alTerminarCamion(r, mensaje) {
+    const viajes = completos(viajesDe(r));
+    if (viajes.length > 1) {
+      abrirComprobante(r);
+      toast(`${mensaje} Terminó: ${textoViajes(viajes.length)}, neto ${fmt.kg(netoDe(viajes))}.`, 'ok');
+    } else {
+      toast(`${mensaje}`, 'ok', { texto: 'Comprobante', fn: () => abrirComprobante(r) });
+    }
+  }
 
   // ---------- Panel del día y camiones en planta ----------
   function actualizarHoy() {
@@ -84,33 +118,155 @@
     dibujarEnPlanta();
   }
 
-  function dibujarEnPlanta() {
-    const pendientes = store.todos('ingresos').filter(enPlanta).sort((a, b) => String(a.fecha).localeCompare(String(b.fecha)));
-    $('#rec-en-planta').hidden = !pendientes.length;
-    $('#rec-en-planta-titulo').textContent = pendientes.length === 1 ? 'En planta, esperando la tara: 1 camión' : `En planta, esperando la tara: ${pendientes.length} camiones`;
-    $('#rec-en-planta-lista').replaceChildren(...pendientes.map((c) => {
-      const boton = el('button', { className: 'btn w-auto shrink-0 bg-sky-500 px-3 py-1.5 text-xs text-slate-950 hover:bg-sky-400', attrs: { type: 'button', 'data-cargar-tara': c.id } }, [
-        el('i', { attrs: { 'data-lucide': 'scale' }, className: 'h-3.5 w-3.5' }),
-        el('span', { text: 'Cargar tara' }),
-      ]);
-      boton.addEventListener('click', () => abrirTara(c));
-      return el('li', { className: 'flex items-center justify-between gap-3 rounded-xl border border-slate-800 bg-slate-900/60 p-3', attrs: { 'data-id': c.id } }, [
-        el('div', { className: 'min-w-0' }, [
-          el('p', { className: 'flex flex-wrap items-center gap-2' }, [
-            el('span', { className: 'truncate font-semibold text-slate-100', text: c.empresa }),
-            c.patente ? el('span', { className: 'rounded border border-slate-600 px-1.5 text-[10px] font-bold tracking-wider text-slate-300 uppercase', text: c.patente }) : null,
-          ]),
-          el('p', { className: 'truncate text-xs text-slate-400', text: `${c.conductor || '-'} · ${c.carga || 'Soja'}` }),
-          el('p', { className: 'text-xs text-slate-300 tabular-nums', text: `Bruto ${fmt.kg(c.bruto)} · entró a las ${String(c.fecha).slice(11, 16)} (${hace(c.fecha)})` }),
-          ((previa) => (previa ? el('p', { className: 'mt-0.5 flex items-center gap-1 text-xs font-semibold text-sky-300', attrs: { 'data-tara-previa': '' } }, [
-            el('i', { attrs: { 'data-lucide': 'refresh-cw' }, className: 'h-3 w-3' }),
-            el('span', { text: `Ya tiene tara de hoy: ${fmt.kg(previa.tara)} (${horaDe(previa)})` }),
-          ]) : null))(taraDeHoy(c, c.id)),
+  function cabeceraCamion(c, chips) {
+    return [
+      el('p', { className: 'flex flex-wrap items-center gap-2' }, [
+        el('span', { className: 'truncate font-semibold text-slate-100', text: c.empresa }),
+        c.patente ? el('span', { className: 'rounded border border-slate-600 px-1.5 text-[10px] font-bold tracking-wider text-slate-300 uppercase', text: c.patente }) : null,
+        ...chips,
+      ]),
+      el('p', { className: 'truncate text-xs text-slate-400', text: `${c.conductor || '-'} · ${c.carga || 'Soja'}` }),
+    ];
+  }
+
+  function tarjetaPendiente(c) {
+    const viajes = viajesDe(c);
+    const n = viajes.findIndex((v) => v.id === c.id) + 1;
+    const boton = el('button', { className: 'btn w-auto shrink-0 bg-sky-500 px-3 py-1.5 text-xs text-slate-950 hover:bg-sky-400', attrs: { type: 'button', 'data-cargar-tara': c.id } }, [icono('scale'), el('span', { text: 'Cargar tara' })]);
+    boton.addEventListener('click', () => abrirTara(c));
+    const previa = taraDeHoy(c, c.id);
+    return el('li', { className: 'flex items-center justify-between gap-3 rounded-xl border border-slate-800 bg-slate-900/60 p-3', attrs: { 'data-id': c.id } }, [
+      el('div', { className: 'min-w-0' }, [
+        ...cabeceraCamion(c, [
+          el('span', { className: 'chip border-sky-400/50 text-sky-300', text: 'Espera la tara' }),
+          n > 1 ? el('span', { className: 'chip border-slate-600 text-slate-300', text: `Viaje ${n}` }) : null,
         ]),
-        boton,
-      ]);
-    }));
+        el('p', { className: 'text-xs text-slate-300 tabular-nums', text: `Bruto ${fmt.kg(c.bruto)} · entró a las ${String(c.fecha).slice(11, 16)} (${hace(c.fecha)})` }),
+        previa ? el('p', { className: 'mt-0.5 flex items-center gap-1 text-xs font-semibold text-sky-300', attrs: { 'data-tara-previa': '' } }, [
+          icono('refresh-cw', 'h-3 w-3'),
+          el('span', { text: `Ya tiene tara de hoy: ${fmt.kg(previa.tara)} (${horaDe(previa)})` }),
+        ]) : null,
+      ]),
+      boton,
+    ]);
+  }
+
+  function tarjetaVuelve(c) {
+    const viajes = completos(viajesDe(c));
+    const otro = el('button', { className: 'btn w-auto shrink-0 bg-brand-500 px-3 py-1.5 text-xs text-slate-900 hover:bg-brand-400', attrs: { type: 'button', 'data-otro-viaje': c.id } }, [icono('plus'), el('span', { text: 'Otro viaje' })]);
+    otro.addEventListener('click', () => abrirOtroViaje(c));
+    // Terminar pide un segundo toque, así no se cierra por error.
+    const fin = el('button', { className: 'btn-cancelar shrink-0 px-3 py-1.5 text-xs', attrs: { type: 'button', 'data-terminar': c.id } }, [el('span', { text: 'Terminar' })]);
+    let armado = null;
+    fin.addEventListener('click', () => {
+      if (armado) { clearTimeout(armado); armado = null; terminar(c); return; }
+      fin.firstChild.textContent = 'Tocá de nuevo para terminar';
+      fin.classList.add('border-amber-400', 'text-amber-200');
+      armado = setTimeout(() => { armado = null; fin.firstChild.textContent = 'Terminar'; fin.classList.remove('border-amber-400', 'text-amber-200'); }, 4000);
+    });
+    return el('li', { className: 'flex flex-wrap items-center justify-between gap-3 rounded-xl border border-brand-500/40 bg-slate-900/60 p-3', attrs: { 'data-id': c.id, 'data-vuelve': '' } }, [
+      el('div', { className: 'min-w-0' }, [
+        ...cabeceraCamion(c, [el('span', { className: 'chip border-brand-500/60 text-brand-300', text: 'Va a volver' })]),
+        el('p', { className: 'text-xs text-slate-300 tabular-nums', attrs: { 'data-resumen-viajes': '' }, text: `${textoViajes(viajes.length)} · neto ${fmt.kg(netoDe(viajes))} · tara ${fmt.kg(c.tara)}` }),
+        el('p', { className: 'text-[11px] text-slate-500', text: `Último viaje: entró a las ${String(c.fecha).slice(11, 16)} (${hace(c.fecha)})` }),
+      ]),
+      el('div', { className: 'flex items-center gap-2' }, [fin, otro]),
+    ]);
+  }
+
+  function dibujarEnPlanta() {
+    const pendientes = store.todos('ingresos').filter(enPlanta).sort(porFecha);
+    const vuelven = vanAVolver();
+    const total = pendientes.length + vuelven.length;
+    $('#rec-en-planta').hidden = !total;
+    $('#rec-en-planta-titulo').textContent = [
+      'Camiones en curso',
+      [pendientes.length ? `${pendientes.length} esperando la tara` : '', vuelven.length ? `${vuelven.length} ${vuelven.length === 1 ? 'va' : 'van'} a volver` : ''].filter(Boolean).join(' · '),
+    ].filter(Boolean).join(': ');
+    $('#rec-en-planta-lista').replaceChildren(...pendientes.map(tarjetaPendiente), ...vuelven.map(tarjetaVuelve));
     SoyaCore.icons.render($('#rec-en-planta-lista'));
+  }
+
+  // ---------- Terminar un camión de varios viajes ----------
+  function terminar(c) {
+    const guardado = store.actualizar('ingresos', c.id, { vuelve: false });
+    if (!guardado) return;
+    const viajes = completos(viajesDe(guardado));
+    abrirComprobante(guardado);
+    toast(`Terminado: ${textoViajes(viajes.length)}, neto ${fmt.kg(netoDe(viajes))}.`, 'ok');
+  }
+
+  // ---------- Diálogo "Otro viaje" (solo el bruto, con la misma tara) ----------
+  let viajeBase = null; // el último viaje del camión
+
+  function netoViaje() {
+    const n = num($('#viaje-bruto')) - num($('#viaje-tara'));
+    $('#viaje-neto').textContent = n > 0 ? fmt.kg(n) : '-';
+  }
+  function textoBotonViaje() {
+    $('#viaje-guardar').textContent = $('#viaje-vuelve').checked ? 'Guardar viaje' : 'Guardar y terminar';
+  }
+
+  function abrirOtroViaje(c) {
+    viajeBase = c;
+    const viajes = completos(viajesDe(c));
+    $('#viaje-titulo-texto').textContent = `Viaje ${viajes.length + 1}`;
+    $('#viaje-sub').textContent = [c.empresa, c.patente, c.conductor].filter(Boolean).join(' · ');
+    $('#viaje-lista').replaceChildren(...viajes.map((v, i) => el('li', { className: 'flex items-center justify-between gap-3 px-3 py-1.5 tabular-nums' }, [
+      el('span', { className: 'text-slate-400', text: `Viaje ${i + 1} · ${String(v.fecha).slice(11, 16)}` }),
+      el('span', { className: 'text-slate-300', text: `bruto ${fmt.kg(v.bruto)} · neto ` }, [el('b', { className: 'text-slate-100', text: fmt.kg(v.neto) })]),
+    ])), el('li', { className: 'flex items-center justify-between gap-3 px-3 py-1.5 font-semibold' }, [
+      el('span', { className: 'text-slate-300', text: 'Total hasta ahora' }),
+      el('span', { className: 'text-brand-300', text: fmt.kg(netoDe(viajes)) }),
+    ]));
+    $('#viaje-bruto').value = '';
+    $('#viaje-tara').value = c.tara;
+    $('#viaje-humedad').value = '';
+    $('#viaje-vuelve').checked = true;
+    textoBotonViaje();
+    netoViaje();
+    $('#viaje-dialogo').showModal();
+    $('#viaje-bruto').focus();
+  }
+
+  function initViaje() {
+    const dialogo = $('#viaje-dialogo');
+    const cerrar = () => dialogo.close();
+    $('#viaje-cerrar').addEventListener('click', cerrar);
+    $('#viaje-cancelar').addEventListener('click', cerrar);
+    ['#viaje-bruto', '#viaje-tara'].forEach((s) => $(s).addEventListener('input', netoViaje));
+    $('#viaje-vuelve').addEventListener('change', textoBotonViaje);
+    $('#form-viaje').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const base = viajeBase && (store.buscar('ingresos', viajeBase.id) || viajeBase);
+      if (!base) { cerrar(); return; }
+      const b = num($('#viaje-bruto'));
+      const t = num($('#viaje-tara'));
+      if (!(b > 0)) { toast('Falta el peso bruto.', 'error'); $('#viaje-bruto').focus(); return; }
+      if (!(b - t > 0)) { toast('La tara tiene que ser menor que el bruto.', 'error'); $('#viaje-tara').focus(); return; }
+      const h = num($('#viaje-humedad'));
+      const vuelve = $('#viaje-vuelve').checked;
+      const momento = ahora();
+      const nuevo = store.agregar('ingresos', {
+        fecha: momento,
+        empresa: base.empresa,
+        conductor: base.conductor,
+        patente: base.patente || '',
+        carga: base.carga || 'Soja',
+        humedad: isNaN(h) ? null : h,
+        bruto: b,
+        tara: t,
+        neto: b - t,
+        fechaTara: momento,
+        taraDe: t === Number(base.tara) ? base.taraDe || base.id : null,
+        vuelve,
+      });
+      if (!nuevo) return;
+      cerrar();
+      const n = completos(viajesDe(nuevo)).length;
+      if (vuelve) toast(`Viaje ${n} guardado: neto ${fmt.kg(b - t)}. Sigue abierto para el próximo viaje.`, 'ok');
+      else alTerminarCamion(nuevo, `Viaje ${n} guardado.`);
+    });
   }
 
   // ---------- Diálogo "Cargar la tara" ----------
@@ -146,13 +302,16 @@
       SoyaCore.icons.render($('#tara-previa'));
     }
     $('#tara-humedad').value = tieneHumedad(r) ? r.humedad : '';
-    $('#tara-humedad').required = esSoja(r);
+    $('#tara-vuelve').checked = !!r.vuelve;
+    textoBotonTara();
     netoTara();
     $('#tara-dialogo').showModal();
-    // Con la tara puesta, lo que falta es la humedad (si es soja y no la tiene) o guardar.
-    if (taraPrevia && $('#tara-humedad').required && !$('#tara-humedad').value) $('#tara-humedad').focus();
-    else if (taraPrevia) $('#form-tara button[type=submit]').focus();
+    // Con la tara puesta, solo falta guardar.
+    if (taraPrevia) $('#tara-guardar').focus();
     else $('#tara-kg').focus();
+  }
+  function textoBotonTara() {
+    $('#tara-guardar').textContent = $('#tara-vuelve').checked ? 'Guardar tara (vuelve)' : 'Guardar tara';
   }
 
   function initTara() {
@@ -161,6 +320,7 @@
     $('#tara-cerrar').addEventListener('click', cerrar);
     $('#tara-cancelar').addEventListener('click', cerrar);
     $('#tara-kg').addEventListener('input', netoTara);
+    $('#tara-vuelve').addEventListener('change', textoBotonTara);
     $('#form-tara').addEventListener('submit', (e) => {
       e.preventDefault();
       const r = store.buscar('ingresos', taraId);
@@ -177,12 +337,14 @@
         tara: t,
         taraDe: taraPrevia && Number(taraPrevia.tara) === t ? taraPrevia.id : null,
         neto,
-        humedad: isNaN(h) ? (tieneHumedad(r) ? r.humedad : null) : h,
+        humedad: isNaN(h) ? null : h,
         fechaTara: ahora(),
+        vuelve: $('#tara-vuelve').checked,
       });
       if (!guardado) return;
       cerrar();
-      toast(`Tara cargada: neto ${fmt.kg(neto)}.`, 'ok', { texto: 'Comprobante', fn: () => abrirComprobante(guardado) });
+      if (guardado.vuelve) toast(`Tara cargada: neto ${fmt.kg(neto)}. Queda abierto para el próximo viaje.`, 'ok');
+      else alTerminarCamion(guardado, `Tara cargada: neto ${fmt.kg(neto)}.`);
     });
   }
 
@@ -197,7 +359,7 @@
       // Empresa arriba y, más chico, chofer y patente: así la tabla entra sin barra de desplazamiento.
       { key: 'empresa', className: 'max-w-56', render: (r) => el('span', { className: 'block min-w-0' }, [
         el('span', { className: 'block truncate', text: r.empresa || '-' }),
-        el('span', { className: 'block truncate text-[11px] text-slate-500', text: [r.conductor, r.patente ? String(r.patente).toUpperCase() : null].filter(Boolean).join(' · ') }),
+        el('span', { className: 'block truncate text-[11px] text-slate-500', text: [r.conductor, r.patente ? String(r.patente).toUpperCase() : null, ((v) => (v.length > 1 ? `viaje ${v.findIndex((x) => x.id === r.id) + 1} de ${v.length}` : null))(viajesDe(r))].filter(Boolean).join(' · ') }),
       ]) },
       { key: 'carga', format: (v) => v || 'Soja' }, // registros viejos sin carga = Soja
       { key: 'neto', render: netoCelda, className: 'num' },
@@ -219,7 +381,6 @@
     const salida = $(`#${prefijo}-neto`);
     const neto = () => num(bruto) - num(tara);
     let editor;
-    let sinHumedadAntes = false; // camión de soja cargado antes de la v2.18, sin humedad
     let fechaTaraAntes = null;
     let taraDe = null; // id del viaje de hoy del que se usó la tara (mismo camión)
     let sugerida = null;
@@ -227,19 +388,10 @@
     const actualizarNeto = () => {
       if (recepcion && tara.value === '') salida.textContent = num(bruto) > 0 ? 'Falta la tara' : '0 kg';
       else { const n = neto(); salida.textContent = fmt.kg(n > 0 ? n : 0); }
-      if (recepcion) {
-        humedadObligatoria();
-        if (!editor || !editor.id) $('#in-enviar').textContent = tara.value === '' ? 'Registrar entrada (sin tara)' : 'Registrar Ingreso';
+      if (recepcion && (!editor || !editor.id)) {
+        $('#in-enviar').textContent = tara.value === '' ? 'Registrar entrada (sin tara)' : $('#in-vuelve').checked ? 'Registrar viaje (vuelve)' : 'Registrar Ingreso';
       }
     };
-
-    // La humedad es obligatoria para la soja al completar la pesada (con tara). Al corregir
-    // un camión de soja viejo que no tenía humedad (antes se anotaba en la secadora), no se obliga.
-    function humedadObligatoria() {
-      if (!recepcion) return;
-      const exento = editor && editor.id && sinHumedadAntes;
-      $('#in-humedad').required = esSoja({ carga: $('#in-carga').value || 'Soja' }) && tara.value !== '' && !exento;
-    }
 
     // ---- La tara del mismo camión (solo en Recepción, al cargar uno nuevo) ----
     function usarTara(viaje) {
@@ -260,27 +412,6 @@
         : `Este camión ya se taró hoy a las ${horaDe(sugerida)}: ${fmt.kg(sugerida.tara)}.`;
       $('#in-tara-usar').hidden = usada;
     }
-    function dibujarVolvio() {
-      if (!recepcion) return;
-      const lista = editor && editor.id ? [] : taradosDeHoy().slice(0, 8);
-      $('#in-volvio').hidden = !lista.length;
-      $('#in-volvio-lista').replaceChildren(...lista.map((c) => {
-        const b = el('button', { className: 'btn-sm flex-col items-start gap-0 px-3 py-1.5 text-left', attrs: { type: 'button', title: `Usar los datos y la tara de ${c.conductor || c.patente}` } }, [
-          el('span', { className: 'text-xs font-bold text-slate-100', text: c.patente || c.conductor }),
-          el('span', { className: 'text-[10px] font-normal text-slate-400', text: `${c.patente ? (c.conductor || '-') + ' · ' : ''}tara ${fmt.kg(c.tara)}` }),
-        ]);
-        b.addEventListener('click', () => {
-          $(`#${prefijo}-empresa`).value = c.empresa || '';
-          $(`#${prefijo}-conductor`).value = c.conductor || '';
-          $('#in-patente').value = c.patente || '';
-          $('#in-carga').value = c.carga || 'Soja';
-          $('#in-humedad').value = '';
-          usarTara(c);
-          bruto.focus();
-        });
-        return b;
-      }));
-    }
 
     bruto.addEventListener('input', actualizarNeto);
     tara.addEventListener('input', () => {
@@ -291,6 +422,7 @@
     if (recepcion) {
       ['#in-patente', `#${prefijo}-conductor`].forEach((sel) => $(sel).addEventListener('input', actualizarSugerencia));
       $('#in-tara-usar').addEventListener('click', () => { if (sugerida) usarTara(sugerida); });
+      $('#in-vuelve').addEventListener('change', actualizarNeto);
     }
 
     const tabla = tablaRegistros({
@@ -317,18 +449,19 @@
           $('#in-carga').value = r.carga || 'Soja';
           $('#in-patente').value = r.patente || '';
           $('#in-humedad').value = tieneHumedad(r) ? r.humedad : '';
-          sinHumedadAntes = esSoja(r) && !tieneHumedad(r) && !enPlanta(r); // completo y viejo, sin humedad
+          $('#in-vuelve').checked = !!r.vuelve;
           fechaTaraAntes = r.fechaTara || null;
           taraDe = r.taraDe || null;
         }
         actualizarNeto();
         actualizarSugerencia();
-        dibujarVolvio();
       },
-      alTerminar: () => { sinHumedadAntes = false; fechaTaraAntes = null; taraDe = null; actualizarNeto(); actualizarSugerencia(); dibujarVolvio(); },
+      alTerminar: () => {
+        fechaTaraAntes = null; taraDe = null;
+        if (recepcion) $('#in-vuelve').checked = false;
+        actualizarNeto(); actualizarSugerencia();
+      },
     });
-
-    if (recepcion) $('#in-carga').addEventListener('input', humedadObligatoria);
 
     form.addEventListener('submit', (e) => {
       e.preventDefault();
@@ -360,9 +493,12 @@
         registro.humedad = isNaN(h) ? null : h;
         registro.fechaTara = conTara ? fechaTaraAntes || ahora() : null;
         registro.taraDe = conTara && taraDe ? taraDe : null;
-        mensajes = conTara
-          ? { nuevo: mensaje, accion: { texto: 'Comprobante', fn: abrirComprobante } }
-          : { nuevo: 'Entrada registrada: queda en planta esperando la tara.' };
+        registro.vuelve = $('#in-vuelve').checked;
+        mensajes = !conTara
+          ? { nuevo: `Entrada registrada: queda en planta esperando la tara${registro.vuelve ? ' (y va a volver)' : ''}.` }
+          : registro.vuelve
+            ? { nuevo: 'Ingreso registrado: queda abierto en "Camiones en curso" para el próximo viaje.' }
+            : { nuevo: mensaje, accion: { texto: 'Comprobante', fn: abrirComprobante } };
       }
       if (guardarRegistro(coleccion, editor, registro, mensajes)) $(`#${prefijo}-empresa`).focus();
     });
@@ -370,12 +506,11 @@
     store.alCambiar((c) => {
       if (c !== coleccion && c !== '*') return;
       tabla.dibujar();
-      if (recepcion) { actualizarHoy(); dibujarVolvio(); actualizarSugerencia(); }
+      if (recepcion) { actualizarHoy(); actualizarSugerencia(); }
     });
     tabla.dibujar();
     actualizarNeto();
     if (recepcion) {
-      dibujarVolvio();
       actualizarHoy();
       setInterval(() => !$('#view-recepcion').hidden && dibujarEnPlanta(), 60000); // "hace N min"
     }
@@ -386,12 +521,16 @@
     init: () => {
       balanza('in', 'ingresos', 'form-ingreso', 'Ingreso registrado.');
       initTara();
+      initViaje();
     },
     refresh: actualizarHoy, // al entrar se recalcula "hoy"
     esSoja,
     tieneHumedad,
     enPlanta,
     humedadPonderada,
+    viajesDe,
+    abrirOtroViaje,
+    terminar,
   };
   SoyaCore.views.despacho = {
     init: () => balanza('out', 'despachos', 'form-despacho', 'Despacho registrado.'),

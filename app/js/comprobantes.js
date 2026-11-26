@@ -1,5 +1,7 @@
 /*
  * Comprobante de pesada e informe de ingresos por empresa, en PDF.
+ * Si el camión hizo varios viajes en el día, el comprobante es uno solo con
+ * todos los viajes y el neto total (2.25).
  *
  * Se generan en la PC (pdf.js, sin internet). Desde el diálogo se puede
  * descargar el PDF, compartirlo (si la PC lo permite), o abrir WhatsApp o el
@@ -81,8 +83,8 @@
       ['Chofer', r.conductor || '-'],
       ['Patente', r.patente ? String(r.patente).toUpperCase() : '-'],
       ['Carga', r.carga || 'Soja'],
-      ['Humedad', humedad(r)],
-    ];
+      rec().tieneHumedad(r) ? ['Humedad', humedad(r)] : null,
+    ].filter(Boolean);
     doc.rect(M, y, ancho - 2 * M, filas.length * 22 + 8, { relleno: FONDO, borde: LINEA });
     filas.forEach(([k, v], i) => {
       const fy = y + 20 + i * 22;
@@ -123,6 +125,90 @@
     });
     pie(doc, 1, 1);
     return { doc, nombre: `pesada_${numero}_${archivo(r.empresa)}_${String(r.fecha).slice(0, 10)}.pdf` };
+  }
+
+  // ---------- Comprobante de varios viajes del mismo camión ----------
+  const viajesCompletos = (r) => rec().viajesDe(r).filter((v) => !rec().enPlanta(v));
+  const hora = (f) => String(f || '').slice(11, 16) || '-';
+
+  function pdfViajes(viajes) {
+    const primero = viajes[0];
+    const r = viajes[viajes.length - 1];
+    const numero = numeroPesada(primero);
+    const neto = viajes.reduce((s, v) => s + (Number(v.neto) || 0), 0);
+    const hum = rec().humedadPonderada(viajes);
+    const doc = SoyaCore.pdf.documento({ titulo: `Comprobante de pesadas N° ${numero}` });
+    doc.pagina();
+    const ancho = doc.ancho;
+    let y = encabezado(doc, 'COMPROBANTE DE PESADAS', `N° ${numero}`, `Fecha: ${ddmmaaaa(primero.fecha)} · ${viajes.length} viajes`);
+
+    tituloSeccion(doc, y, 'Datos del camión');
+    y += 10;
+    const filas = [
+      ['Empresa / Proveedor', r.empresa || '-'],
+      ['Chofer', r.conductor || '-'],
+      ['Patente', r.patente ? String(r.patente).toUpperCase() : '-'],
+      ['Carga', r.carga || 'Soja'],
+    ];
+    doc.rect(M, y, ancho - 2 * M, filas.length * 22 + 8, { relleno: FONDO, borde: LINEA });
+    filas.forEach(([k, v], i) => {
+      const fy = y + 20 + i * 22;
+      doc.texto(M + 14, fy, k, { tam: 10, color: GRIS });
+      doc.texto(M + 150, fy, v, { tam: 11, negrita: true, color: TINTA });
+    });
+    y += filas.length * 22 + 36;
+
+    tituloSeccion(doc, y, `Viajes del día (${viajes.length})`);
+    y += 10;
+    // [título, x, alinear, valor]
+    const cols = [
+      ['Viaje', M + 14, 'izq', (v, i) => String(i + 1)],
+      ['Entró', M + 64, 'izq', (v) => hora(v.fecha)],
+      ['Bruto', M + 220, 'der', (v) => fmt.kg(v.bruto)],
+      ['Tara', M + 310, 'der', (v) => fmt.kg(v.tara)],
+      ['Neto', M + 410, 'der', (v) => fmt.kg(v.neto)],
+      ['Humedad', ancho - M - 14, 'der', humedad],
+    ];
+    cols.forEach(([t, x, a]) => doc.texto(x, y + 16, t, { tam: 8, negrita: true, color: GRIS, alinear: a }));
+    doc.linea(M, y + 24, ancho - M, y + 24, { color: LINEA });
+    viajes.forEach((v, i) => {
+      const fy = y + 44 + i * 22;
+      cols.forEach(([t, x, a, f]) => doc.texto(x, fy, f(v, i), { tam: 11, negrita: t === 'Neto', color: TINTA, alinear: a }));
+      doc.linea(M, fy + 8, ancho - M, fy + 8, { color: LINEA, grosor: 0.5 });
+    });
+    y += 44 + viajes.length * 22 + 4;
+    doc.rect(M, y, ancho - 2 * M, 42, { relleno: FONDO_MARCA, borde: MARCA });
+    doc.texto(M + 14, y + 27, `PESO NETO TOTAL · ${viajes.length} VIAJES`, { tam: 12, negrita: true, color: MARCA });
+    doc.texto(ancho - M - 14, y + 28, fmt.kg(neto), { tam: 20, negrita: true, color: TINTA, alinear: 'der' });
+    y += 42;
+    if (hum != null) doc.texto(ancho - M - 14, y + 16, `Humedad promedio (ponderada por kg): ${fmt.porcentaje(hum)}`, { tam: 9, color: GRIS, alinear: 'der' });
+    y = Math.max(y + 90, doc.alto - 150);
+
+    const ancho2 = (ancho - 2 * M - 60) / 2;
+    [M, M + ancho2 + 60].forEach((x, i) => {
+      doc.linea(x, y, x + ancho2, y, { color: GRIS, grosor: 0.75 });
+      doc.texto(x + ancho2 / 2, y + 14, i === 0 ? 'Firma y aclaración (balanza)' : 'Firma y aclaración (chofer)', { tam: 8, color: GRIS, alinear: 'centro' });
+    });
+    pie(doc, 1, 1);
+    return { doc, nombre: `pesadas_${numero}_${archivo(r.patente || r.empresa)}_${String(primero.fecha).slice(0, 10)}.pdf`, neto };
+  }
+
+  function textoViajes(viajes) {
+    const p = planta();
+    const r = viajes[viajes.length - 1];
+    const neto = viajes.reduce((s, v) => s + (Number(v.neto) || 0), 0);
+    const hum = rec().humedadPonderada(viajes);
+    return [
+      `*Comprobante de pesadas N° ${numeroPesada(viajes[0])} — ${viajes.length} viajes*`,
+      p.nombre ? `Planta: ${p.nombre}` : null,
+      `Fecha: ${ddmmaaaa(viajes[0].fecha)}`,
+      `Empresa: ${r.empresa || '-'}`,
+      `Chofer: ${r.conductor || '-'}${r.patente ? ` · Patente: ${String(r.patente).toUpperCase()}` : ''}`,
+      `Carga: ${r.carga || 'Soja'}`,
+      ...viajes.map((v, i) => `Viaje ${i + 1} (${hora(v.fecha)}): bruto ${fmt.kg(v.bruto)} − tara ${fmt.kg(v.tara)} = ${fmt.kg(v.neto)}${rec().tieneHumedad(v) ? ` · hum. ${humedad(v)}` : ''}`),
+      `*Neto total: ${fmt.kg(neto)}*`,
+      hum != null ? `Humedad promedio: ${fmt.porcentaje(hum)}` : null,
+    ].filter(Boolean).join('\n');
   }
 
   function textoPesada(r) {
@@ -257,14 +343,21 @@
   }
 
   // ---------- Diálogo ----------
-  let modo = null; // { tipo: 'pesada', registro } | { tipo: 'informe' }
+  let modo = null; // { tipo: 'pesada' | 'viajes', registro } | { tipo: 'informe' }
 
   function filtros() {
     return { empresa: $('#inf-empresa').value || TODAS, carga: $('#inf-carga').value || TODAS, desde: $('#inf-desde').value, hasta: $('#inf-hasta').value };
   }
 
   function generar() {
-    if (modo.tipo === 'pesada') {
+    if (modo.tipo === 'viajes') {
+      const viajes = viajesCompletos(store.buscar('ingresos', modo.registro.id) || modo.registro);
+      if (viajes.length > 1) {
+        const { doc, nombre } = pdfViajes(viajes);
+        return { blob: doc.blob(), nombre, texto: textoViajes(viajes), asunto: `Comprobante de pesadas N° ${numeroPesada(viajes[0])} (${viajes.length} viajes)` };
+      }
+    }
+    if (modo.tipo === 'pesada' || modo.tipo === 'viajes') {
       const r = store.buscar('ingresos', modo.registro.id) || modo.registro;
       const { doc, nombre } = pdfPesada(r);
       return { blob: doc.blob(), nombre, texto: textoPesada(r), asunto: `Comprobante de pesada N° ${numeroPesada(r)}` };
@@ -279,12 +372,24 @@
   }
 
   function pintarResumen() {
+    if (modo.tipo === 'viajes') {
+      const viajes = viajesCompletos(store.buscar('ingresos', modo.registro.id) || modo.registro);
+      const r = viajes[viajes.length - 1];
+      $('#comp-resumen').replaceChildren(
+        ...filaResumen('Empresa', r.empresa || '-'),
+        ...filaResumen('Chofer', `${r.conductor || '-'}${r.patente ? ' · ' + String(r.patente).toUpperCase() : ''}`),
+        ...filaResumen('Carga', r.carga || 'Soja'),
+        ...viajes.flatMap((v, i) => filaResumen(`Viaje ${i + 1} · ${hora(v.fecha)}`, `${fmt.kg(v.bruto)} − ${fmt.kg(v.tara)} = ${fmt.kg(v.neto)}${rec().tieneHumedad(v) ? ` · ${humedad(v)}` : ''}`)),
+        ...filaResumen(`Neto total (${viajes.length} viajes)`, fmt.kg(viajes.reduce((s, v) => s + (Number(v.neto) || 0), 0)), true),
+      );
+      return;
+    }
     if (modo.tipo === 'pesada') {
       const r = modo.registro;
       $('#comp-resumen').replaceChildren(
         ...filaResumen('Empresa', r.empresa || '-'),
         ...filaResumen('Chofer', `${r.conductor || '-'}${r.patente ? ' · ' + String(r.patente).toUpperCase() : ''}`),
-        ...filaResumen('Carga', `${r.carga || 'Soja'} · humedad ${humedad(r)}`),
+        ...filaResumen('Carga', `${r.carga || 'Soja'}${rec().tieneHumedad(r) ? ` · humedad ${humedad(r)}` : ''}`),
         ...filaResumen('Bruto', `${fmt.kg(r.bruto)} (${fechaHora(r.fecha)})`),
         ...filaResumen('Tara', `${fmt.kg(r.tara)} (${fechaHora(r.fechaTara)})`),
         ...filaResumen('Neto', fmt.kg(r.neto), true),
@@ -314,6 +419,15 @@
 
   function abrirPesada(r) {
     if (!r || rec().enPlanta(r)) { toast('Este camión todavía no tiene tara: cargala primero.', 'error'); return; }
+    const viajes = viajesCompletos(r);
+    if (viajes.length > 1) {
+      modo = { tipo: 'viajes', registro: r };
+      $('#comp-titulo-texto').textContent = `Comprobante de ${viajes.length} viajes`;
+      $('#comp-sub').textContent = [r.empresa || '-', r.patente ? String(r.patente).toUpperCase() : '', ddmmaaaa(r.fecha)].filter(Boolean).join(' · ');
+      $('#comp-filtros').hidden = true;
+      abrir();
+      return;
+    }
     modo = { tipo: 'pesada', registro: r };
     $('#comp-titulo-texto').textContent = `Comprobante de pesada N° ${numeroPesada(r)}`;
     $('#comp-sub').textContent = `${r.empresa || '-'} · ${ddmmaaaa(r.fecha)}`;
@@ -400,8 +514,10 @@
     abrirInforme,
     // Para pruebas y para otras pantallas
     pdfPesada,
+    pdfViajes,
     pdfInforme,
     textoPesada,
+    textoViajes,
     numeroPesada,
   };
 })(window.SoyaCore = window.SoyaCore || {});

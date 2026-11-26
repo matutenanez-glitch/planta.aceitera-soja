@@ -63,15 +63,18 @@ archivo/                 versiones anteriores y el circuito de tanques (en pausa
 
 ## Recepción y secadora
 
-- **Recepción en dos pasos.** Cuando llegan varios camiones juntos, primero se pesan llenos: se carga el **bruto** y se deja la tara vacía. El camión queda en **"En planta, esperando la tara"**. Cuando descarga y se pesa vacío, se toca **Cargar tara**: la app calcula el **neto** y ofrece el comprobante. Mientras falta la tara, el camión no suma a los totales.
-- **Camión que vuelve en el día.** Un mismo camión puede venir hasta 3 veces por día; no hace falta tararlo cada vez:
-    - arriba de **Nuevo Ingreso**, en **¿Volvió un camión de hoy?**, están los camiones que ya se taron hoy. Al tocar uno se completan empresa, chofer, patente, carga y la tara; solo falta el bruto y la humedad;
-    - si se escribe la patente (o el chofer, si no tiene patente) de un camión que ya se taró hoy, debajo de la tara aparece **Usar esa tara**;
-    - en **En planta**, el camión que ya tiene tara de hoy lo avisa, y en **Cargar tara** la tara viene puesta. Si se lo pesó de nuevo, se cambia y listo.
-    - Se reconoce el camión por la patente, sin importar espacios, guiones ni mayúsculas. Solo se ofrecen taras del mismo día.
-- **Humedad.** Si la carga es soja, se anota la humedad del camión (muestra de laboratorio). Es obligatoria cuando se completa la pesada.
+- **Recepción en dos pasos.** Cuando llegan varios camiones juntos, primero se pesan llenos: se carga el **bruto** y se deja la tara vacía. El camión queda en **"Camiones en curso"** esperando la tara. Cuando descarga y se pesa vacío, se toca **Cargar tara**: la app calcula el **neto** y ofrece el comprobante. Mientras falta la tara, el camión no suma a los totales.
+- **Camión de varios viajes.** Un mismo camión puede venir varias veces en el día (hasta 3 o más). No hace falta tararlo cada vez:
+    1. Al cargarlo (o al cargar su tara), se tilda **Va a volver hoy**. Así no se cierra: queda en **"Camiones en curso"** con la tarjeta **Va a volver** (viajes, neto hasta ahora y tara).
+    2. Cuando vuelve lleno, se toca **+ Otro viaje**: solo se pone el **bruto** (la tara ya viene puesta; si se lo pesó vacío de nuevo, se cambia). La humedad es opcional.
+    3. En el último viaje se destilda **Va a volver otra vez** (o se toca **Terminar**, que pide un segundo toque). Se cierra y sale **un solo comprobante con todos los viajes**: cada viaje con hora, bruto, tara, neto y humedad, y el **neto total**. Se descarga en PDF o se manda por WhatsApp o correo.
+    - Si un camión vuelve sin haberlo marcado, al escribir su patente (o el chofer, si no tiene patente) aparece **Usar esa tara**. Ese viaje también entra en el comprobante del día.
+    - Cada viaje queda como un ingreso propio (en la tabla dice "viaje 2 de 3"), así los totales del día, la secadora, el resumen y el informe por empresa cuentan cada carga.
+    - Se reconoce el camión por la patente, sin importar espacios, guiones ni mayúsculas, y la misma carga. Los viajes se juntan por día.
+    - Si se terminó por error, se edita el último viaje y se tilda **Va a volver hoy**.
+- **Humedad.** Se anota la humedad del camión (muestra de laboratorio) si se tomó: es **opcional**. El promedio del día se calcula con los camiones que la tienen.
 - **Soja ingresada en el día.** Arriba se ven la cantidad de camiones, los kg y la humedad promedio, ponderada por los kg de cada camión.
-- **Comprobante de pesada en PDF.** Está en el ícono de documento de cada fila, o en el aviso después de cargar la tara. Trae empresa, chofer, patente, carga, humedad, bruto y tara con fecha y hora, neto y lugar para las firmas. Se puede:
+- **Comprobante de pesada en PDF.** Está en el ícono de documento de cada fila, o en el aviso después de cargar la tara. Si el camión hizo varios viajes ese día, es uno solo con todos los viajes (desde la fila de cualquiera de ellos). Trae empresa, chofer, patente, carga, humedad, bruto y tara con fecha y hora, neto y lugar para las firmas. Se puede:
     - **Descargar**;
     - **Compartir**, si la PC lo permite;
     - abrir **WhatsApp** o el **correo** con los datos escritos. En ese caso el PDF se descarga para adjuntarlo.
@@ -245,6 +248,7 @@ npm test             # prueba el cálculo del circuito de tanques (archivado)
 
 ## Historial
 
+- **2.25.0**: **camión de varios viajes**. Con **Va a volver hoy** el camión no se cierra: queda en "Camiones en curso" con **+ Otro viaje** (solo el bruto, con la misma tara) y **Terminar**. Al terminar sale **un solo comprobante con todos los viajes** y el neto total. La **humedad pasa a ser opcional**. Se sacan los botones de "¿Volvió un camión de hoy?" (los reemplaza "+ Otro viaje").
 - **2.24.2**: todo se ve nítido: los paneles tienen fondo sólido (antes eran semitransparentes, con el fondo desenfocado), al abrir un diálogo la página de atrás solo se oscurece (antes se desenfocaba) y los números grandes y botones ya no tienen brillo difuso.
 - **2.24.1**: la "Extrusora tanques" pasa a llamarse **Decantador** (con su propio tipo, también en el stock); su historial sigue igual.
 - **2.24.0**:
