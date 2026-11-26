@@ -28,12 +28,12 @@ Sin `--whatsapp` ni `--correo`, el cliente elige a quién mandar la sugerencia. 
 **Versión de prueba con link.** Con `node scripts/prueba-web.mjs` (acepta las mismas `--whatsapp=` y `--correo=`) se arma la misma versión de prueba como carpeta web, en `dist/prueba-web/`. Se sube la carpeta entera a una página (`index.html` es la entrada) y al cliente se le pasa el link: la abre en el navegador de su computadora, sin instalar nada. Lo que cargue queda en **su** navegador, aparte de la versión final.
 
 **Publicada en internet (Vercel).** El repositorio está listo para [Vercel](https://vercel.com): `vercel.json` le dice que corra `node scripts/web.mjs` (no instala nada) y publique `dist/web/`. Queda:
-- **`https://<proyecto>.vercel.app/`**: la app, para usarla de verdad;
-- **`https://<proyecto>.vercel.app/prueba/`**: la versión de prueba, con datos de ejemplo y "Sugerencia".
+- **https://plantaaceitera-soja.vercel.app/**: la app, para usarla de verdad;
+- **https://plantaaceitera-soja.vercel.app/prueba/**: la versión de prueba, con datos de ejemplo y "Sugerencia".
 
 Cada una guarda sus datos aparte, en el navegador de quien la usa. Cada vez que se sube un cambio a GitHub, Vercel publica la versión nueva sola. Para armar lo mismo en la PC: `node scripts/web.mjs` (queda en `dist/web/`).
 
-Para conectarlo la primera vez: en Vercel, **Add New… → Project**, importar el repositorio y tocar **Deploy** (la configuración ya está en `vercel.json`). Vercel publica como versión principal la rama `main`; para publicar otra rama: **Settings → Environments → Production → Branch Tracking**.
+Para conectarlo la primera vez: en Vercel, **Add New… → Project**, importar el repositorio y tocar **Deploy** (la configuración ya está en `vercel.json`). En este proyecto, Vercel publica como versión principal la rama `reestructura-soyacore-v2.9` (**Settings → Environments → Production → Branch Tracking**; antes era `main`, que tiene la versión vieja y daba 404).
 
 > **Si venís de la v2.8:** abrí la versión nueva en el mismo navegador donde usabas la versión anterior y los datos aparecen solos (se usan las mismas claves `soya_*`). La v2.8 también sigue pudiendo leerlos.
 
